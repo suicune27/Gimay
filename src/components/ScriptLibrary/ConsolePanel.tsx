@@ -54,7 +54,7 @@ export const ConsolePanel: React.FC = () => {
         <span className="text-[7px] text-brand/70 font-mono tracking-normal uppercase">Active</span>
       </div>
 
-      <span className="ml-auto font-mono text-[8px] bg-elevated border border-[#2a2a2a] px-2 py-0.5 rounded text-muted shadow-inner">{logs.length} EVENTS</span>
+      <span className="ml-auto font-mono text-[8px] bg-elevated border border-subtle px-2 py-0.5 rounded text-muted shadow-inner">{logs.length} EVENTS</span>
       <ChevronUp size={14} className="opacity-40 group-hover:opacity-100 group-hover:translate-y-[-1px] transition-all" />
     </button>
   );
@@ -62,15 +62,15 @@ export const ConsolePanel: React.FC = () => {
   return (
     <div 
       className={cn(
-        "bg-[#070708]/95 backdrop-blur-xl border-t border-[#1C1C1E] flex flex-col transition-all duration-300 ease-in-out border-x rounded-t-xl shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-hidden relative",
-        isExpanded ? "h-[500px]" : "h-72"
+        "bg-deep/95 backdrop-blur-xl border-t border-strong flex flex-col transition-all duration-300 ease-in-out shadow-[0_-10px_40px_rgba(0,0,0,0.6)] overflow-hidden",
+        isExpanded ? "absolute inset-0 z-50 rounded-none" : "h-72 shrink-0 border-x rounded-t-xl relative"
       )}
     >
       {/* State-of-the-art futuristic grid overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[length:100%_4px] pointer-events-none opacity-50 z-10" />
 
       {/* Terminal Header */}
-      <div className="h-10 border-b border-[#1C1C1E] flex items-center justify-between px-3 shrink-0 bg-surface/90 z-20">
+      <div className="h-10 border-b border-strong flex items-center justify-between px-3 shrink-0 bg-surface/90 z-20">
         <div className="flex items-center gap-4 flex-1">
           {/* Badge */}
           <div className="flex items-center gap-2 text-[9px] font-black text-muted uppercase tracking-[0.2em] font-mono">
@@ -95,7 +95,7 @@ export const ConsolePanel: React.FC = () => {
                   "px-2.5 py-1 text-[8px] font-bold uppercase tracking-wider font-mono rounded transition-all",
                   filter === lvl 
                     ? "bg-brand/10 text-brand border border-brand/20 shadow-[0_0_10px_rgba(62,207,142,0.1)]" 
-                    : "text-[#55555C] hover:text-muted border border-transparent"
+                    : "text-dim hover:text-muted border border-transparent"
                 )}
               >
                 {lvl}
@@ -119,7 +119,7 @@ export const ConsolePanel: React.FC = () => {
           </div>
 
           {/* Action Separator */}
-          <div className="w-px h-4 bg-[#1C1C1E] mx-1" />
+          <div className="w-px h-4 bg-strong mx-1" />
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1">
@@ -145,7 +145,7 @@ export const ConsolePanel: React.FC = () => {
             >
               {isExpanded ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
             </button>
-            <div className="w-px h-4 bg-[#1C1C1E] mx-0.5" />
+            <div className="w-px h-4 bg-strong mx-0.5" />
             <button 
               onClick={() => setConsoleOpen(false)}
               className="p-1.5 text-muted hover:text-main hover:bg-elevated rounded-lg border border-transparent hover:border-strong transition-all"
@@ -167,10 +167,10 @@ export const ConsolePanel: React.FC = () => {
               <div className="absolute inset-0 rounded-xl border border-brand/20 animate-ping opacity-25" />
             </div>
             <p className="text-[9px] font-black uppercase tracking-[0.4em] text-dim font-mono">SYS-READY // AWAITING STREAM</p>
-            <span className="text-[7px] text-[var(--border-strong)] uppercase mt-1 font-mono">Listening on Sector 7 • zero faults</span>
+            <span className="text-[7px] text-strong uppercase mt-1 font-mono">Listening on Sector 7 • zero faults</span>
           </div>
         ) : (
-          <div className="divide-y divide-[#131316]">
+          <div className="divide-y divide-subtle">
             {filteredLogs.map((log, index) => {
               const formattedTime = format(log.timestamp, 'HH:mm:ss.SSS');
               const isErr = log.level === 'error';
@@ -184,7 +184,7 @@ export const ConsolePanel: React.FC = () => {
                     "flex gap-0 group border-l-2 transition-all duration-150 relative items-stretch hover:bg-elevated",
                     isErr ? "border-red-500/60 hover:bg-red-950/5" :
                     isWarn ? "border-yellow-500/60 hover:bg-yellow-950/5" :
-                    isSucc ? "border-brand/60 hover:bg-brand/5" : "border-[#3A3A3C]/40"
+                    isSucc ? "border-brand/60 hover:bg-brand/5" : "border-subtle/40"
                   )}
                 >
                   {/* Timestamp col */}
@@ -198,14 +198,14 @@ export const ConsolePanel: React.FC = () => {
                       "w-2 h-2 rounded-full flex items-center justify-center",
                       isErr ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" :
                       isWarn ? "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]" :
-                      isSucc ? "bg-brand shadow-[0_0_8px_rgba(62,207,142,0.5)]" : "bg-[#6E6E73]"
+                      isSucc ? "bg-brand shadow-[0_0_8px_rgba(62,207,142,0.5)]" : "bg-muted"
                     )} />
                     <span className={cn(
                       "text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border font-mono min-w-[50px] text-center",
                       isErr ? "bg-red-500/10 border-red-500/20 text-red-400" :
                       isWarn ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400" :
                       isSucc ? "bg-brand/10 border-brand/20 text-brand" :
-                      "bg-[#8E8E93]/10 border-[#8E8E93]/20 text-muted"
+                      "bg-muted/10 border-subtle/20 text-muted"
                     )}>
                       {log.level}
                     </span>
@@ -217,7 +217,7 @@ export const ConsolePanel: React.FC = () => {
                       "break-all leading-normal font-semibold tracking-wide font-mono",
                       isErr ? "text-red-300" :
                       isWarn ? "text-yellow-200" :
-                      isSucc ? "text-main" : "text-[#A1A1AA]"
+                      isSucc ? "text-main" : "text-muted"
                     )}>
                       {log.message}
                     </span>

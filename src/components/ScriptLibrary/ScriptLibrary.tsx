@@ -107,7 +107,7 @@ export const ScriptLibrary: React.FC<ScriptLibraryProps> = ({ isOpen, onClose })
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           <ScriptSidebar />
-          <div className="flex-1 flex flex-col min-w-0 bg-surface">
+          <div className="flex-1 flex flex-col min-w-0 bg-surface relative">
             <ScriptEditor />
             <ConsolePanel />
           </div>

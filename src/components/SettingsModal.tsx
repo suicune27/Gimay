@@ -34,13 +34,14 @@ import {
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 import { AppSettings } from '../types';
+import { DatabaseMigrationSection } from './DatabaseMigrationSection';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
+type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Data & Migration' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings, resetSettings } = useStore();
@@ -67,7 +68,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     { id: 'Themes', icon: Layout, label: 'Appearance' },
     { id: 'Proxy', icon: Globe, label: 'Proxy' },
     { id: 'SSL/TLS', icon: Shield, label: 'SSL / TLS' },
-    { id: 'Cookies', icon: Database, label: 'Cookies' },
+    { id: 'Cookies', icon: HardDrive, label: 'Cookies' },
+    { id: 'Data & Migration', icon: Database, label: 'Data & Migration' },
     { id: 'Response & Network', icon: Zap, label: 'Network' },
     { id: 'Experimental', icon: FlaskConical, label: 'Experimental' },
     { id: 'Diagnostics', icon: Activity, label: 'Diagnostics' },
@@ -543,6 +545,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         </>
                       )}
                     </div>
+                  </Section>
+                </motion.div>
+              )}
+
+              {activeSection === 'Data & Migration' && (
+                <motion.div
+                  key="data-migration"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-8"
+                >
+                  <Section title="Data Portability">
+                    <DatabaseMigrationSection />
                   </Section>
                 </motion.div>
               )}
