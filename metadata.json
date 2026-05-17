@@ -1,0 +1,6 @@
+{
+  "name": "Putman",
+  "description": "A powerful Postman clone with scriptable environments, dynamic variables, and shared collections powered by Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

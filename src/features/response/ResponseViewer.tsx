@@ -1,0 +1,159 @@
+import React, { useState } from 'react';
+import { 
+  CheckCircle2, 
+  Copy, 
+  Download, 
+  Search, 
+  Terminal,
+  Activity,
+  Clock,
+  Database,
+  Eye,
+  FileCode,
+  Layout
+} from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import { cn } from '../../lib/utils';
+import { motion } from 'motion/react';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-json';
+import '../../themes/prism-putman.css';
+
+export const ResponseViewer: React.FC = () => {
+  const { lastResponse, isSending } = useStore();
+  const [activeView, setActiveView] = useState<'pretty' | 'raw' | 'headers' | 'tests'>('pretty');
+
+  if (isSending) {
+    return <LoadingState />;
+  }
+
+  if (!lastResponse) {
+    return <EmptyResponseState />;
+  }
+
+  const isSuccess = lastResponse.status >= 200 && lastResponse.status < 300;
+
+  return (
+    <div className="h-full flex flex-col bg-[#0A0A0A] border-l border-[#222222]">
+      {/* Response Metrics */}
+      <div className="h-14 border-b border-[#222222] flex items-center px-6 justify-between bg-[#141414]">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              isSuccess ? "bg-[#3ECF8E]" : "bg-red-500"
+            )} />
+            <span className={cn(
+              "text-[11px] font-black uppercase tracking-widest",
+              isSuccess ? "text-[#3ECF8E]" : "text-red-500"
+            )}>
+              {lastResponse.status} {lastResponse.statusText}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[#555555]">
+            <Clock size={12} />
+            <span className="text-[10px] font-mono">{lastResponse.time}ms</span>
+          </div>
+          <div className="flex items-center gap-2 text-[#555555]">
+            <Database size={12} />
+            <span className="text-[10px] font-mono">{(lastResponse.size / 1024).toFixed(2)} KB</span>
+          </div>
+        </div>
+
+        <div className="flex gap-1 bg-[#0A0A0A] p-1 rounded-lg border border-[#222222]">
+          {[
+            { id: 'pretty', icon: Eye, label: 'PRETTY' },
+            { id: 'raw', icon: FileCode, label: 'RAW' },
+            { id: 'headers', icon: Layout, label: 'HEADERS' },
+            { id: 'tests', icon: Terminal, label: 'TESTS' }
+          ].map(view => (
+            <button 
+              key={view.id}
+              onClick={() => setActiveView(view.id as any)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5",
+                activeView === view.id 
+                  ? "bg-[#3ECF8E] text-[#0A0A0A]" 
+                  : "text-[#444444] hover:text-[#AAAAAA]"
+              )}
+            >
+              <view.icon size={12} />
+              <span className="hidden xl:inline">{view.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Response Area */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+          {activeView === 'pretty' && (
+            <div className="font-mono text-xs text-[#AAAAAA]">
+              <Editor
+                value={JSON.stringify(lastResponse.body, null, 2)}
+                onValueChange={() => {}}
+                highlight={(code) => highlight(code, languages.json, 'json')}
+                padding={10}
+                className="prism-editor bg-[#0A0A0A]"
+                readOnly
+              />
+            </div>
+          )}
+
+          {activeView === 'headers' && (
+            <div className="space-y-2">
+              {Object.entries(lastResponse.headers).map(([key, value]) => (
+                <div key={key} className="flex border-b border-[#222222] py-2 group">
+                  <span className="w-48 text-[10px] font-black text-[#555555] uppercase tracking-wider">{key}</span>
+                  <span className="flex-1 text-[11px] font-mono text-[#AAAAAA] break-all">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action Bar */}
+        <div className="h-10 border-t border-[#222222] bg-[#0F0F0F] px-4 flex items-center justify-between">
+           <div className="text-[9px] font-mono text-[#333333] uppercase">
+             {lastResponse.contentType}
+           </div>
+           <div className="flex gap-4">
+             <button className="text-[#444444] hover:text-[#3ECF8E] transition-all flex items-center gap-2">
+               <Copy size={12} /> <span className="text-[9px] font-black uppercase tracking-widest">Copy Body</span>
+             </button>
+             <button className="text-[#444444] hover:text-[#3ECF8E] transition-all flex items-center gap-2">
+               <Download size={12} /> <span className="text-[9px] font-black uppercase tracking-widest">Download</span>
+             </button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const LoadingState = () => (
+  <div className="h-full flex flex-col items-center justify-center bg-[#0A0A0A]">
+    <div className="relative">
+      <div className="w-16 h-16 border-2 border-[#3ECF8E]/20 rounded-full" />
+      <motion.div 
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        className="absolute inset-0 w-16 h-16 border-t-2 border-[#3ECF8E] rounded-full"
+      />
+    </div>
+    <p className="mt-8 text-[11px] font-black text-[#3ECF8E] uppercase tracking-[0.3em] animate-pulse">
+      Intercepting Payload...
+    </p>
+  </div>
+);
+
+const EmptyResponseState = () => (
+  <div className="h-full flex flex-col items-center justify-center bg-[#0A0A0A] p-12 text-center">
+    <Activity size={48} className="text-[#141414] mb-4" />
+    <h3 className="text-[11px] font-black text-[#333333] uppercase tracking-widest mb-2">No Passive Data</h3>
+    <p className="text-[10px] text-[#222222] uppercase tracking-tighter max-w-xs">
+      Execute a protocol to view real-time transmission analytics and payload extraction.
+    </p>
+  </div>
+);
