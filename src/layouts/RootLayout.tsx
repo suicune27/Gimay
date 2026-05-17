@@ -9,6 +9,7 @@ import { PersistenceService } from '../services/PersistenceService';
 import { NameModal } from '../components/NameModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { SettingsModal } from '../components/SettingsModal';
+import { ScriptLibrary } from '../components/ScriptLibrary/ScriptLibrary';
 import { ToastContainer } from '../components/Toast';
 import { 
   Terminal, 
@@ -49,7 +50,9 @@ export const RootLayout: React.FC = () => {
     settings,
     updateSettings,
     isSettingsModalOpen,
-    setIsSettingsModalOpen
+    setIsSettingsModalOpen,
+    isScriptLabOpen,
+    setIsScriptLabOpen
   } = useStore();
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
 
@@ -233,6 +236,12 @@ export const RootLayout: React.FC = () => {
             onClose={() => setIsSettingsModalOpen(false)}
           />
         )}
+        {isScriptLabOpen && (
+          <ScriptLibrary 
+            isOpen={isScriptLabOpen}
+            onClose={() => setIsScriptLabOpen(false)}
+          />
+        )}
       </AnimatePresence>
       {/* Top Universal Rail */}
       <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-50">
@@ -241,7 +250,7 @@ export const RootLayout: React.FC = () => {
             <div className="w-5 h-5 bg-[#3ECF8E] rounded flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
               <Terminal size={12} className="text-black" />
             </div>
-            <span className="text-[10px] font-black tracking-widest uppercase">Putman</span>
+            <span className="text-[10px] font-black tracking-widest uppercase">Gimay</span>
           </div>
           
           <div className="h-4 w-px bg-[#222222]" />
@@ -440,50 +449,6 @@ export const RootLayout: React.FC = () => {
                <Settings size={14} />
              </button>
           </div>
-
-          <div className="h-6 w-px bg-[var(--border-subtle)]" />
-
-          <div ref={profileMenuRef} className="relative">
-            <button
-              onClick={() => setIsProfileMenuOpen((open) => !open)}
-              className="flex items-center gap-3 pl-2 group"
-            >
-              <div className="text-right">
-                <div className="text-[10px] font-black text-white uppercase tracking-tighter group-hover:text-[var(--brand)] transition-colors">{profile?.full_name}</div>
-                <div className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest leading-none">Pro Node</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center p-0.5 group-hover:border-[var(--brand)]/50 transition-all shadow-[0_0_10px_var(--brand-muted)]">
-                 <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--brand)] to-[var(--bg-elevated)] flex items-center justify-center">
-                    <User size={14} className="text-black" />
-                 </div>
-              </div>
-            </button>
-
-            <div className={cn(
-              "absolute top-full right-0 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-50",
-              isProfileMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
-            )}>
-              <div className="px-4 py-2 border-b border-[var(--border-subtle)] mb-1">
-                <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Protocol Session</p>
-              </div>
-              <button
-                onClick={handleToggleTheme}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-[var(--text-muted)] hover:bg-[var(--bg-deep)] hover:text-[var(--brand)] transition-colors uppercase tracking-widest flex items-center gap-2"
-              >
-                {settings.appearance.theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
-                {settings.appearance.theme === 'dark' ? 'Switch To Light' : 'Switch To Dark'}
-              </button>
-              <button 
-                onClick={() => {
-                  setIsProfileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="w-full px-4 py-2 text-left text-[11px] font-bold text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest flex items-center gap-2 border-t border-[var(--border-subtle)] mt-1"
-              >
-                <Plus size={14} className="rotate-45" /> Logout Session
-              </button>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -499,48 +464,63 @@ export const RootLayout: React.FC = () => {
             {!consoleCollapsed && (
               <motion.div 
                 initial={{ height: 0 }}
-                animate={{ height: 180 }}
+                animate={{ height: 190 }}
                 exit={{ height: 0 }}
-                className="border-t border-[#111111] bg-[#050505] overflow-hidden flex flex-col"
+                className="border-t border-[#1C1C1F] bg-[#050506]/95 backdrop-blur-xl overflow-hidden flex flex-col relative"
               >
-                <div className="h-7 border-b border-[#1A1A1A] flex items-center justify-between px-3 bg-[#0A0A0A] shrink-0">
+                {/* Futuristic matrix scanline overlay */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[length:100%_4px] pointer-events-none opacity-40 z-10" />
+
+                {/* Terminal Header */}
+                <div className="h-8 border-b border-[#1C1C1F] flex items-center justify-between px-3 bg-[#0A0A0C]/90 shrink-0 z-20">
                    <div className="flex items-center gap-3">
-                     <span className="text-[8px] font-black text-[#666666] uppercase tracking-[0.3em] flex items-center gap-2">
-                       <Terminal size={10} className="text-[#3ECF8E]" />
+                     <span className="text-[8px] font-black text-[#8E8E93] uppercase tracking-[0.25em] flex items-center gap-2 font-mono">
+                       <Terminal size={11} className="text-[#3ECF8E] drop-shadow-[0_0_3px_#3ECF8E]" />
                        Protocol System Core
                      </span>
-                     <div className="flex gap-1">
-                        <div className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
-                        <div className="w-1 h-1 rounded-full bg-[#3ECF8E] opacity-10" />
+                     
+                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3ECF8E]/5 border border-[#3ECF8E]/10">
+                       <span className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
+                       <span className="text-[6.5px] text-[#3ECF8E]/70 font-mono tracking-normal uppercase">ZERO FAULTS</span>
                      </div>
                    </div>
+                   
                    <button 
                     onClick={() => setConsoleCollapsed(true)} 
-                    className="text-[7px] font-black text-[#555555] hover:text-[#3ECF8E] uppercase transition-colors tracking-[0.2em] px-2 py-0.5 rounded hover:bg-white/[0.03]"
+                    className="text-[7.5px] font-black text-[#5E5E64] hover:text-red-400 hover:bg-[#1A1A1F] border border-transparent hover:border-red-950/20 px-2 py-0.5 rounded-md transition-all font-mono tracking-wider"
                    >
-                     Disconnect Terminal
+                     TERMINATE TERMINAL
                    </button>
                 </div>
-                <div className="flex-1 overflow-y-auto font-mono text-[9px] text-[#888888] divide-y divide-white/[0.02] custom-scrollbar bg-black/60">
-                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] font-bold shrink-0">[KERN]</span>
-                     <span className="opacity-70 leading-normal">Uplink established; kernel version 2.4.0 active.</span>
+
+                {/* Terminal Output Logs */}
+                <div className="flex-1 overflow-y-auto font-mono text-[9.5px] text-[#888888] divide-y divide-[#131316] custom-scrollbar bg-[#050506]/90 z-20 pb-2">
+                   {/* Log KERN */}
+                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-emerald-500/60 pl-0.5">
+                     <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[KERN]</span>
+                     <span className="text-[#D1D1D6] leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">Uplink established; core kernel version 2.4.0 active.</span>
                    </div>
-                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] font-bold shrink-0">[AUTH]</span>
-                     <span className="opacity-70 leading-normal">Handshake success: Node identity {profile?.email} validated.</span>
+
+                   {/* Log AUTH */}
+                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-blue-500/60 pl-0.5">
+                     <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-blue-400 bg-blue-500/10 border border-blue-500/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[AUTH]</span>
+                     <span className="text-[#D1D1D6] leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">Handshake success: Node identity <span className="text-blue-300 font-bold">{profile?.email}</span> validated on sector A.</span>
                    </div>
-                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors text-yellow-500/60">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="font-bold shrink-0">[SYNC]</span>
-                     <span className="leading-normal">Real-time delta channel initializing... heartbeat listening on sector 7.</span>
+
+                   {/* Log SYNC */}
+                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-yellow-500/60 pl-0.5">
+                     <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[SYNC]</span>
+                     <span className="text-yellow-200 leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">Real-time delta channel initializing... heartbeat listening on sector 7.</span>
                    </div>
-                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors text-[#3ECF8E]">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="font-bold shrink-0">[SUCCESS]</span>
-                     <span className="font-medium leading-normal tracking-tight">System ready for packet routing.</span>
+
+                   {/* Log SUCCESS */}
+                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-[#3ECF8E]/60 pl-0.5">
+                     <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[SUCCESS]</span>
+                     <span className="text-[#D1D1D6] leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">System ready for packet routing and state synchronization.</span>
                    </div>
                 </div>
               </motion.div>

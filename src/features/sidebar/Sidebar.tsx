@@ -24,7 +24,9 @@ import {
   Lock,
   Unlock,
   Maximize2,
-  Minimize2
+  Minimize2,
+  LogOut,
+  Terminal
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -41,6 +43,7 @@ import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { SettingsModal } from '../../components/SettingsModal';
 import { useDataSync } from '../../hooks/useDataSync';
+import { useAuth } from '../../hooks/useAuth';
 
 export const Sidebar: React.FC = () => {
   const { 
@@ -66,17 +69,19 @@ export const Sidebar: React.FC = () => {
     reorderFolder,
     reorderRequest,
     isSettingsModalOpen,
-    setIsSettingsModalOpen
+    setIsSettingsModalOpen,
+    isScriptLabOpen,
+    setIsScriptLabOpen
   } = useStore();
+  
+  const { logout } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNav, setActiveNav] = useState('collections');
   const [isResizing, setIsResizing] = useState(false);
-  const [isHoveringCompact, setIsHoveringCompact] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const hoverTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -110,20 +115,17 @@ export const Sidebar: React.FC = () => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
       
-      let newWidth = e.clientX;
-      const minWidth = sidebarMode === 'compact' ? 64 : 180;
+      const newWidth = e.clientX;
       const maxWidth = 600;
       
-      if (newWidth < 100) {
+      if (newWidth < 120) {
         setSidebarMode('compact');
-        newWidth = 64;
+        setSidebarWidth(64);
       } else {
         setSidebarMode('expanded');
-        if (newWidth < minWidth) newWidth = minWidth;
-        if (newWidth > maxWidth) newWidth = maxWidth;
+        const clampedWidth = Math.max(180, Math.min(newWidth, maxWidth));
+        setSidebarWidth(clampedWidth);
       }
-      
-      setSidebarWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -147,26 +149,12 @@ export const Sidebar: React.FC = () => {
   const toggleSidebar = () => {
     if (sidebarMode === 'expanded') {
       setSidebarMode('compact');
-    } else if (sidebarMode === 'compact') {
-      setSidebarMode('hidden');
     } else {
       setSidebarMode('expanded');
     }
   };
 
-  const handleMouseEnter = () => {
-    if (sidebarMode === 'compact') {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = window.setTimeout(() => {
-        setIsHoveringCompact(true);
-      }, 300);
-    }
-  };
 
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setIsHoveringCompact(false);
-  };
 
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -216,17 +204,14 @@ export const Sidebar: React.FC = () => {
   return (
     <div 
       ref={sidebarRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       className={cn(
         "h-full bg-[#0F0F0F] border-r border-[#222222] flex flex-col transition-all duration-300 relative z-40 group/sidebar overflow-hidden",
-        sidebarMode === 'hidden' ? "w-0 border-none opacity-0 pointer-events-none" : "",
-        isHoveringCompact ? "absolute left-0 shadow-2xl !w-[300px]" : ""
+        sidebarMode === 'hidden' ? "w-0 border-none opacity-0 pointer-events-none" : ""
       )}
       style={{ 
-        width: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' && !isHoveringCompact ? 64 : sidebarWidth),
-        minWidth: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' && !isHoveringCompact ? 64 : 180),
-        zIndex: isHoveringCompact ? 100 : 40
+        width: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' ? 64 : sidebarWidth),
+        minWidth: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' ? 64 : 180),
+        zIndex: 40
       }}
     >
       {/* Resize Handle */}
@@ -234,12 +219,12 @@ export const Sidebar: React.FC = () => {
         <div 
           onMouseDown={startResizing}
           className={cn(
-            "absolute -right-0.5 top-0 bottom-0 w-1 cursor-col-resize z-50 transition-colors",
-            isResizing ? "bg-[var(--brand)]" : "hover:bg-[var(--brand)]/30",
+            "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-50 transition-all hover:bg-[var(--brand)]/35 hover:w-2",
+            isResizing ? "bg-[var(--brand)] w-2" : "",
             isLocked && "cursor-default pointer-events-none"
           )}
         >
-          {isResizing && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-8 bg-[var(--brand)] rounded-full shadow-[0_0_15px_var(--brand)]" />}
+          {isResizing && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-8 bg-[var(--brand)] rounded-full shadow-[0_0_15px_var(--brand)]" />}
         </div>
       )}
 
@@ -305,28 +290,30 @@ export const Sidebar: React.FC = () => {
       />
       <div 
         className={cn(
-          "h-14 border-b border-[var(--border-subtle)] flex items-center px-4 gap-3 bg-[var(--bg-surface)] cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors overflow-hidden",
-          sidebarMode === 'compact' && !isHoveringCompact && "justify-center px-0"
+          "h-14 border-b border-[var(--border-subtle)] flex items-center px-4 gap-3 bg-black/40 select-none overflow-hidden",
+          sidebarMode === 'compact' && "justify-center px-0"
         )}
       >
-        <div className="w-8 h-8 rounded-lg bg-[var(--brand)] flex items-center justify-center text-black font-black text-xs shadow-[0_0_15px_var(--brand-muted)] shrink-0">
-          {activeWorkspace?.name?.[0].toUpperCase() || 'W'}
+        <div className="w-8 h-8 rounded-lg bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex items-center justify-center text-[#3ECF8E] font-black text-xs shadow-[0_0_15px_rgba(62,207,142,0.1)] shrink-0 font-mono animate-pulse">
+          {activeWorkspace?.name?.[0].toUpperCase() || 'G'}
         </div>
-        {(sidebarMode === 'expanded' || isHoveringCompact) && (
+        {sidebarMode === 'expanded' && (
           <div className="flex-1 min-w-0 animate-in fade-in slide-in-from-left-2 duration-200">
-            <h2 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest truncate">
-              {activeWorkspace?.name || 'Workspace'}
+            <h2 className="text-[11px] font-black text-white uppercase tracking-widest truncate">
+              {activeWorkspace?.name || 'Gimay Workspace'}
             </h2>
-            <p className="text-[9px] text-[var(--text-dim)] font-mono tracking-tighter uppercase">
-              {activeWorkspace?.visibility || 'Private'} Node
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-ping" />
+              <p className="text-[9px] text-[#3ECF8E] font-mono tracking-tighter uppercase font-bold">
+                {activeWorkspace?.visibility || 'Active'} Node
+              </p>
+            </div>
           </div>
         )}
-        {(sidebarMode === 'expanded' || isHoveringCompact) && <ChevronDown size={14} className="text-[var(--text-dim)]" />}
       </div>
 
       {/* Explorer Controls */}
-      {(sidebarMode === 'expanded' || isHoveringCompact) && activeNav === 'collections' && (
+      {sidebarMode === 'expanded' && activeNav === 'collections' && (
         <div className="p-3 space-y-3">
           <div className="relative group">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] group-focus-within:text-[var(--brand)] transition-colors" />
@@ -360,23 +347,30 @@ export const Sidebar: React.FC = () => {
       <div className="flex flex-col flex-1 min-h-0 bg-[#0F0F0F]">
         <div className={cn(
           "flex border-b border-[var(--border-subtle)]",
-          (sidebarMode === 'compact' && !isHoveringCompact) ? "flex-col" : ""
+          sidebarMode === 'compact' ? "flex-col" : ""
         )}>
           {[
             { id: 'collections', icon: LayoutGrid, label: 'Collections' },
             { id: 'environments', icon: Globe, label: 'Environments' },
             { id: 'history', icon: Activity, label: 'History' },
-            { id: 'teams', icon: Users, label: 'Teams' }
+            { id: 'teams', icon: Users, label: 'Teams' },
+            { id: 'scriptlab', icon: Terminal, label: 'Script Laboratory' }
           ].map((item) => (
             <button 
               key={item.id}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => {
+                if (item.id === 'scriptlab') {
+                  setIsScriptLabOpen(true);
+                } else {
+                  setActiveNav(item.id);
+                }
+              }}
               title={sidebarMode === 'compact' ? item.label : undefined}
               className={cn(
                 "flex-1 flex items-center justify-center transition-all",
-                (sidebarMode === 'compact' && !isHoveringCompact) ? "py-4 border-r-0 border-l-2" : "py-2 border-b-2",
+                sidebarMode === 'compact' ? "py-4 border-r-0 border-l-2" : "py-2 border-b-2",
                 "hover:text-[var(--text-main)]",
-                activeNav === item.id 
+                (item.id === 'scriptlab' ? isScriptLabOpen : activeNav === item.id)
                   ? "text-[var(--brand)] border-[var(--brand)] bg-[var(--brand)]/5" 
                   : "text-[var(--text-dim)] border-transparent"
               )}
@@ -388,8 +382,8 @@ export const Sidebar: React.FC = () => {
 
         {/* Tree View */}
         <div className={cn(
-          "flex-1 overflow-y-auto no-scrollbar py-2",
-          (sidebarMode === 'compact' && !isHoveringCompact) && "hidden"
+          "flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-2",
+          sidebarMode === 'compact' && "hidden"
         )}>
           {activeNav === 'collections' && (
             <DragDropContext onDragEnd={onDragEnd}>
@@ -597,70 +591,91 @@ export const Sidebar: React.FC = () => {
 
       {/* Footer */}
       <div className="p-2 border-t border-[#222222] bg-[#0A0A0A]">
-        <div className="flex flex-col gap-1">
-          <button 
-            onClick={() => setIsSettingsModalOpen(true)}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-              "text-[#555555] hover:text-[#3ECF8E] hover:bg-[#3ECF8E]/5",
-              (sidebarMode === 'compact' && !isHoveringCompact) && "justify-center px-0"
-            )}
-          >
-            <Settings size={14} />
-            {(sidebarMode === 'expanded' || isHoveringCompact) && <span>Settings</span>}
-          </button>
-
+        <div className="flex flex-col gap-2">
+          
           <div className={cn(
-            "flex items-center gap-1 border-t border-[#222222]/50 mt-1 pt-1",
-            (sidebarMode === 'compact' && !isHoveringCompact) ? "flex-col" : "justify-between px-2"
+            "flex items-center gap-1 px-1",
+            sidebarMode === 'compact' ? "flex-col" : "justify-between"
           )}>
             <button
               onClick={toggleSidebar}
               title={sidebarMode === 'expanded' ? 'Collapse Sidebar' : 'Expand Sidebar'}
-              className="p-2 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded"
+              className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded hover:bg-white/5"
             >
               {sidebarMode === 'expanded' ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
             </button>
 
-            {(sidebarMode === 'expanded' || isHoveringCompact) && (
-              <>
+            {sidebarMode === 'expanded' && (
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setIsLocked(!isLocked)}
                   title={isLocked ? 'Unlock Width' : 'Lock Width'}
-                  className={cn("p-2 transition-all rounded", isLocked ? "text-[var(--brand)]" : "text-[var(--text-dim)] hover:text-[#AAAAAA]")}
+                  className={cn("p-1.5 transition-all rounded hover:bg-white/5", isLocked ? "text-[var(--brand)]" : "text-[var(--text-dim)] hover:text-[#AAAAAA]")}
                 >
                   {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
                 </button>
                 <button
                   onClick={() => setSidebarMode(sidebarMode === 'expanded' ? 'compact' : 'expanded')}
                   title={sidebarMode === 'expanded' ? 'Compact Mode' : 'Expanded Mode'}
-                  className="p-2 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded"
+                  className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded hover:bg-white/5"
                 >
                   {sidebarMode === 'expanded' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-              </>
+              </div>
             )}
           </div>
           
-          {(sidebarMode === 'expanded' || isHoveringCompact) && (
-            <div className="flex items-center gap-3 px-3 py-2 mt-1 border-t border-[#222222]/50 pt-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
-              <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[10px] font-black text-[#555555] shrink-0">
-                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
+          {sidebarMode === 'expanded' ? (
+            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-[#111112]/40 border border-[#222224]/30 rounded-xl animate-in fade-in slide-in-from-bottom-1 duration-300 group/profile mt-1">
+              <div className="relative shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-black border border-[#3ECF8E]/30 flex items-center justify-center text-[11px] font-black text-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.15)] select-none">
+                  {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A]" />
               </div>
+              
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-[#AAAAAA] truncate">{profile?.full_name || 'Operator'}</p>
-                <p className="text-[8px] text-[#444444] truncate">{profile?.email}</p>
+                <p className="text-[10px] font-black text-white/90 truncate leading-tight uppercase tracking-wider">{profile?.full_name || 'Operator'}</p>
+                <p className="text-[8px] text-[#555555] font-mono truncate leading-none mt-1">{profile?.email}</p>
               </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setIsSettingsModalOpen(true)}
+                  title="System Settings"
+                  className="p-1.5 text-[#555555] hover:text-white hover:bg-white/5 rounded-md transition-all active:scale-95 shrink-0"
+                >
+                  <Settings size={13} />
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await logout();
+                      addToast({ type: 'info', message: 'Session logged out.' });
+                    } catch {
+                      addToast({ type: 'error', message: 'Failed to logout session.' });
+                    }
+                  }}
+                  title="Logout Session"
+                  className="p-1.5 text-[#555555] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all active:scale-95 shrink-0"
+                >
+                  <LogOut size={13} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="relative group/compact-avatar flex justify-center py-2 mt-1">
+              <button 
+                onClick={() => setIsSettingsModalOpen(true)}
+                title="System Settings"
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-black border border-[#3ECF8E]/30 flex items-center justify-center text-[11px] font-black text-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.15)] hover:border-[#3ECF8E] transition-all relative"
+              >
+                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A]" />
+              </button>
             </div>
           )}
           
-          {sidebarMode === 'compact' && !isHoveringCompact && (
-            <div className="flex justify-center py-2">
-              <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[10px] font-black text-[#555555]">
-                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -1150,6 +1165,21 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden border-l border-[#222222] ml-4"
               >
+                {/* Recursively render child folders */}
+                {folder.folders && folder.folders.length > 0 && (
+                  <div className="flex flex-col">
+                    {folder.folders.map((subFolder: any, idx: number) => (
+                      <FolderNode
+                        key={subFolder.id}
+                        folder={subFolder}
+                        index={idx}
+                        collectionId={collectionId}
+                        fetchCollections={fetchCollections}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <Droppable droppableId={`${collectionId}:requests:${folder.id}`} type="request">
                   {(provided) => (
                     <div {...provided.droppableProps} ref={provided.innerRef}>

@@ -85,6 +85,8 @@ interface AppState {
   setScriptFavorites: (favorites: string[]) => void;
   isScriptLibraryOpen: boolean;
   setIsScriptLibraryOpen: (isOpen: boolean) => void;
+  isScriptLabOpen: boolean;
+  setIsScriptLabOpen: (isOpen: boolean) => void;
   duplicateRequest: (id: string, overrides?: Partial<RequestData>) => Promise<void>;
   addRequest: (request: RequestData) => void;
   deleteRequestState: (id: string) => void;
@@ -130,7 +132,7 @@ interface AppState {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
-    autoSave: true,
+    autoSave: false,
     httpVersion: 'auto',
     requestTimeout: 0,
     maxResponseSize: 100 * 1024 * 1024,
@@ -395,6 +397,8 @@ export const useStore = create<AppState>()(
       setScriptFavorites: (scriptFavorites) => set({ scriptFavorites }),
       isScriptLibraryOpen: false,
       setIsScriptLibraryOpen: (isScriptLibraryOpen) => set({ isScriptLibraryOpen }),
+      isScriptLabOpen: false,
+      setIsScriptLabOpen: (isScriptLabOpen) => set({ isScriptLabOpen }),
       
       duplicateRequest: async (id, overrides = {}) => {
         const state = useStore.getState();

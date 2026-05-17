@@ -22,7 +22,7 @@ interface LandingPageProps {
 export function LandingPage({ onStart }: LandingPageProps) {
   const handleDownload = (platform: string) => {
     toast.info(`Preparing ${platform} download...`, {
-      description: "Putman Desktop will start downloading in a few seconds.",
+      description: "Gimay Desktop will start downloading in a few seconds.",
       duration: 5000,
     });
   };
@@ -36,7 +36,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="w-6 h-6 rounded bg-[#3ECF8E] flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
               <Terminal size={14} className="text-black" />
             </div>
-            <span className="font-black text-[10px] tracking-widest uppercase italic">Putman <span className="opacity-40 italic ml-1 font-medium">Node v2.4</span></span>
+            <span className="font-black text-[10px] tracking-widest uppercase italic">Gimay <span className="opacity-40 italic ml-1 font-medium">Node v2.4</span></span>
           </div>
           
           <div className="hidden md:flex items-center gap-6 text-[9px] font-black uppercase tracking-[0.2em] text-[#555555]">
@@ -134,7 +134,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 <div className="w-1.5 h-1.5 rounded-full bg-red-500/30" />
                 <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/30" />
                 <div className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E]/30" />
-                <div className="flex-1 text-[8px] text-center text-[#333333] font-mono tracking-[0.3em] uppercase">Uplink: Terminal.Putman.Node</div>
+                <div className="flex-1 text-[8px] text-center text-[#333333] font-mono tracking-[0.3em] uppercase">Uplink: Terminal.Gimay.Node</div>
               </div>
               
               <div className="p-4 h-full flex gap-4">
@@ -234,7 +234,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="w-5 h-5 rounded bg-[#3ECF8E] flex items-center justify-center">
               <Terminal size={12} className="text-black" />
             </div>
-            <span className="font-black text-[9px] tracking-widest uppercase italic">Putman Tech</span>
+            <span className="font-black text-[9px] tracking-widest uppercase italic">Gimay Tech</span>
           </div>
           
           <div className="flex gap-8 text-[8px] font-black uppercase tracking-[0.3em] text-[#333333]">

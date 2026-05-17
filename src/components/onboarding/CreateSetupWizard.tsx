@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Cloud,
   Key,
+  Terminal,
 } from 'lucide-react';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import { OnboardingService } from '../../services/OnboardingService';
@@ -184,6 +185,13 @@ export const CreateSetupWizard: React.FC = () => {
             ...log, 
             "⚠️ [REQUIRED] Helper function 'execute_sql' missing.",
             "⚠️ [ACTION] Please run the helper SQL in Step 3 once manually."
+          ]);
+        } else if (result.error?.includes('SCHEMA CACHE STALE') || result.error?.includes('schema cache')) {
+          setShowManualSetup(true);
+          setAutoExecLog((log) => [
+            ...log,
+            "⚠️ [REQUIRED] The Supabase API schema cache is stale or currently unavailable.",
+            "⚠️ [RECOMMENDATION] Please execute the SQL script in your Supabase SQL Editor manually to bypass this restriction."
           ]);
         }
         
@@ -367,7 +375,7 @@ export const CreateSetupWizard: React.FC = () => {
     const element = document.createElement('a');
     const file = new Blob([EXECUTE_SQL_FUNCTION], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `putman-execute-sql-fn-${new Date().toISOString().split('T')[0]}.sql`;
+    element.download = `gimay-execute-sql-fn-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
         document.body.appendChild(element);
@@ -393,7 +401,7 @@ export const CreateSetupWizard: React.FC = () => {
     const element = document.createElement('a');
     const file = new Blob([previewScript], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `putman-init-${new Date().toISOString().split('T')[0]}.sql`;
+    element.download = `gimay-init-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
         document.body.appendChild(element);
@@ -426,6 +434,34 @@ export const CreateSetupWizard: React.FC = () => {
     return false;
   };
 
+  // Automatically check the database schema in the background when smart setup fails/manual setup is required
+  useEffect(() => {
+    if (currentStep !== 'sql-setup' || autoExecSuccess === true || !url || !anonKey) {
+      return;
+    }
+
+    const intervalId = setInterval(async () => {
+      try {
+        const result = await OnboardingService.verifyDatabaseInitialization(url, anonKey);
+        if (result.success) {
+          clearInterval(intervalId);
+          setSchemaVerified(true);
+          setScriptConfirmed(true);
+          setAutoExecSuccess(true);
+          setAutoExecLog(prev => [
+            ...prev,
+            "✅ [AUTO-DETECT] Database initialization detected and verified successfully in the background!"
+          ]);
+          addToast({ type: 'success', message: 'Database schema auto-detected and verified!' });
+        }
+      } catch (err) {
+        // Silent catch for background polling
+      }
+    }, 4000); // Poll every 4 seconds
+
+    return () => clearInterval(intervalId);
+  }, [currentStep, autoExecSuccess, url, anonKey]);
+
   const handleCreateTeam = async () => {
     console.log('handleCreateTeam called', { isSaving, url, anonKey, serviceKey, teamName, schemaVerified });
     if (isSaving) {
@@ -452,7 +488,11 @@ export const CreateSetupWizard: React.FC = () => {
     }
     console.log('Check 3 passed: schema verified');
 
-    const currentUserId = profile?.id;
+    let currentUserId = profile?.id;
+    if (!currentUserId) {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      currentUserId = currentSession?.user?.id;
+    }
     console.log('Profile check:', { profile, currentUserId });
     if (!currentUserId) {
       console.log('Exiting: no current user ID');
@@ -496,6 +536,13 @@ export const CreateSetupWizard: React.FC = () => {
       if (errorMsg.includes('[SCHEMA ERROR]')) {
         setAutoExecLog(prev => [...prev, "⚠️ [CRITICAL] Database schema inconsistency detected."]);
         setAutoExecLog(prev => [...prev, "⚠️ [REQUIRED] Please refer to the FIX instructions above."]);
+      } else if (errorMsg.includes('SCHEMA CACHE STALE') || errorMsg.includes('schema cache')) {
+        setShowManualSetup(true);
+        setAutoExecLog(prev => [
+          ...prev, 
+          "⚠️ [REQUIRED] The Supabase API schema cache is stale or currently unavailable.",
+          "⚠️ [RECOMMENDATION] Please execute the SQL script in your Supabase SQL Editor manually to bypass this restriction."
+        ]);
       }
       addToast({ type: 'error', message: errorMsg });
       return;
@@ -575,6 +622,66 @@ export const CreateSetupWizard: React.FC = () => {
     if (!inviteCode) return;
     await navigator.clipboard.writeText(inviteCode);
     addToast({ type: 'success', message: 'Temporary code copied.' });
+  };  const parseLog = (logStr: string) => {
+    let level: 'info' | 'success' | 'error' | 'warning' | 'exec' | 'rest' | 'rpc' | 'system' | 'management' | 'data' = 'info';
+    let cleanMessage = logStr;
+    let tag = 'INFO';
+
+    if (logStr.includes('✅') || logStr.includes('[SUCCESS]') || logStr.includes('[TOKEN]')) {
+      level = 'success';
+      tag = logStr.includes('[TOKEN]') ? 'TOKEN' : 'SUCCESS';
+      cleanMessage = logStr.replace('✅', '').replace('[SUCCESS]', '').replace('[TOKEN]', '').trim();
+    } else if (logStr.includes('❌') || logStr.includes('[ERROR]') || logStr.includes('[MANAGEMENT ERROR]') || logStr.includes('[CRITICAL]')) {
+      level = 'error';
+      tag = logStr.includes('[CRITICAL]') ? 'CRIT' : 'ERROR';
+      cleanMessage = logStr.replace('❌', '').replace('[ERROR]', '').replace('[MANAGEMENT ERROR]', '').replace('[CRITICAL]', '').trim();
+    } else if (logStr.includes('⚠️') || logStr.includes('[WARNING]')) {
+      level = 'warning';
+      tag = 'WARN';
+      cleanMessage = logStr.replace('⚠️', '').replace('[WARNING]', '').trim();
+    } else if (logStr.includes('⚙️') || logStr.includes('[EXEC]')) {
+      level = 'exec';
+      tag = 'EXEC';
+      cleanMessage = logStr.replace('⚙️', '').replace('[EXEC]', '').trim();
+    } else if (logStr.includes('[REST]')) {
+      level = 'rest';
+      tag = 'REST';
+      cleanMessage = logStr.replace('[REST]', '').trim();
+    } else if (logStr.includes('[RPC]')) {
+      level = 'rpc';
+      tag = 'RPC';
+      cleanMessage = logStr.replace('[RPC]', '').trim();
+    } else if (logStr.includes('[SYSTEM]')) {
+      level = 'system';
+      tag = 'SYSTEM';
+      cleanMessage = logStr.replace('[SYSTEM]', '').trim();
+    } else if (logStr.includes('[MANAGEMENT]')) {
+      level = 'management';
+      tag = 'MGMT';
+      cleanMessage = logStr.replace('[MANAGEMENT]', '').trim();
+    } else if (logStr.includes('[DATA]')) {
+      level = 'data';
+      tag = 'DATA';
+      cleanMessage = logStr.replace('[DATA]', '').trim();
+    } else if (logStr.includes('[FALLBACK]')) {
+      level = 'rpc';
+      tag = 'FALLBACK';
+      cleanMessage = logStr.replace('[FALLBACK]', '').trim();
+    } else if (logStr.includes('[SQL]')) {
+      level = 'exec';
+      tag = 'SQL';
+      cleanMessage = logStr.replace('[SQL]', '').trim();
+    } else if (logStr.includes('[LOCAL]')) {
+      level = 'system';
+      tag = 'LOCAL';
+      cleanMessage = logStr.replace('[LOCAL]', '').trim();
+    } else if (logStr.includes('[INFO]')) {
+      level = 'info';
+      tag = 'INFO';
+      cleanMessage = logStr.replace('[INFO]', '').trim();
+    }
+
+    return { level, tag, message: cleanMessage };
   };
 
   return (
@@ -694,16 +801,19 @@ export const CreateSetupWizard: React.FC = () => {
                 <div className="flex flex-col gap-3">
                    <div className="flex items-center justify-between px-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-[10px] uppercase tracking-widest font-black text-[#444444]">Discovery Output</span>
+                      <span className="text-[10px] uppercase tracking-widest font-black text-[#444444]">Discovery Output Terminal</span>
                       <div className="flex gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/10" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/10" />
-                        <div className="w-2.5 h-2.5 rounded-full bg-green-500/10" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 animate-pulse" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#3ECF8E]/20" />
                       </div>
                     </div>
                   </div>
                   
-                  <div className="relative h-64 bg-black/90 rounded-[32px] border border-[#222222] p-8 font-mono text-[11px] overflow-hidden flex flex-col shadow-2xl">
+                  <div className="relative h-64 bg-[#060608]/95 backdrop-blur-xl rounded-[24px] border border-[#1C1C1F] p-5 font-mono overflow-hidden flex flex-col shadow-2xl z-20">
+                    {/* Futuristic matrix scanline overlay */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[length:100%_4px] pointer-events-none opacity-40 z-10" />
+
                     {isFetchingProjects && (
                       <motion.div
                         initial={{ top: '-10%' }}
@@ -712,27 +822,75 @@ export const CreateSetupWizard: React.FC = () => {
                         className="absolute left-0 right-0 h-[100px] bg-gradient-to-b from-transparent via-[#3ECF8E]/5 to-transparent pointer-events-none z-10"
                       />
                     )}
-                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4">
-                      {fetchLog.map((log, i) => (
-                        <motion.div 
-                          initial={{ opacity: 0, x: -5 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          key={i} 
-                          className={cn(
-                            "flex gap-4 p-1 rounded-lg",
-                            log.includes('[CRITICAL]') || log.includes('[ERROR]') ? 'text-red-500 bg-red-500/5' :
-                            log.includes('[SUCCESS]') || log.includes('[TOKEN]') ? 'text-[#3ECF8E] bg-[#3ECF8E]/5 font-bold' : 'text-[#888888]'
-                          )}
-                        >
-                          <span className="opacity-20 shrink-0 text-[10px] font-black uppercase tracking-tighter">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                          <span className="flex-1">{log}</span>
-                        </motion.div>
-                      ))}
+                    
+                    <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4 z-20">
+                      {fetchLog.map((logStr, i) => {
+                        const { level, tag, message } = parseLog(logStr);
+                        const isErr = level === 'error';
+                        const isSucc = level === 'success';
+                        
+                        return (
+                          <motion.div 
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            key={i} 
+                            className={cn(
+                              "flex gap-0 group items-stretch border-l-2 transition-all duration-150 relative hover:bg-[#0C0C0F] rounded-r-lg py-1 pr-12",
+                              isErr ? "border-red-500/60 bg-red-500/[0.02] hover:bg-red-950/5" :
+                              isSucc ? "border-[#3ECF8E]/60 bg-[#3ECF8E]/[0.02] hover:bg-[#3ECF8E]/5" :
+                              "border-[#3A3A3C]/40 hover:bg-white/[0.01]"
+                            )}
+                          >
+                            {/* Segment Time */}
+                            <div className="px-3 text-[#44444F] shrink-0 tabular-nums font-bold text-[8px] border-r border-[#131316] bg-[#09090C]/50 flex items-center justify-center min-w-[75px] select-none font-mono">
+                              {new Date().toLocaleTimeString([], { hour12: false })}
+                            </div>
+
+                            <div className="flex-1 flex gap-3 px-3.5 items-center min-w-0">
+                              {/* Neon tag */}
+                              <div className={cn(
+                                "text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0 min-w-[55px] text-center border font-mono select-none",
+                                isErr ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                                isSucc ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/20 text-[#3ECF8E]" :
+                                "bg-[#8E8E93]/10 border-[#8E8E93]/20 text-[#8E8E93]"
+                              )}>
+                                {tag}
+                              </div>
+
+                              <span className={cn(
+                                "break-all leading-normal font-semibold tracking-wide font-mono text-[10px]",
+                                isErr ? "text-red-300" :
+                                isSucc ? "text-[#3ECF8E] font-bold" : "text-[#A1A1AA]"
+                              )}>
+                                {message}
+                              </span>
+                            </div>
+
+                            {/* Float copy button on row hover */}
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-150 z-20">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`[DISCOVERY] [${tag}] ${message}`);
+                                  addToast({ type: 'success', message: 'Log row copied' });
+                                }}
+                                className="p-1 bg-[#141416] border border-[#2C2C2F] text-[#8E8E93] hover:text-white rounded hover:bg-[#202024] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                                title="Copy Row"
+                              >
+                                <Copy size={9} />
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                      
                       <div ref={fetchLogEndRef} />
+                      
                       {isFetchingProjects && (
-                        <div className="flex items-center gap-4 text-[#3ECF8E] animate-pulse p-1">
-                          <span className="opacity-20 text-[10px] font-black">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                          <div className="flex items-center gap-2 font-black tracking-[0.2em] text-[9px] uppercase">
+                        <div className="flex gap-3 pt-1 items-center">
+                          <div className="px-3 text-[#3ECF8E] shrink-0 font-bold text-[8px] border-r border-[#3ECF8E]/10 bg-[#3ECF8E]/5 flex items-center justify-center min-w-[75px] select-none font-mono py-1 rounded">
+                            {new Date().toLocaleTimeString([], { hour12: false })}
+                          </div>
+                          <div className="flex items-center gap-2 font-black tracking-[0.2em] text-[8.5px] uppercase text-[#3ECF8E] animate-pulse pl-3 font-mono">
                             <Loader size={10} className="animate-spin" />
                             Fetching Infrastructure Data
                           </div>
@@ -917,9 +1075,9 @@ export const CreateSetupWizard: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <span className="text-[10px] uppercase tracking-widest font-black text-[#444444]">Remote Output Terminal</span>
                     <div className="flex gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/20" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 animate-pulse" />
                       <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20" />
-                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/20" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#3ECF8E]/20" />
                     </div>
                   </div>
                   {autoExecLoading && (
@@ -930,7 +1088,10 @@ export const CreateSetupWizard: React.FC = () => {
                   )}
                 </div>
                 
-                <div className="relative h-80 bg-black/90 rounded-[24px] border border-[#222222] p-6 font-mono text-[11px] overflow-hidden flex flex-col shadow-2xl">
+                <div className="relative h-80 bg-[#060608]/95 backdrop-blur-xl rounded-[24px] border border-[#1C1C1F] p-5 font-mono overflow-hidden flex flex-col shadow-2xl z-20">
+                  {/* Futuristic matrix scanline overlay */}
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%)] bg-[length:100%_4px] pointer-events-none opacity-40 z-10" />
+
                   {/* Scan line effect */}
                   {autoExecLoading && (
                     <motion.div
@@ -941,33 +1102,104 @@ export const CreateSetupWizard: React.FC = () => {
                     />
                   )}
                   
-                  <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4">
+                  <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-4 z-20">
                     {autoExecLog.length === 0 && (
                       <div className="text-[#333333] italic flex items-center gap-2">
                         <span className="animate-pulse">_</span>
                         Waiting for deployment command...
                       </div>
                     )}
-                    {autoExecLog.map((log, i) => (
-                      <motion.div 
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        key={i} 
-                        className={cn(
-                          "flex gap-3 leading-relaxed break-all transition-colors p-1 rounded-lg",
-                          log.includes('✅') || log.includes('[SUCCESS]') || log.includes('[COMPLETE]') ? 'text-[#3ECF8E] font-bold bg-[#3ECF8E]/5' :
-                          log.includes('❌') || log.includes('[ERROR]') || log.includes('[MANAGEMENT ERROR]') ? 'text-red-500 bg-red-500/5' :
-                          log.includes('⚠️') || log.includes('[WAITING]') || log.includes('[WARNING]') ? 'text-yellow-500 bg-yellow-500/5' :
-                          log.includes('⚙️') || log.includes('[CHECK]') || log.includes('[MANAGEMENT]') ? 'text-blue-400 bg-blue-400/5' : 'text-[#888888]'
-                        )}
-                      >
-                        <span className="opacity-20 shrink-0 text-[9px] mt-0.5 font-black">[{i.toString().padStart(3, '0')}] »</span>
-                        <span className="flex-1">{log}</span>
-                      </motion.div>
-                    ))}
+                    {autoExecLog.map((logStr, i) => {
+                      const { level, tag, message } = parseLog(logStr);
+                      const isErr = level === 'error';
+                      const isWarn = level === 'warning';
+                      const isSucc = level === 'success';
+                      const isExec = level === 'exec';
+                      const isSystem = level === 'system';
+                      const isRest = level === 'rest';
+                      const isRpc = level === 'rpc';
+                      const isData = level === 'data';
+                      const isMgmt = level === 'management';
+                      
+                      return (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -5 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          key={i} 
+                          className={cn(
+                            "flex gap-0 group items-stretch border-l-2 transition-all duration-150 relative hover:bg-[#0C0C0F] rounded-r-lg py-1 pr-12",
+                            isErr ? "border-red-500/60 bg-red-500/[0.02] hover:bg-red-950/5" :
+                            isWarn ? "border-yellow-500/60 bg-yellow-500/[0.02] hover:bg-yellow-950/5" :
+                            isSucc ? "border-[#3ECF8E]/60 bg-[#3ECF8E]/[0.02] hover:bg-[#3ECF8E]/5" :
+                            isRest ? "border-cyan-500/50 bg-cyan-500/[0.01] hover:bg-cyan-950/5" :
+                            isRpc ? "border-violet-500/50 bg-violet-500/[0.01] hover:bg-violet-950/5" :
+                            isExec ? "border-sky-500/50 bg-sky-500/[0.01] hover:bg-sky-950/5" :
+                            isSystem ? "border-emerald-500/40 bg-emerald-500/[0.01] hover:bg-emerald-950/5" :
+                            isData ? "border-pink-500/40 bg-pink-500/[0.01] hover:bg-pink-950/5" :
+                            isMgmt ? "border-amber-500/40 bg-amber-500/[0.01] hover:bg-amber-950/5" :
+                            "border-[#3A3A3C]/40 hover:bg-white/[0.01]"
+                          )}
+                        >
+                          {/* Segment ID */}
+                          <div className="px-3.5 text-[#44444F] shrink-0 tabular-nums font-bold text-[8.5px] border-r border-[#131316] bg-[#09090C]/50 flex items-center justify-center min-w-[70px] select-none font-mono">
+                            LOG-{(i).toString().padStart(3, '0')}
+                          </div>
+
+                          <div className="flex-1 flex gap-3 px-3.5 items-center min-w-0">
+                            {/* Neon tag */}
+                            <div className={cn(
+                              "text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded shrink-0 min-w-[55px] text-center border font-mono select-none",
+                              isErr ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                              isWarn ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-400" :
+                              isSucc ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/20 text-[#3ECF8E]" :
+                              isRest ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-400" :
+                              isRpc ? "bg-violet-500/10 border-violet-500/20 text-violet-400" :
+                              isExec ? "bg-sky-500/10 border-sky-500/20 text-sky-400" :
+                              isSystem ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                              isData ? "bg-pink-500/10 border-pink-500/20 text-pink-400" :
+                              isMgmt ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
+                              "bg-[#8E8E93]/10 border-[#8E8E93]/20 text-[#8E8E93]"
+                            )}>
+                              {tag}
+                            </div>
+
+                            <span className={cn(
+                              "break-all leading-normal font-semibold tracking-wide font-mono text-[10px]",
+                              isErr ? "text-red-300" :
+                              isWarn ? "text-yellow-200" :
+                              isSucc ? "text-[#3ECF8E] font-bold" :
+                              isRest ? "text-cyan-300" :
+                              isRpc ? "text-violet-300" :
+                              isExec ? "text-sky-300" :
+                              isSystem ? "text-emerald-300" :
+                              isData ? "text-pink-300" :
+                              isMgmt ? "text-amber-300" : "text-[#A1A1AA]"
+                            )}>
+                              {message}
+                            </span>
+                          </div>
+
+                          {/* Float copy button on row hover */}
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-150 z-20">
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(`[LOG-${i.toString().padStart(3, '0')}] [${tag}] ${message}`);
+                                addToast({ type: 'success', message: 'Log row copied' });
+                              }}
+                              className="p-1 bg-[#141416] border border-[#2C2C2F] text-[#8E8E93] hover:text-white rounded hover:bg-[#202024] transition-all shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                              title="Copy Row"
+                            >
+                              <Copy size={9} />
+                            </button>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                     {autoExecLoading && (
-                      <div className="flex gap-3 pt-1 p-1">
-                        <span className="opacity-20 shrink-0 text-[10px] mt-0.5 font-black">[{autoExecLog.length.toString().padStart(3, '0')}] »</span>
+                      <div className="flex gap-3 pt-1 items-center">
+                        <div className="px-3.5 text-[#3ECF8E] shrink-0 font-bold text-[8.5px] border-r border-[#3ECF8E]/10 bg-[#3ECF8E]/5 flex items-center justify-center min-w-[70px] select-none font-mono py-1 rounded">
+                          LOG-{(autoExecLog.length).toString().padStart(3, '0')}
+                        </div>
                         <motion.div 
                           animate={{ opacity: [0, 1, 0] }} 
                           transition={{ duration: 0.8, repeat: Infinity }}
@@ -979,13 +1211,13 @@ export const CreateSetupWizard: React.FC = () => {
                   </div>
 
                   {autoExecLoading && (
-                    <div className="mt-4 pt-4 border-t border-white/5">
-                      <div className="flex justify-between items-center mb-2">
+                    <div className="mt-4 pt-4 border-t border-white/5 z-20">
+                      <div className="flex justify-between items-center mb-2 font-mono">
                         <div className="flex items-center gap-2 text-[10px] text-[#3ECF8E] font-bold tracking-[0.2em] uppercase">
                           <Loader size={10} className="animate-spin" />
                           Executing SQL Blocks
                         </div>
-                        <span className="text-[10px] text-[#555555] font-mono">{autoExecProgress}% COPMLETE</span>
+                        <span className="text-[10px] text-[#8E8E93]">{autoExecProgress}% COMPLETE</span>
                       </div>
                       <div className="w-full bg-[#111111] rounded-full h-1.5 overflow-hidden border border-white/5">
                         <motion.div 
@@ -1066,6 +1298,29 @@ export const CreateSetupWizard: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-6 space-y-4"
               >
+                {(autoExecLog.some(log => log.includes('SCHEMA CACHE STALE') || log.includes('schema cache')) || 
+                  connectionError?.includes('SCHEMA CACHE STALE') || connectionError?.includes('schema cache')) && (
+                  <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-3 z-20 relative animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="text-amber-400 animate-pulse animate-duration-1000" size={18} />
+                      <p className="text-[11px] font-black uppercase text-white tracking-widest">Manual SQL Execution Required</p>
+                    </div>
+                    <p className="text-xs text-amber-300/80 leading-relaxed font-semibold">
+                      The Supabase API schema cache is currently stale or unavailable, preventing automated deployment. 
+                      You must manually execute the initialization SQL script below directly inside your Supabase SQL Editor.
+                    </p>
+                    <div className="flex gap-3 pt-1">
+                      <a 
+                        href={`https://supabase.com/dashboard/project/${selectedProjectRef || '_'}/sql/new`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all inline-flex items-center gap-1.5 font-mono"
+                      >
+                        Open Supabase SQL Editor <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-[#111111] border border-[#222222] rounded-2xl overflow-hidden">
                   <div className="px-4 py-3 bg-black flex items-center justify-between border-b border-[#222222]">
                     <div className="flex items-center gap-3">
@@ -1105,20 +1360,27 @@ export const CreateSetupWizard: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={scriptConfirmed}
-                        onChange={(e) => setScriptConfirmed(e.target.checked)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setScriptConfirmed(checked);
+                          if (checked) {
+                            handleVerifySchema();
+                          }
+                        }}
                         className="mt-1 h-4 w-4 rounded border border-[#333333] bg-black text-[#3ECF8E] focus:ring-[#3ECF8E]"
                       />
                       <span className="text-xs text-[#888888] group-hover:text-[#aaaaaa] transition-colors">
-                        I have manually executed the initialization script in Supabase.
+                        I have manually executed the initialization script in Supabase (triggers automatic check).
                       </span>
                     </label>
 
                     <button
                       type="button"
                       onClick={handleVerifySchema}
-                      disabled={!scriptConfirmed || isSaving}
-                      className="w-full px-4 py-3 rounded-xl border border-[#222222] bg-[#111111] text-[10px] font-black uppercase tracking-widest text-[#888888] hover:text-white hover:border-[#444444] transition-all disabled:opacity-50"
+                      disabled={isSaving}
+                      className="w-full px-4 py-3 rounded-xl border border-[#222222] bg-[#111111] hover:bg-[#1C1C1F] text-[10px] font-black uppercase tracking-widest text-[#888888] hover:text-white hover:border-[#444444] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
+                      {isSaving ? <Loader size={12} className="animate-spin text-[#3ECF8E]" /> : null}
                       Manual Verify Schema
                     </button>
                   </div>

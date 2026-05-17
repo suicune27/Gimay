@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "gimay",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,8 +14,8 @@
     "lint": "tsc --noEmit"
   },
   "build": {
-    "appId": "com.putman.app",
-    "productName": "Putman",
+    "appId": "com.gimay.app",
+    "productName": "Gimay",
     "directories": {
       "output": "dist_electron"
     },

@@ -16,7 +16,7 @@ interface EnvironmentModalProps {
 }
 
 export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onClose, environment, isGlobal = false }) => {
-  const { profile, activeWorkspaceId, addToast, updateEnvironment, globalVariables, setGlobalVariables } = useStore();
+  const { profile, activeWorkspaceId, addToast, updateEnvironment, environments, setEnvironments, globalVariables, setGlobalVariables } = useStore();
   const { fetchEnvironments } = useDataSync();
   
   const [activeTab, setActiveTab] = useState<'variables' | 'scripts' | 'docs'>('variables');
@@ -58,8 +58,8 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
         updateEnvironment(environment.id, { name, variables });
         addToast({ type: 'success', message: 'Environment updated.' });
       } else {
-        await PersistenceService.createEnvironment(activeWorkspaceId!, profile.id, name, variables);
-        if (activeWorkspaceId) fetchEnvironments?.(activeWorkspaceId);
+        const created = await PersistenceService.createEnvironment(activeWorkspaceId!, profile.id, name, variables);
+        setEnvironments([created, ...(environments || [])]);
         addToast({ type: 'success', message: `Environment "${name}" created.` });
       }
       onClose();

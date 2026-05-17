@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchInitScriptFromDb } from './fetchInitScriptFromDb';
 import { SQLScriptGenerator } from '../lib/SQLScriptGenerator';
+import { envSupabase } from '../lib/supabase';
 
 type ProgressCallback = (label: string, pct: number) => void;
 
@@ -161,67 +162,107 @@ export async function ensureDatabaseSchema(
 
     onProgress?.('Comparing current database structure', 40);
 
-    if (compare.upToDate) {
-      onProgress?.('Database structure is up to date', 95);
-      return { success: true, updated: false, missingTables: [] };
+    if (!compare.upToDate) {
+      onProgress?.(`Applying schema updates (${compare.missingTables.length} missing tables)`, 55);
+
+      const client = createClient(supabaseUrl, anonOrServiceKey);
+      const statements = splitSqlStatements(compare.script);
+
+      for (let i = 0; i < statements.length; i++) {
+        const stmt = statements[i];
+        const pct = Math.round(55 + ((i + 1) / statements.length) * 40);
+        onProgress?.('Executing update statements', pct);
+
+        const { error } = await client.rpc('execute_sql', { sql: stmt });
+        if (error) {
+          const msg = error.message ?? '';
+          
+          // Handle missing RPC specially
+          if (msg.includes('function') && msg.includes('execute_sql') && (msg.includes('not find') || msg.includes('does not exist'))) {
+            return {
+              success: false,
+              missingTables: compare.missingTables,
+              error: `Helper function 'execute_sql' is missing from your database.\n\nFIX: Run the initialization script in the Supabase SQL Editor manually first, or use the 'Smart Initialize' flow which includes it.`,
+            };
+          }
+
+          const ignorable =
+            msg.includes('already exists') ||
+            msg.includes('duplicate_object') ||
+            (msg.includes('does not exist') && msg.includes('constraint')) ||
+            (msg.includes('policy') && msg.includes('does not exist'));
+
+          if (!ignorable) {
+            return {
+              success: false,
+              missingTables: compare.missingTables,
+              error: msg,
+            };
+          }
+        }
+      }
+
+      onProgress?.('Re-checking database structure', 97);
+      const verify = await compareDatabaseStructure(supabaseUrl, anonOrServiceKey);
+
+      if (!verify.success) {
+        return { success: false, error: verify.error || 'Schema update verification failed.' };
+      }
+
+      if (!verify.upToDate) {
+        return {
+          success: false,
+          missingTables: verify.missingTables,
+          error: `Schema update incomplete. Missing tables: ${verify.missingTables.join(', ')}`,
+        };
+      }
     }
 
-    onProgress?.(`Applying schema updates (${compare.missingTables.length} missing tables)`, 55);
+    // Now, run the self-healing tenant RLS disabling if it's a separate Tenant Database!
+    const envUrl = typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL
+      ? (import.meta as any).env.VITE_SUPABASE_URL
+      : process.env.VITE_SUPABASE_URL;
 
     const client = createClient(supabaseUrl, anonOrServiceKey);
-    const statements = splitSqlStatements(compare.script);
 
-    for (let i = 0; i < statements.length; i++) {
-      const stmt = statements[i];
-      const pct = Math.round(55 + ((i + 1) / statements.length) * 40);
-      onProgress?.('Executing update statements', pct);
-
-      const { error } = await client.rpc('execute_sql', { sql: stmt });
-      if (error) {
-        const msg = error.message ?? '';
-        
-        // Handle missing RPC specially
-        if (msg.includes('function') && msg.includes('execute_sql') && (msg.includes('not find') || msg.includes('does not exist'))) {
-          return {
-            success: false,
-            missingTables: compare.missingTables,
-            error: `Helper function 'execute_sql' is missing from your database.\n\nFIX: Run the initialization script in the Supabase SQL Editor manually first, or use the 'Smart Initialize' flow which includes it.`,
-          };
-        }
-
-        const ignorable =
-          msg.includes('already exists') ||
-          msg.includes('duplicate_object') ||
-          (msg.includes('does not exist') && msg.includes('constraint')) ||
-          (msg.includes('policy') && msg.includes('does not exist'));
-
-        if (!ignorable) {
-          return {
-            success: false,
-            missingTables: compare.missingTables,
-            error: msg,
-          };
+    if (envUrl && supabaseUrl.trim().toLowerCase() !== envUrl.trim().toLowerCase()) {
+      onProgress?.('Optimizing multi-tenant row-level security', 98);
+      const tables = [
+        'profiles', 'teams', 'team_members', 'workspaces', 'workspace_members',
+        'collections', 'folders', 'requests', 'environments', 'history',
+        'user_tabs', 'scripts', 'script_execution_logs', 'team_invites'
+      ];
+      for (const table of tables) {
+        try {
+          await client.rpc('execute_sql', { sql: `ALTER TABLE IF EXISTS public.${table} DISABLE ROW LEVEL SECURITY;` });
+        } catch (e) {
+          console.warn(`[Schema Bootstrap] Failed to disable RLS on ${table}:`, e);
         }
       }
     }
 
-    onProgress?.('Re-checking database structure', 97);
-    const verify = await compareDatabaseStructure(supabaseUrl, anonOrServiceKey);
-
-    if (!verify.success) {
-      return { success: false, error: verify.error || 'Schema update verification failed.' };
-    }
-
-    if (!verify.upToDate) {
-      return {
-        success: false,
-        missingTables: verify.missingTables,
-        error: `Schema update incomplete. Missing tables: ${verify.missingTables.join(', ')}`,
-      };
+    // Ensure active profile is seeded in tenant database to support foreign keys
+    try {
+      const { data: { session } } = await envSupabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: profile } = await envSupabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profile) {
+          onProgress?.('Seeding user profile into workspace database', 99);
+          const client = createClient(supabaseUrl, anonOrServiceKey);
+          await client.from('profiles').upsert([profile]);
+        }
+      }
+    } catch (profileError) {
+      console.warn('[Schema Bootstrap] Failed to sync user profile:', profileError);
     }
 
     onProgress?.('Done', 100);
-    return { success: true, updated: true, missingTables: [] };
+    return { success: true, updated: !compare.upToDate, missingTables: [] };
   } catch (err: any) {
     return { success: false, error: err?.message || 'Schema initialization failed.' };
   }

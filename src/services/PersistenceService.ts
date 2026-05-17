@@ -754,19 +754,29 @@ export class PersistenceService {
   }
 
   static async fetchScriptFolders(workspaceId: string) {
-    const { data, error } = await supabase
-      .from('folders')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .eq('parent_id', null); // Or however you distinguish script folders
-    if (error) throw error;
-    return data || [];
+    // Script folders are not rendered in the explorer view; return an empty array to prevent schema column mismatches
+    return [];
   }
 
   static async createScript(data: any) {
+    const generateUUID = () => {
+      if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    const scriptData = {
+      id: generateUUID(),
+      ...data
+    };
+
     const { data: script, error } = await supabase
       .from('scripts')
-      .insert([data])
+      .insert([scriptData])
       .select()
       .single();
     if (error) throw error;

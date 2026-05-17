@@ -43,6 +43,18 @@ export const VariableInput: React.FC<VariableInputProps> = ({
   const [editingValue, setEditingValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTooltipTimerRef = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (inputRef.current && overlayRef.current) {
+      overlayRef.current.scrollLeft = inputRef.current.scrollLeft;
+    }
+  };
+
+  useEffect(() => {
+    handleScroll();
+  }, [value]);
 
   const activeEnv = environments.find(e => e.id === activeEnvId);
   const activeTab = openTabs.find(t => t.id === activeTabId);
@@ -222,11 +234,16 @@ export const VariableInput: React.FC<VariableInputProps> = ({
     <div ref={containerRef} className="relative w-full group">
       <div className="relative">
         <input 
+          ref={inputRef}
+          onScroll={handleScroll}
           autoFocus={autoFocus}
           type={masked ? 'password' : 'text'}
           disabled={disabled}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setTimeout(handleScroll, 0);
+          }}
           onKeyDown={handleKeyDown}
           onFocus={() => {
             setShowSuggestions((value || '').includes('{{'));
@@ -234,7 +251,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           placeholder={placeholder}
           className={cn(
-            "w-full bg-transparent text-[11px] font-mono py-1.5 px-2 outline-none border border-transparent rounded transition-all relative z-10",
+            "w-full bg-transparent text-[11px] font-mono py-1.5 px-2 outline-none border border-transparent rounded transition-all relative z-0",
             "focus:border-[#222222] focus:bg-[#0F0F0F]",
             value.includes('{{') && "text-transparent caret-white",
             disabled && "opacity-60 cursor-not-allowed",
@@ -243,7 +260,10 @@ export const VariableInput: React.FC<VariableInputProps> = ({
         />
         {/* Overlay for highlighting (Postman-style) */}
         {value.includes('{{') && (
-           <div className="absolute inset-0 pointer-events-none text-[11px] font-mono py-1.5 px-2 whitespace-pre overflow-hidden flex items-center z-0">
+           <div 
+             ref={overlayRef}
+             className="absolute inset-0 pointer-events-none text-[11px] font-mono py-1.5 px-2 whitespace-pre overflow-hidden flex items-center z-10"
+           >
              {renderValueWithHighlights()}
            </div>
         )}
@@ -251,7 +271,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
 
       {hoveredVariable && hoveredLookup && (
         <div
-          className="absolute z-[70] left-0 top-full mt-1 w-[320px] theme-surface border rounded-lg shadow-2xl p-3"
+          className="absolute z-[70] left-0 top-full mt-1 w-[320px] bg-[#141414] border border-[#222222] rounded-lg shadow-2xl p-3"
           onMouseEnter={cancelHideTooltipTimer}
           onMouseLeave={startHideTooltipTimer}
         >
@@ -309,7 +329,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
       )}
 
       {showSuggestions && filteredVars.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-full theme-surface border rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-[#141414] border border-[#222222] rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
           {filteredVars.map((v, i) => (
             <button
               key={v.id}

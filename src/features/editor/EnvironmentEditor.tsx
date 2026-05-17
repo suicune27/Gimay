@@ -31,6 +31,7 @@ interface EnvironmentEditorProps {
 export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) => {
   const {
     environments,
+    setEnvironments,
     activeWorkspaceId,
     profile,
     updateEnvironment,
@@ -116,7 +117,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
 
     try {
       const created = await PersistenceService.createEnvironment(activeWorkspaceId, profile.id, name, []);
-      await fetchEnvironments(activeWorkspaceId);
+      setEnvironments([created, ...environments]);
       setSelectedEnvironmentId(created.id);
       addToast({ type: 'success', message: `Environment "${name}" created.` });
     } catch (error) {

@@ -66,25 +66,38 @@ export const KVEditor: React.FC<KVEditorProps> = ({
     const newItems: KeyValue[] = lines
       .filter(line => line.trim() !== '')
       .map(line => {
-        // Try colon first, then equals
-        let separatorIndex = line.indexOf(':');
-        if (separatorIndex === -1) separatorIndex = line.indexOf('=');
-        
+        const trimmed = line.trim();
+        const apiDogMatch = trimmed.match(/^([^,]+),([^,]+),(.*),(true|false),([^,]*),?$/i);
+
         let key = '';
         let value = '';
-        
-        if (separatorIndex !== -1) {
-          key = line.substring(0, separatorIndex).trim();
-          value = line.substring(separatorIndex + 1).trim();
+        let initialValue = '';
+        let active = true;
+
+        if (apiDogMatch) {
+          key = apiDogMatch[1].trim();
+          initialValue = apiDogMatch[3].trim();
+          active = apiDogMatch[4].toLowerCase() === 'true';
+          value = apiDogMatch[5] !== undefined ? apiDogMatch[5].trim() : initialValue;
         } else {
-          key = line.trim();
+          // Try colon first, then equals
+          let separatorIndex = trimmed.indexOf(':');
+          if (separatorIndex === -1) separatorIndex = trimmed.indexOf('=');
+          
+          if (separatorIndex !== -1) {
+            key = trimmed.substring(0, separatorIndex).trim();
+            value = trimmed.substring(separatorIndex + 1).trim();
+          } else {
+            key = trimmed;
+          }
         }
 
         return {
           id: Math.random().toString(36).substr(2, 9),
           key,
           value,
-          active: true
+          initialValue,
+          active
         };
       });
     
@@ -123,11 +136,11 @@ export const KVEditor: React.FC<KVEditorProps> = ({
             autoFocus
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
-            placeholder="key: value&#10;key2: value2"
+            placeholder="key: value&#10;key,default,initialValue,true,currentValue,"
             className="w-full h-48 bg-[#0A0A0A] text-[11px] font-mono p-4 outline-none border border-[#222222] rounded-lg text-[#E0E0E0] placeholder:text-[#333333] resize-none"
           />
           <p className="mt-2 text-[9px] text-[#444444] font-medium italic">
-            Enter key-value pairs separated by colons. Each pair on a new line.
+            Enter key-value pairs (e.g. <code className="text-[#3ECF8E] font-mono">key: value</code>) or paste APIdog format (e.g. <code className="text-[#3ECF8E] font-mono">key,default,initial,true,current,</code>). Each pair on a new line.
           </p>
         </div>
       ) : (

@@ -37,7 +37,7 @@ export const AuthUI: React.FC = () => {
             <Terminal size={28} className="text-[#0A0A0A]" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Putman</h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Gimay</h1>
             <p className="text-[10px] text-[#3ECF8E] font-mono uppercase tracking-[0.3em] font-bold mt-1">v9.0.0 // PRODUCTION CORE</p>
           </div>
         </div>
@@ -50,7 +50,7 @@ export const AuthUI: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-[#0A0A0A] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#AAAAAA] focus:border-[#3ECF8E] focus:text-[#E0E0E0] outline-none transition-all placeholder:text-[#333333]"
-              placeholder="operator@putment.io"
+              placeholder="operator@gimay.io"
               required
             />
           </div>

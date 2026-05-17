@@ -71,8 +71,8 @@ export class ScriptEngine {
         addLog({ level: 'info', message: `Importing script: ${target.name}` });
         return async () => {
           addLog({ level: 'info', message: `Executing imported script: ${target.name}...` });
-          const nestedFn = new Function('pm', 'putman', 'console', `return (async () => { ${target.content} })()`);
-          const result = await nestedFn(putmanContext, putmanContext, putmanConsole);
+          const nestedFn = new Function('pm', 'putman', 'gmy', 'gimay', 'console', `return (async () => { ${target.content} })()`);
+          const result = await nestedFn(putmanContext, putmanContext, putmanContext, putmanContext, putmanConsole);
           addLog({ level: 'info', message: `Imported script ${target.name} execution completed.` });
           return result;
         };
@@ -140,13 +140,13 @@ export class ScriptEngine {
     };
 
     try {
-      const fn = new Function('pm', 'putman', 'console', `
+      const fn = new Function('pm', 'putman', 'gmy', 'gimay', 'console', `
         return (async () => {
           ${code}
         })();
       `);
 
-      await fn(putmanContext, putmanContext, putmanConsole);
+      await fn(putmanContext, putmanContext, putmanContext, putmanContext, putmanConsole);
       addLog({ level: 'success', message: 'Execution completed successfully.' });
     } catch (e: any) {
       addLog({ level: 'error', message: `Execution runtime error: ${e.message}` });

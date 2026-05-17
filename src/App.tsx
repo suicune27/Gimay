@@ -6,7 +6,7 @@ import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { useStore } from './store/useStore';
 import { useOnboardingStore } from './store/onboardingStore';
 import { syncManager } from './services/SyncService';
-import { compareDatabaseStructure, ensureDatabaseSchema } from './services/ensureDatabaseSchema';
+import { ensureDatabaseSchema } from './services/ensureDatabaseSchema';
 import { isElectron } from './lib/platform';
 import { LandingPage } from './components/LandingPage';
 
@@ -50,9 +50,33 @@ export default function App() {
         .eq('id', userId)
         .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        setProfile(null);
+      if (error || !profile) {
+        console.warn('Profile not found for authenticated user, creating/falling back...', error);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const fallbackProfile = {
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+            preferences: { theme: 'dark', accentColor: '#6366f1' }
+          };
+          
+          const { data: inserted, error: insertError } = await supabase
+            .from('profiles')
+            .insert(fallbackProfile)
+            .select()
+            .single();
+            
+          if (insertError) {
+            console.error('Failed to auto-create user profile row:', insertError);
+            setProfile(fallbackProfile as any);
+          } else {
+            console.log('Successfully auto-created user profile:', inserted);
+            setProfile(inserted);
+          }
+        } else {
+          setProfile(null);
+        }
       } else {
         setProfile(profile);
       }
@@ -151,26 +175,14 @@ export default function App() {
     setSchemaBootstrapMessage('Checking database structure...');
     setSchemaBootstrapLoading(true);
 
-    const compare = await compareDatabaseStructure(config.url, config.anonKey);
+    const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
+      setSchemaBootstrapMessage(label);
+    });
 
-    if (!compare.success) {
+    if (!update.success) {
       setSchemaBootstrapLoading(false);
-      setSchemaBootstrapError(compare.error || 'Failed to compare database structure.');
+      setSchemaBootstrapError(update.error || 'Failed to verify database structure.');
       return;
-    }
-
-    if (!compare.upToDate) {
-      setSchemaBootstrapMessage(`Structure out of date (${compare.missingTables.length} missing tables). Auto-updating...`);
-
-      const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
-        setSchemaBootstrapMessage(label);
-      });
-
-      if (!update.success) {
-        setSchemaBootstrapLoading(false);
-        setSchemaBootstrapError(update.error || 'Failed to auto-update database structure.');
-        return;
-      }
     }
 
     schemaCheckedUserRef.current = session.user.id;
