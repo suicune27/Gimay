@@ -17,7 +17,15 @@ function createWindow() {
     win.loadURL('http://localhost:3000');
     win.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'));
+    // Robust path resolution for production
+    const indexPath = path.join(__dirname, '../dist/index.html');
+    console.log('Attempting to load index.html from:', indexPath);
+    win.loadFile(indexPath).catch((err) => {
+      console.error('Failed to load index.html:', err);
+    });
+    win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('did-fail-load:', errorCode, errorDescription);
+    });
   }
 }
 

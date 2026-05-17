@@ -1,7 +1,7 @@
 {
   "name": "gimay",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -25,13 +25,16 @@
       "package.json"
     ],
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "icon": "gimay.ico"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "gimay.ico"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "gimay.ico"
     }
   },
   "dependencies": {
@@ -54,7 +57,7 @@
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "electron": "^42.0.1",
+    
     "electron-is-dev": "^3.0.1",
     "express": "^4.21.2",
     "framer-motion": "^12.38.0",
@@ -76,6 +79,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "electron": "^42.0.1",
     "@types/express": "^4.17.21",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.14.0",
@@ -86,5 +90,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
-  }
+  },
+  "description": "An Electron-based application for managing APIs and environments.",
+  "author": "whitehats27@gmail.com"
 }
