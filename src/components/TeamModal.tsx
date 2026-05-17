@@ -151,18 +151,18 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md bg-surface border border-strong rounded-2xl shadow-2xl overflow-hidden"
       >
-        <div className="p-6 border-b border-[var(--border-subtle)] flex items-center justify-between">
+        <div className="p-6 border-b border-subtle flex items-center justify-between">
           <div>
-            <h2 className="text-[14px] font-black text-[var(--text-main)] uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-[14px] font-black text-main uppercase tracking-widest flex items-center gap-2">
               {team ? 'Manage Team' : 'Initialize Unit'}
             </h2>
-            <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-tighter mt-1">
+            <p className="text-[10px] text-dim uppercase tracking-tighter mt-1">
               {team ? `Unit ID: ${team.id.split('-')[0]}` : 'Configure collaborative deployment'}
             </p>
           </div>
-          <button onClick={onClose} className="text-[var(--text-dim)] hover:text-[var(--text-main)] transition-colors">
+          <button onClick={onClose} className="text-dim hover:text-main transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -170,25 +170,25 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
         <div className="p-6 space-y-6">
           {/* Team Name Input */}
           <div className="space-y-2">
-            <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Unit Designation</label>
+            <label className="text-[9px] font-black text-dim uppercase tracking-widest">Unit Designation</label>
             <input 
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!!team}
               placeholder="TEAM_NAME..."
-              className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-4 py-3 rounded-lg text-[var(--text-main)] font-mono text-[11px] placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--brand)] transition-all"
+              className="w-full bg-deep border border-subtle px-4 py-3 rounded-lg text-main font-mono text-[11px] placeholder:text-[var(--border-strong)] focus:outline-none focus:border-brand transition-all"
             />
           </div>
 
           {team && (
             <>
               {/* Tabs */}
-              <div className="flex bg-[var(--bg-deep)] p-1 rounded-xl border border-[var(--border-subtle)]">
+              <div className="flex bg-deep p-1 rounded-xl border border-subtle">
                 <button
                   onClick={() => setActiveTab('members')}
                   className={cn(
                     "flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all",
-                    activeTab === 'members' ? "bg-[var(--bg-surface)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                    activeTab === 'members' ? "bg-surface text-main shadow-sm" : "text-dim hover:text-main"
                   )}
                 >
                   Operators
@@ -197,7 +197,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                   onClick={() => setActiveTab('invites')}
                   className={cn(
                     "flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2",
-                    activeTab === 'invites' ? "bg-[var(--bg-surface)] text-[var(--text-main)] shadow-sm" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                    activeTab === 'invites' ? "bg-surface text-main shadow-sm" : "text-dim hover:text-main"
                   )}
                 >
                   <QrCode size={12} />
@@ -209,7 +209,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                 <>
                   {/* Member Invite */}
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Enlist Operator</label>
+                    <label className="text-[9px] font-black text-dim uppercase tracking-widest">Enlist Operator</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--border-strong)]" />
@@ -217,13 +217,13 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="operator@email.com"
-                          className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] pl-10 pr-4 py-2.5 rounded-lg text-[var(--text-main)] font-mono text-[11px] placeholder:text-[var(--border-strong)] focus:outline-none focus:border-[var(--brand)] transition-all"
+                          className="w-full bg-deep border border-subtle pl-10 pr-4 py-2.5 rounded-lg text-main font-mono text-[11px] placeholder:text-[var(--border-strong)] focus:outline-none focus:border-brand transition-all"
                         />
                       </div>
                       <button 
                         onClick={handleInvite}
                         disabled={isLoading || !email}
-                        className="px-4 bg-[var(--brand)] text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-widest rounded-lg hover:shadow-[0_0_15px_var(--brand-muted)] transition-all disabled:opacity-50"
+                        className="px-4 bg-brand text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-widest rounded-lg hover:shadow-[0_0_15px_var(--brand-muted)] transition-all disabled:opacity-50"
                       >
                         Invite
                       </button>
@@ -232,19 +232,19 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
 
                   {/* Members List */}
                   <div className="space-y-4">
-                    <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Current Roster ({members.length})</label>
+                    <label className="text-[9px] font-black text-dim uppercase tracking-widest">Current Roster ({members.length})</label>
                     <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar pr-1">
                       {members.map((member) => (
-                        <div key={member.user_id} className="flex items-center justify-between p-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl group/member">
+                        <div key={member.user_id} className="flex items-center justify-between p-3 bg-elevated border border-subtle rounded-xl group/member">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded bg-[var(--bg-deep)] flex items-center justify-center border border-[var(--border-subtle)]">
-                              {member.role === 'owner' ? <Crown size={12} className="text-yellow-500" /> : <Shield size={12} className="text-[var(--brand)]" />}
+                            <div className="w-8 h-8 rounded bg-deep flex items-center justify-center border border-subtle">
+                              {member.role === 'owner' ? <Crown size={12} className="text-yellow-500" /> : <Shield size={12} className="text-brand" />}
                             </div>
                             <div>
-                              <div className="text-[11px] font-bold text-[var(--text-main)]">
+                              <div className="text-[11px] font-bold text-main">
                                 {member.profiles?.full_name || member.profiles?.email}
                               </div>
-                              <div className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest">
+                              <div className="text-[8px] font-black text-dim uppercase tracking-widest">
                                 {member.role === 'owner' ? 'Commander' : member.role === 'admin' ? 'Officer' : 'Operator'}
                               </div>
                             </div>
@@ -254,14 +254,14 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                             <div className="flex items-center gap-1 opacity-0 group-hover/member:opacity-100 transition-all">
                               <button 
                                 onClick={() => handleUpdateRole(member.user_id, member.role)}
-                                className="p-1.5 hover:text-[var(--brand)] text-[var(--text-dim)] transition-all"
+                                className="p-1.5 hover:text-brand text-dim transition-all"
                                 title="Promote/Demote"
                               >
                                 <ShieldCheck size={14} />
                               </button>
                               <button 
                                 onClick={() => handleRemove(member.user_id)}
-                                className="p-1.5 hover:text-red-500 text-[var(--text-dim)] transition-all"
+                                className="p-1.5 hover:text-red-500 text-dim transition-all"
                                 title="Dismiss"
                               >
                                 <UserMinus size={14} />
@@ -276,13 +276,13 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest flex items-center gap-2">
+                    <label className="text-[9px] font-black text-dim uppercase tracking-widest flex items-center gap-2">
                        Active Invitations
                     </label>
                     <button
                       onClick={handleGenerateInvite}
                       disabled={isLoading}
-                      className="text-[9px] font-black text-[var(--brand)] uppercase tracking-widest hover:underline"
+                      className="text-[9px] font-black text-brand uppercase tracking-widest hover:underline"
                     >
                       Generate New Code
                     </button>
@@ -290,37 +290,37 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
 
                   <div className="space-y-3 max-h-64 overflow-y-auto no-scrollbar pr-1">
                     {invites.length === 0 ? (
-                      <div className="p-8 text-center border border-dashed border-[var(--border-subtle)] rounded-xl">
+                      <div className="p-8 text-center border border-dashed border-subtle rounded-xl">
                         <QrCode size={32} className="mx-auto text-[var(--border-strong)] mb-4 opacity-20" />
-                        <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-widest leading-relaxed">
+                        <p className="text-[10px] text-dim uppercase tracking-widest leading-relaxed">
                           No secure invites generated.<br/>Use these for one-click onboarding.
                         </p>
                       </div>
                     ) : (
                       invites.map((invite) => (
-                        <div key={invite.id} className="p-4 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl space-y-3 group/invite">
+                        <div key={invite.id} className="p-4 bg-elevated border border-subtle rounded-xl space-y-3 group/invite">
                           <div className="flex items-center justify-between">
-                            <div className="text-[14px] font-mono font-bold text-[var(--text-main)] tracking-widest">
+                            <div className="text-[14px] font-mono font-bold text-main tracking-widest">
                               {invite.code}
                             </div>
                             <div className="flex items-center gap-1">
                               <button 
                                 onClick={() => copyToClipboard(invite.code, 'Code')}
-                                className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all"
+                                className="p-1.5 text-dim hover:text-brand transition-all"
                                 title="Copy Code"
                               >
                                 <Copy size={12} />
                               </button>
                               <button 
                                 onClick={() => copyToClipboard(`${window.location.origin}/?invite=${invite.code}`, 'Join Link')}
-                                className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all"
+                                className="p-1.5 text-dim hover:text-brand transition-all"
                                 title="Copy Join Link"
                               >
                                 <LinkIcon size={12} />
                               </button>
                               <button 
                                 onClick={() => handleRevokeInvite(invite.id)}
-                                className="p-1.5 text-[var(--text-dim)] hover:text-red-500 transition-all opacity-0 group-hover/invite:opacity-100"
+                                className="p-1.5 text-dim hover:text-red-500 transition-all opacity-0 group-hover/invite:opacity-100"
                                 title="Revoke"
                               >
                                 <Trash2 size={12} />
@@ -328,7 +328,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-[var(--text-dim)]">
+                          <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-dim">
                             <div className="flex items-center gap-1.5">
                               <Calendar size={10} />
                               {invite.expires_at ? `Expires: ${new Date(invite.expires_at).toLocaleDateString()}` : 'Never'}
@@ -343,9 +343,9 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                     )}
                   </div>
 
-                  <div className="p-4 bg-[#3ECF8E]/5 border border-[#3ECF8E]/20 rounded-xl">
-                    <p className="text-[10px] text-[#3ECF8E] font-bold mb-1">💡 Secure Onboarding</p>
-                    <p className="text-[9px] text-[var(--text-dim)] leading-relaxed">
+                  <div className="p-4 bg-brand/5 border border-brand/20 rounded-xl">
+                    <p className="text-[10px] text-brand font-bold mb-1">💡 Secure Onboarding</p>
+                    <p className="text-[9px] text-dim leading-relaxed">
                       Temporary codes securely package your Supabase connection details.
                       Users joining via code do not need to manually enter keys.
                     </p>
@@ -359,7 +359,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
             <button
                onClick={handleCreate}
                disabled={isLoading || !name}
-               className="w-full py-4 bg-[var(--brand)] text-[var(--bg-deep)] text-[11px] font-black uppercase tracking-[0.2em] rounded-xl hover:shadow-[0_0_20px_var(--brand-muted)] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+               className="w-full py-4 bg-brand text-[var(--bg-deep)] text-[11px] font-black uppercase tracking-[0.2em] rounded-xl hover:shadow-[0_0_20px_var(--brand-muted)] transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
             >
               Initialize Deployment Unit
             </button>

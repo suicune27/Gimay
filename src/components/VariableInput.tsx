@@ -217,7 +217,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
             }}
             className={cn(
               "px-1 rounded pointer-events-auto cursor-pointer border",
-              exists ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/20" : "text-red-400 bg-red-400/10 border-red-500/30",
+              exists ? "text-brand bg-brand/10 border-brand/20" : "text-red-400 bg-red-400/10 border-red-500/30",
               unresolved && "animate-pulse"
             )}
             title={exists ? `${lookup.scope} variable` : 'Unresolved variable'}
@@ -252,7 +252,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           placeholder={placeholder}
           className={cn(
             "w-full bg-transparent text-[11px] font-mono py-1.5 px-2 outline-none border border-transparent rounded transition-all relative z-0",
-            "focus:border-[#222222] focus:bg-[#0F0F0F]",
+            "focus:border-subtle focus:bg-surface",
             value.includes('{{') && "text-transparent caret-white",
             disabled && "opacity-60 cursor-not-allowed",
             className
@@ -271,16 +271,16 @@ export const VariableInput: React.FC<VariableInputProps> = ({
 
       {hoveredVariable && hoveredLookup && (
         <div
-          className="absolute z-[70] left-0 top-full mt-1 w-[320px] bg-[#141414] border border-[#222222] rounded-lg shadow-2xl p-3"
+          className="absolute z-[70] left-0 top-full mt-1 w-[320px] bg-elevated border border-subtle rounded-lg shadow-2xl p-3"
           onMouseEnter={cancelHideTooltipTimer}
           onMouseLeave={startHideTooltipTimer}
         >
           <div className="flex items-center justify-between mb-2">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-white">{hoveredLookup.name}</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-main">{hoveredLookup.name}</div>
               <div className={cn(
                 'text-[9px] font-bold uppercase tracking-widest',
-                hoveredLookup.scope === 'unresolved' ? 'text-red-400' : 'text-[#3ECF8E]'
+                hoveredLookup.scope === 'unresolved' ? 'text-red-400' : 'text-brand'
               )}>
                 Scope: {hoveredLookup.scope}
               </div>
@@ -311,7 +311,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
                   }
                 }}
                 type={hoveredLookup.masked ? 'password' : 'text'}
-                className="mt-1 w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded px-2 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/40"
+                className="mt-1 w-full bg-deep border border-subtle rounded px-2 py-1.5 text-[11px] font-mono text-main outline-none focus:border-brand/40"
               />
             </>
           )}
@@ -319,7 +319,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           {(hoveredLookup.scope === 'environment' || hoveredLookup.scope === 'collection') && (
             <button
               onClick={navigateToVariableSource}
-              className="mt-2 w-full px-2 py-1.5 rounded border border-[#2A2A2A] text-[9px] font-black uppercase tracking-widest text-[#AAAAAA] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all flex items-center justify-center gap-1.5"
+              className="mt-2 w-full px-2 py-1.5 rounded border border-subtle text-[9px] font-black uppercase tracking-widest text-muted hover:text-brand hover:border-brand/30 transition-all flex items-center justify-center gap-1.5"
             >
               <ExternalLink size={11} />
               Open Source Definition
@@ -329,7 +329,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
       )}
 
       {showSuggestions && filteredVars.length > 0 && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-[#141414] border border-[#222222] rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 mt-1 w-full bg-elevated border border-subtle rounded-lg shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
           {filteredVars.map((v, i) => (
             <button
               key={v.id}
@@ -337,7 +337,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
               onMouseEnter={() => setSuggestionIndex(i)}
               className={cn(
                 "w-full text-left px-3 py-2 text-[10px] font-mono flex items-center justify-between transition-colors",
-                i === suggestionIndex ? "bg-[#1A1A1A] text-[#3ECF8E]" : "text-[#888888]"
+                i === suggestionIndex ? "bg-elevated text-brand" : "text-muted"
               )}
             >
               <span>{v.key}</span>

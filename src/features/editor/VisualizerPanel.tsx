@@ -63,16 +63,16 @@ export const VisualizerPanel: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[var(--bg-deep)]">
+    <div className="h-full flex flex-col bg-deep">
       {/* Visualizer Toolbar */}
-      <div className="h-12 px-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-surface)] shrink-0">
+      <div className="h-12 px-6 border-b border-subtle flex items-center justify-between bg-surface shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--bg-elevated)] rounded-lg p-1">
+          <div className="flex bg-elevated rounded-lg p-1">
             <button
               onClick={() => setViewMode('auto')}
               className={cn(
                 "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
-                viewMode === 'auto' ? "bg-[var(--brand)] text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                viewMode === 'auto' ? "bg-brand text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-dim hover:text-main"
               )}
             >
               Auto
@@ -81,7 +81,7 @@ export const VisualizerPanel: React.FC = () => {
               onClick={() => setViewMode('chart')}
               className={cn(
                 "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
-                viewMode === 'chart' ? "bg-[var(--brand)] text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                viewMode === 'chart' ? "bg-brand text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-dim hover:text-main"
               )}
             >
               Charts
@@ -90,7 +90,7 @@ export const VisualizerPanel: React.FC = () => {
               onClick={() => setViewMode('html')}
               className={cn(
                 "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all",
-                viewMode === 'html' ? "bg-[var(--brand)] text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-[var(--text-dim)] hover:text-[var(--text-main)]"
+                viewMode === 'html' ? "bg-brand text-[var(--bg-deep)] shadow-lg shadow-[var(--brand)]/20" : "text-dim hover:text-main"
               )}
             >
               HTML
@@ -98,22 +98,22 @@ export const VisualizerPanel: React.FC = () => {
           </div>
 
           {viewMode === 'chart' && chartData && (
-            <div className="flex items-center gap-1 border-l border-[var(--border-strong)] ml-2 pl-4">
+            <div className="flex items-center gap-1 border-l border-strong ml-2 pl-4">
               <button 
                 onClick={() => setChartType('bar')}
-                className={cn("p-1.5 rounded transition-all", chartType === 'bar' ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-[var(--text-dim)] hover:text-[var(--text-main)]")}
+                className={cn("p-1.5 rounded transition-all", chartType === 'bar' ? "text-brand bg-brand/10" : "text-dim hover:text-main")}
               >
                 <BarChart3 size={14} />
               </button>
               <button 
                 onClick={() => setChartType('line')}
-                className={cn("p-1.5 rounded transition-all", chartType === 'line' ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-[var(--text-dim)] hover:text-[var(--text-main)]")}
+                className={cn("p-1.5 rounded transition-all", chartType === 'line' ? "text-brand bg-brand/10" : "text-dim hover:text-main")}
               >
                 <TrendingUp size={14} />
               </button>
               <button 
                 onClick={() => setChartType('pie')}
-                className={cn("p-1.5 rounded transition-all", chartType === 'pie' ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-[var(--text-dim)] hover:text-[var(--text-main)]")}
+                className={cn("p-1.5 rounded transition-all", chartType === 'pie' ? "text-brand bg-brand/10" : "text-dim hover:text-main")}
               >
                 <PieChartIcon size={14} />
               </button>
@@ -122,19 +122,19 @@ export const VisualizerPanel: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-tighter bg-[var(--bg-elevated)] px-2 py-0.5 rounded">
+            <span className="text-[9px] font-black text-dim uppercase tracking-tighter bg-elevated px-2 py-0.5 rounded">
               Engine V1.0
             </span>
         </div>
       </div>
 
       {/* Surface Area */}
-      <div className="flex-1 overflow-auto p-8 bg-[var(--bg-deep)]">
+      <div className="flex-1 overflow-auto p-8 bg-deep">
         <AnimatePresence mode="wait">
           {viewMode === 'chart' && (
             <div className="h-full space-y-8">
               {chartData ? (
-                <div className="h-[400px] w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-xl">
+                <div className="h-[400px] w-full bg-surface border border-subtle rounded-2xl p-6 shadow-xl">
                   <ResponsiveContainer width="100%" height="100%">
                     {chartType === 'bar' ? (
                       <BarChart data={chartData}>
@@ -187,10 +187,10 @@ export const VisualizerPanel: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-[var(--border-subtle)] rounded-3xl opacity-50 bg-[var(--bg-surface)]">
-                  <BarChart3 size={32} className="mb-4 text-[var(--brand)]" />
-                  <h3 className="text-sm font-black text-[var(--text-main)] uppercase tracking-[0.2em] mb-2">Incompatible Data Structure</h3>
-                  <p className="text-[10px] text-[var(--text-dim)] max-w-xs uppercase leading-relaxed font-mono">Charts require an array of objects with numeric properties to render correctly.</p>
+                <div className="h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-subtle rounded-3xl opacity-50 bg-surface">
+                  <BarChart3 size={32} className="mb-4 text-brand" />
+                  <h3 className="text-sm font-black text-main uppercase tracking-[0.2em] mb-2">Incompatible Data Structure</h3>
+                  <p className="text-[10px] text-dim max-w-xs uppercase leading-relaxed font-mono">Charts require an array of objects with numeric properties to render correctly.</p>
                 </div>
               )}
 
@@ -204,19 +204,19 @@ export const VisualizerPanel: React.FC = () => {
                       const avg = sum / values.length;
 
                       return (
-                        <div key={key} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 rounded-2xl shadow-lg">
-                           <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest mb-4 flex items-center justify-between">
+                        <div key={key} className="bg-surface border border-subtle p-6 rounded-2xl shadow-lg">
+                           <div className="text-[9px] font-black text-dim uppercase tracking-widest mb-4 flex items-center justify-between">
                               <span>{key}</span>
                               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                            </div>
                            <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1">
-                                 <p className="text-[8px] text-[var(--text-dim)] uppercase">Average</p>
-                                 <p className="text-xl font-black text-[var(--text-main)]">{avg.toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
+                                 <p className="text-[8px] text-dim uppercase">Average</p>
+                                 <p className="text-xl font-black text-main">{avg.toLocaleString(undefined, { maximumFractionDigits: 1 })}</p>
                               </div>
                               <div className="space-y-1">
-                                 <p className="text-[8px] text-[var(--text-dim)] uppercase">Peak</p>
-                                 <p className="text-xl font-black text-[var(--brand)]">{max.toLocaleString()}</p>
+                                 <p className="text-[8px] text-dim uppercase">Peak</p>
+                                 <p className="text-xl font-black text-brand">{max.toLocaleString()}</p>
                               </div>
                            </div>
                         </div>
@@ -228,16 +228,16 @@ export const VisualizerPanel: React.FC = () => {
           )}
 
           {viewMode === 'html' && (
-            <div className="h-full flex flex-col bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-2xl">
-              <div className="h-10 px-4 border-b border-[var(--border-subtle)] bg-[var(--bg-deep)] flex items-center justify-between">
+            <div className="h-full flex flex-col bg-surface border border-subtle rounded-2xl overflow-hidden shadow-2xl">
+              <div className="h-10 px-4 border-b border-subtle bg-deep flex items-center justify-between">
                  <div className="flex items-center gap-2">
                     <Code2 size={12} className="text-amber-500" />
-                    <span className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Isolated HTML Rendering</span>
+                    <span className="text-[9px] font-black text-dim uppercase tracking-widest">Isolated HTML Rendering</span>
                  </div>
                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-                       <span className="text-[8px] font-bold text-[var(--text-dim)] uppercase">Safe Shell</span>
+                       <span className="text-[8px] font-bold text-dim uppercase">Safe Shell</span>
                     </div>
                  </div>
               </div>
@@ -273,61 +273,61 @@ export const VisualizerPanel: React.FC = () => {
           {viewMode === 'auto' && (
             <div className="space-y-6">
                <div className="flex items-start gap-6">
-                  <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-8 shadow-xl">
+                  <div className="flex-1 bg-surface border border-subtle rounded-2xl p-8 shadow-xl">
                      <div className="flex items-center gap-3 mb-8">
-                        <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 border border-[var(--brand)]/30 flex items-center justify-center">
-                           <Info size={20} className="text-[var(--brand)]" />
+                        <div className="w-10 h-10 rounded-xl bg-brand/10 border border-brand/30 flex items-center justify-center">
+                           <Info size={20} className="text-brand" />
                         </div>
                         <div>
-                           <h2 className="text-[12px] font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Intel Analysis</h2>
-                           <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-widest mt-1">Structural Meta-Examination</p>
+                           <h2 className="text-[12px] font-black text-main uppercase tracking-[0.2em]">Intel Analysis</h2>
+                           <p className="text-[9px] text-dim uppercase tracking-widest mt-1">Structural Meta-Examination</p>
                         </div>
                      </div>
 
                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                         <div className="space-y-1">
-                           <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest">Data Type</p>
-                           <p className="text-[13px] font-bold text-[var(--brand)] uppercase">{Array.isArray(data) ? 'Collection' : 'Object Shell'}</p>
+                           <p className="text-[8px] text-dim uppercase tracking-widest">Data Type</p>
+                           <p className="text-[13px] font-bold text-brand uppercase">{Array.isArray(data) ? 'Collection' : 'Object Shell'}</p>
                         </div>
                         <div className="space-y-1">
-                           <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest">Entry Nodes</p>
-                           <p className="text-[13px] font-bold text-[var(--text-main)]">{Array.isArray(data) ? data.length : Object.keys(data).length}</p>
+                           <p className="text-[8px] text-dim uppercase tracking-widest">Entry Nodes</p>
+                           <p className="text-[13px] font-bold text-main">{Array.isArray(data) ? data.length : Object.keys(data).length}</p>
                         </div>
                         <div className="space-y-1">
-                           <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest">Depth Index</p>
-                           <p className="text-[13px] font-bold text-[var(--text-main)]">Level {calculateDepth(data)}</p>
+                           <p className="text-[8px] text-dim uppercase tracking-widest">Depth Index</p>
+                           <p className="text-[13px] font-bold text-main">Level {calculateDepth(data)}</p>
                         </div>
                         <div className="space-y-1">
-                           <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest">Weight</p>
-                           <p className="text-[13px] font-bold text-[var(--text-main)]">{(JSON.stringify(data).length / 1024).toFixed(2)} KB</p>
+                           <p className="text-[8px] text-dim uppercase tracking-widest">Weight</p>
+                           <p className="text-[13px] font-bold text-main">{(JSON.stringify(data).length / 1024).toFixed(2)} KB</p>
                         </div>
                      </div>
                   </div>
                </div>
 
                {Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && (
-                  <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden shadow-2xl">
-                     <div className="px-6 py-4 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-between">
+                  <div className="bg-surface border border-subtle rounded-2xl overflow-hidden shadow-2xl">
+                     <div className="px-6 py-4 border-b border-subtle bg-elevated flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                           <Layout size={14} className="text-[var(--brand)]" />
-                           <span className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-widest">Grid Inspector</span>
+                           <Layout size={14} className="text-brand" />
+                           <span className="text-[10px] font-black text-main uppercase tracking-widest">Grid Inspector</span>
                         </div>
-                        <span className="text-[9px] font-bold text-[var(--text-dim)] uppercase">{data.length} Records Detected</span>
+                        <span className="text-[9px] font-bold text-dim uppercase">{data.length} Records Detected</span>
                      </div>
                      <div className="overflow-x-auto min-h-[300px]">
                         <table className="w-full border-collapse">
                            <thead>
-                              <tr className="bg-[var(--bg-deep)] border-b border-[var(--border-subtle)]">
+                              <tr className="bg-deep border-b border-subtle">
                                  {Object.keys(data[0]).slice(0, 8).map(key => (
-                                    <th key={key} className="px-6 py-3 text-left text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">{key}</th>
+                                    <th key={key} className="px-6 py-3 text-left text-[9px] font-black text-dim uppercase tracking-widest">{key}</th>
                                  ))}
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-[var(--border-subtle)]/30">
                               {data.slice(0, 10).map((row, i) => (
-                                 <tr key={i} className="hover:bg-[var(--bg-elevated)]/50 transition-all">
+                                 <tr key={i} className="hover:bg-elevated/50 transition-all">
                                     {Object.values(row).slice(0, 8).map((val: any, j) => (
-                                       <td key={j} className="px-6 py-3 text-[11px] font-medium text-[var(--text-muted)] truncate max-w-[200px]">
+                                       <td key={j} className="px-6 py-3 text-[11px] font-medium text-muted truncate max-w-[200px]">
                                           {typeof val === 'object' ? '{...}' : String(val)}
                                        </td>
                                     ))}
@@ -336,8 +336,8 @@ export const VisualizerPanel: React.FC = () => {
                            </tbody>
                         </table>
                         {data.length > 10 && (
-                           <div className="p-4 text-center border-t border-[var(--border-subtle)] bg-[var(--bg-deep)]">
-                              <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-widest">Truncated View - Showing first 10 entries</p>
+                           <div className="p-4 text-center border-t border-subtle bg-deep">
+                              <p className="text-[9px] text-dim uppercase tracking-widest">Truncated View - Showing first 10 entries</p>
                            </div>
                         )}
                      </div>

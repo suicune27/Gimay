@@ -53,18 +53,18 @@ export const ScriptLibrary: React.FC<ScriptLibraryProps> = ({ isOpen, onClose })
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full h-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10"
+        className="relative w-full h-full bg-surface border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10"
       >
         {/* Header */}
-        <div className="h-14 border-b border-[var(--border-subtle)] flex items-center justify-between px-6 bg-[var(--bg-deep)] shrink-0">
+        <div className="h-14 border-b border-subtle flex items-center justify-between px-6 bg-deep shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-8 h-8 rounded-xl bg-[var(--brand)] flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
+            <div className="w-8 h-8 rounded-xl bg-brand flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
               <Code2 size={16} className="text-[var(--bg-deep)]" />
             </div>
             <div>
-              <h1 className="text-[12px] font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-2">
+              <h1 className="text-[12px] font-black text-main uppercase tracking-[0.2em] flex items-center gap-2">
                 Script Laboratory
-                <Sparkles size={12} className="text-[var(--brand)]" />
+                <Sparkles size={12} className="text-brand" />
               </h1>
             </div>
           </div>
@@ -90,14 +90,14 @@ export const ScriptLibrary: React.FC<ScriptLibraryProps> = ({ isOpen, onClose })
                   addToast({ type: 'error', message: 'Failed to initialize script.' });
                 }
               }}
-              className="px-3 py-1.5 bg-[var(--brand)] text-[var(--bg-deep)] text-[10px] font-black rounded-lg uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-2"
+              className="px-3 py-1.5 bg-brand text-[var(--bg-deep)] text-[10px] font-black rounded-lg uppercase tracking-widest hover:brightness-110 transition-all flex items-center gap-2"
             >
               <Plus size={14} /> New Script
             </button>
             <div className="h-4 w-px bg-[var(--border-subtle)]" />
             <button 
               onClick={onClose}
-              className="p-1.5 text-[var(--text-dim)] hover:text-[var(--text-main)] transition-all hover:bg-[var(--bg-elevated)] rounded-md"
+              className="p-1.5 text-dim hover:text-main transition-all hover:bg-elevated rounded-md"
             >
               <X size={20} />
             </button>
@@ -107,7 +107,7 @@ export const ScriptLibrary: React.FC<ScriptLibraryProps> = ({ isOpen, onClose })
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           <ScriptSidebar />
-          <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-surface)]">
+          <div className="flex-1 flex flex-col min-w-0 bg-surface">
             <ScriptEditor />
             <ConsolePanel />
           </div>

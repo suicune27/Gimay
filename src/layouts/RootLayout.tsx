@@ -203,7 +203,7 @@ export const RootLayout: React.FC = () => {
   };
 
   return (
-    <div className="theme-shell h-screen w-screen flex flex-col font-sans selection:bg-[var(--brand)]/30 overflow-hidden text-sm bg-[var(--bg-deep)] text-[var(--text-main)]">
+    <div className="theme-shell h-screen w-screen flex flex-col font-sans selection:bg-brand/30 overflow-hidden text-sm bg-deep text-main">
       <ToastContainer />
       <NameModal 
         isOpen={isWorkspaceModalOpen}
@@ -244,35 +244,35 @@ export const RootLayout: React.FC = () => {
         )}
       </AnimatePresence>
       {/* Top Universal Rail */}
-      <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-50">
+      <header className="h-12 border-b border-subtle bg-surface flex items-center px-4 justify-between z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#3ECF8E] rounded flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
+            <div className="w-5 h-5 bg-brand rounded flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
               <Terminal size={12} className="text-black" />
             </div>
             <span className="text-[10px] font-black tracking-widest uppercase">Gimay</span>
           </div>
           
-          <div className="h-4 w-px bg-[#222222]" />
+          <div className="h-4 w-px bg-[var(--border-subtle)]" />
 
           <div ref={workspaceMenuRef} className="relative">
             <button
               onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
-              className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#1A1A1A] transition-all group"
+              className="flex items-center gap-2 px-2 py-1 rounded hover:bg-elevated transition-all group"
             >
-              <LayoutGrid size={12} className="text-[#555555] group-hover:text-[#3ECF8E]" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-[#888888]">
+              <LayoutGrid size={12} className="text-dim group-hover:text-brand" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-muted">
                 {activeWorkspace?.name || 'Local'}
               </span>
-              <ChevronDown size={8} className="text-[#555555]" />
+              <ChevronDown size={8} className="text-dim" />
             </button>
 
             <div className={cn(
-              "absolute top-full left-0 mt-1 w-64 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-50",
+              "absolute top-full left-0 mt-1 w-64 bg-elevated border border-subtle rounded-xl shadow-2xl py-2 transition-all z-50",
               isWorkspaceMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
             )}>
-              <div className="px-4 py-2 mb-1 border-b border-[var(--border-subtle)]">
-                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Select Workspace</h3>
+              <div className="px-4 py-2 mb-1 border-b border-subtle">
+                <h3 className="text-[9px] font-black text-dim uppercase tracking-widest">Select Workspace</h3>
               </div>
               <div className="max-h-60 overflow-y-auto no-scrollbar">
                 {workspaces.map(ws => (
@@ -283,20 +283,20 @@ export const RootLayout: React.FC = () => {
                       setIsWorkspaceMenuOpen(false);
                     }}
                     className={cn(
-                      "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-[var(--bg-deep)] cursor-pointer transition-colors text-left group/ws",
-                      activeWorkspaceId === ws.id ? "bg-[var(--brand)]/5" : ""
+                      "w-full px-4 py-2.5 flex items-center gap-3 hover:bg-deep cursor-pointer transition-colors text-left group/ws",
+                      activeWorkspaceId === ws.id ? "bg-brand/5" : ""
                     )}
                   >
                     <div className={cn(
                       "w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold shadow-sm",
-                      activeWorkspaceId === ws.id ? "bg-[var(--brand)] text-black" : "bg-[var(--bg-deep)] text-[var(--text-dim)]"
+                      activeWorkspaceId === ws.id ? "bg-brand text-black" : "bg-deep text-dim"
                     )}>
                       {(ws.name || 'W')[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className={cn(
                         "text-[10px] font-bold truncate",
-                        activeWorkspaceId === ws.id ? "text-[var(--brand)]" : "text-[var(--text-muted)]"
+                        activeWorkspaceId === ws.id ? "text-brand" : "text-muted"
                       )}>
                         {ws.name}
                       </div>
@@ -309,7 +309,7 @@ export const RootLayout: React.FC = () => {
                            setIsRenameWorkspaceModalOpen(true);
                            setIsWorkspaceMenuOpen(false);
                          }}
-                         className="p-1 hover:text-[var(--text-main)] text-[var(--text-dim)]"
+                         className="p-1 hover:text-main text-dim"
                        >
                          <Settings size={10} />
                        </button>
@@ -319,7 +319,7 @@ export const RootLayout: React.FC = () => {
                            setIsWorkspaceMenuOpen(false);
                            handleDeleteWorkspace(ws.id, ws.name);
                          }}
-                         className="p-1 hover:text-red-500 text-[var(--text-dim)]"
+                         className="p-1 hover:text-red-500 text-dim"
                        >
                          <Plus size={10} className="rotate-45" />
                        </button>
@@ -327,13 +327,13 @@ export const RootLayout: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="px-4 py-2 border-t border-[var(--border-subtle)] mt-1">
+              <div className="px-4 py-2 border-t border-subtle mt-1">
                 <button 
                   onClick={() => {
                     setIsWorkspaceModalOpen(true);
                     setIsWorkspaceMenuOpen(false);
                   }}
-                  className="w-full flex items-center gap-2 text-[9px] font-black text-[var(--brand)] uppercase tracking-widest hover:text-[var(--text-main)] transition-colors py-1"
+                  className="w-full flex items-center gap-2 text-[9px] font-black text-brand uppercase tracking-widest hover:text-main transition-colors py-1"
                 >
                   <Plus size={10} /> New Workspace
                 </button>
@@ -347,25 +347,25 @@ export const RootLayout: React.FC = () => {
             <div ref={environmentMenuRef} className="relative">
               <button
                 onClick={() => setIsEnvironmentMenuOpen((open) => !open)}
-                className="flex items-center gap-2 px-2 py-1 bg-[#0A0A0A] border border-[#222222] rounded hover:border-[#3ECF8E]/30 transition-all min-w-[110px]"
+                className="flex items-center gap-2 px-2 py-1 bg-deep border border-subtle rounded hover:border-brand/30 transition-all min-w-[110px]"
               >
-                <Globe size={11} className={cn(activeEnvId ? "text-[#3ECF8E]" : "text-[#555555]")} />
-                <span className="text-[8px] font-black uppercase tracking-widest text-[#AAAAAA] truncate flex-1 text-left">
+                <Globe size={11} className={cn(activeEnvId ? "text-brand" : "text-dim")} />
+                <span className="text-[8px] font-black uppercase tracking-widest text-main truncate flex-1 text-left">
                   {environments.find(e => e.id === activeEnvId)?.name || 'Local Env'}
                 </span>
-                <ChevronDown size={8} className="text-[#555555]" />
+                <ChevronDown size={8} className="text-dim" />
               </button>
 
               <div className={cn(
-                "absolute top-full right-0 mt-1 w-64 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-[60]",
+                "absolute top-full right-0 mt-1 w-64 bg-elevated border border-subtle rounded-xl shadow-2xl py-2 transition-all z-[60]",
                 isEnvironmentMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
               )}>
-                <div className="px-2 pb-2 border-b border-[var(--border-subtle)]">
+                <div className="px-2 pb-2 border-b border-subtle">
                   <input
                     value={envFilterQuery}
                     onChange={(e) => setEnvFilterQuery(e.target.value)}
                     placeholder="SEARCH_ENVIRONMENTS..."
-                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-md py-1.5 px-2 text-[10px] font-mono text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)]/40"
+                    className="w-full bg-deep border border-subtle rounded-md py-1.5 px-2 text-[10px] font-mono text-muted focus:outline-none focus:border-brand/40"
                   />
                 </div>
                 <div 
@@ -374,8 +374,8 @@ export const RootLayout: React.FC = () => {
                     setIsEnvironmentMenuOpen(false);
                   }}
                   className={cn(
-                    "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[var(--bg-deep)] transition-colors",
-                    !activeEnvId ? "text-[var(--brand)]" : "text-[var(--text-dim)]"
+                    "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-deep transition-colors",
+                    !activeEnvId ? "text-brand" : "text-dim"
                   )}
                 >
                   No Environment
@@ -388,17 +388,17 @@ export const RootLayout: React.FC = () => {
                       setIsEnvironmentMenuOpen(false);
                     }}
                     className={cn(
-                      "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[var(--bg-deep)] transition-colors",
-                      activeEnvId === env.id ? "text-[var(--brand)]" : "text-[var(--text-muted)]"
+                      "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-deep transition-colors",
+                      activeEnvId === env.id ? "text-brand" : "text-muted"
                     )}
                   >
                     {env.name}
                   </div>
                 ))}
                 {filteredEnvironments.length === 0 && (
-                  <div className="px-3 py-3 text-[9px] font-bold uppercase tracking-widest text-[var(--text-dim)]">No matches</div>
+                  <div className="px-3 py-3 text-[9px] font-bold uppercase tracking-widest text-dim">No matches</div>
                 )}
-                <div className="px-2 pt-2 mt-1 border-t border-[var(--border-subtle)]">
+                <div className="px-2 pt-2 mt-1 border-t border-subtle">
                   <button
                     onClick={() => {
                       addTab({
@@ -409,7 +409,7 @@ export const RootLayout: React.FC = () => {
                       });
                       setIsEnvironmentMenuOpen(false);
                     }}
-                    className="w-full py-1.5 rounded-md border border-[var(--border-subtle)] text-[9px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-all"
+                    className="w-full py-1.5 rounded-md border border-subtle text-[9px] font-black uppercase tracking-widest text-brand hover:bg-brand/10 transition-all"
                   >
                     Show All Environments
                   </button>
@@ -418,7 +418,7 @@ export const RootLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-deep border border-subtle rounded-full">
             {syncStatus === 'saving' ? (
               <>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -431,8 +431,8 @@ export const RootLayout: React.FC = () => {
               </>
             ) : (
               <>
-                <Cloud size={9} className="text-[#3ECF8E]" />
-                <span className="text-[8px] font-bold text-[#3ECF8E] uppercase tracking-tighter">
+                <Cloud size={9} className="text-brand" />
+                <span className="text-[8px] font-bold text-brand uppercase tracking-tighter">
                   {syncStatus === 'saved' ? 'Saved' : 'Synced'}
                 </span>
               </>
@@ -440,11 +440,11 @@ export const RootLayout: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-1">
-             <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
-             <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Bell size={14} /></button>
+             <button className="p-1.5 text-dim hover:text-main transition-all"><Search size={14} /></button>
+             <button className="p-1.5 text-dim hover:text-main transition-all"><Bell size={14} /></button>
              <button 
               onClick={() => setIsSettingsModalOpen(true)}
-              className="p-1.5 text-[#555555] hover:text-[#3ECF8E] transition-all"
+              className="p-1.5 text-dim hover:text-brand transition-all"
              >
                <Settings size={14} />
              </button>
@@ -475,13 +475,13 @@ export const RootLayout: React.FC = () => {
                 <div className="h-8 border-b border-[#1C1C1F] flex items-center justify-between px-3 bg-[#0A0A0C]/90 shrink-0 z-20">
                    <div className="flex items-center gap-3">
                      <span className="text-[8px] font-black text-[#8E8E93] uppercase tracking-[0.25em] flex items-center gap-2 font-mono">
-                       <Terminal size={11} className="text-[#3ECF8E] drop-shadow-[0_0_3px_#3ECF8E]" />
+                       <Terminal size={11} className="text-brand drop-shadow-[0_0_3px_#3ECF8E]" />
                        Protocol System Core
                      </span>
                      
-                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3ECF8E]/5 border border-[#3ECF8E]/10">
-                       <span className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
-                       <span className="text-[6.5px] text-[#3ECF8E]/70 font-mono tracking-normal uppercase">ZERO FAULTS</span>
+                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-brand/5 border border-brand/10">
+                       <span className="w-1 h-1 rounded-full bg-brand animate-pulse" />
+                       <span className="text-[6.5px] text-brand/70 font-mono tracking-normal uppercase">ZERO FAULTS</span>
                      </div>
                    </div>
                    
@@ -494,11 +494,11 @@ export const RootLayout: React.FC = () => {
                 </div>
 
                 {/* Terminal Output Logs */}
-                <div className="flex-1 overflow-y-auto font-mono text-[9.5px] text-[#888888] divide-y divide-[#131316] custom-scrollbar bg-[#050506]/90 z-20 pb-2">
+                <div className="flex-1 overflow-y-auto font-mono text-[9.5px] text-muted divide-y divide-[#131316] custom-scrollbar bg-[#050506]/90 z-20 pb-2">
                    {/* Log KERN */}
                    <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-emerald-500/60 pl-0.5">
                      <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[KERN]</span>
+                     <span className="text-brand bg-brand/10 border border-brand/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[KERN]</span>
                      <span className="text-[#D1D1D6] leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">Uplink established; core kernel version 2.4.0 active.</span>
                    </div>
 
@@ -517,9 +517,9 @@ export const RootLayout: React.FC = () => {
                    </div>
 
                    {/* Log SUCCESS */}
-                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-[#3ECF8E]/60 pl-0.5">
+                   <div className="flex gap-0 hover:bg-[#0C0C0F] transition-colors items-center border-l-2 border-brand/60 pl-0.5">
                      <span className="text-[#44444F] shrink-0 font-bold tabular-nums border-r border-[#131316] pr-3 py-1.5 min-w-[85px] text-center select-none">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[SUCCESS]</span>
+                     <span className="text-brand bg-brand/10 border border-brand/20 text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 min-w-[50px] text-center uppercase tracking-widest font-mono mx-3 select-none">[SUCCESS]</span>
                      <span className="text-[#D1D1D6] leading-normal font-semibold tracking-wide py-1.5 pr-4 flex-1">System ready for packet routing and state synchronization.</span>
                    </div>
                 </div>

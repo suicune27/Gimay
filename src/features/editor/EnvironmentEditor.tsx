@@ -148,14 +148,14 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
 
   if (!tab) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[#666666]">
+      <div className="flex-1 flex items-center justify-center text-muted">
         <p className="text-[11px] font-black uppercase tracking-widest">Environment tab unavailable.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-deep overflow-hidden">
       <ConfirmModal
         isOpen={isConfirmDeleteOpen}
         onClose={() => setIsConfirmDeleteOpen(false)}
@@ -165,10 +165,10 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
         confirmText="Delete"
         variant="danger"
       />
-      <div className="px-8 py-6 border-b border-[#222222] bg-[#0F0F0F] flex items-center justify-between gap-4">
+      <div className="px-8 py-6 border-b border-subtle bg-surface flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <div className="p-3 bg-[#3ECF8E]/10 rounded-xl">
-            <Globe className="text-[#3ECF8E]" size={22} />
+          <div className="p-3 bg-brand/10 rounded-xl">
+            <Globe className="text-brand" size={22} />
           </div>
 
           {selectedEnvironment ? (
@@ -176,16 +176,16 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
               <input
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
-                className="w-full bg-transparent text-xl font-black text-[#E0E0E0] uppercase tracking-tighter outline-none border border-transparent focus:border-[#3ECF8E]/30 rounded-lg px-2 py-1"
+                className="w-full bg-transparent text-xl font-black text-main uppercase tracking-tighter outline-none border border-transparent focus:border-brand/30 rounded-lg px-2 py-1"
               />
-              <div className="text-[10px] text-[#555555] font-bold uppercase tracking-widest px-2">
+              <div className="text-[10px] text-dim font-bold uppercase tracking-widest px-2">
                 Inline rename with autosave
               </div>
             </div>
           ) : (
             <div>
-              <h1 className="text-xl font-black text-[#E0E0E0] uppercase tracking-tighter">Environments</h1>
-              <div className="text-[10px] text-[#555555] font-bold uppercase tracking-widest">Select an environment to manage</div>
+              <h1 className="text-xl font-black text-main uppercase tracking-tighter">Environments</h1>
+              <div className="text-[10px] text-dim font-bold uppercase tracking-widest">Select an environment to manage</div>
             </div>
           )}
         </div>
@@ -199,7 +199,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                 exit={{ opacity: 0, x: 20 }}
                 onClick={handleManualSave}
                 disabled={isSavingManual}
-                className="px-4 py-2 bg-[#3ECF8E] text-[#0A0A0A] rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#34B37A] transition-all"
+                className="px-4 py-2 bg-brand text-[var(--bg-deep)] rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#34B37A] transition-all"
               >
                 {isSavingManual ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Environment
@@ -211,7 +211,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
             <select
               value={selectedEnvironmentId || ''}
               onChange={(e) => setSelectedEnvironmentId(e.target.value || null)}
-              className="appearance-none min-w-[220px] bg-[#141414] border border-[#222222] text-[10px] font-black uppercase tracking-widest text-[#AAAAAA] rounded-lg px-3 py-2 pr-8 outline-none focus:border-[#3ECF8E]/40"
+              className="appearance-none min-w-[220px] bg-elevated border border-subtle text-[10px] font-black uppercase tracking-widest text-muted rounded-lg px-3 py-2 pr-8 outline-none focus:border-brand/40"
             >
               <option value="">Select Environment</option>
               {environments.map((env) => (
@@ -220,17 +220,17 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                 </option>
               ))}
             </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#555555] pointer-events-none" />
+            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-dim pointer-events-none" />
           </div>
 
           <button
             onClick={handleCreateEnvironment}
             disabled={isCreatingEnvironment}
             className={cn(
-              'px-3 py-2 rounded-lg border border-[#222222] text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2',
+              'px-3 py-2 rounded-lg border border-subtle text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2',
               isCreatingEnvironment
-                ? 'text-[#555555] cursor-not-allowed'
-                : 'text-[#3ECF8E] hover:bg-[#3ECF8E]/10'
+                ? 'text-dim cursor-not-allowed'
+                : 'text-brand hover:bg-brand/10'
             )}
           >
             <Plus size={12} />
@@ -244,7 +244,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
               'px-3 py-2 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2',
               selectedEnvironment
                 ? 'border-red-500/40 text-red-500 hover:bg-red-500/10'
-                : 'border-[#222222] text-[#444444] cursor-not-allowed'
+                : 'border-subtle text-dim cursor-not-allowed'
             )}
           >
             <Trash2 size={12} />
@@ -264,14 +264,14 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
               <Clock size={12} className="text-yellow-500" /> Changes Staged
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-[10px] font-black text-[#3ECF8E] uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-[10px] font-black text-brand uppercase tracking-widest">
               <Cloud size={12} /> {syncStatus === 'saved' ? 'Sector Synced' : 'Sector Stored'}
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-8 border-b border-[#222222] flex gap-8 bg-[#0F0F0F]">
+      <div className="px-8 border-b border-subtle flex gap-8 bg-surface">
         {([
           { id: 'Variables', icon: Variable },
           { id: 'Scripts', icon: Code2 },
@@ -282,13 +282,13 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
             onClick={() => setActiveSection(id)}
             className={cn(
               'flex items-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest relative transition-all',
-              activeSection === id ? 'text-[#3ECF8E]' : 'text-[#555555] hover:text-[#AAAAAA]'
+              activeSection === id ? 'text-brand' : 'text-dim hover:text-muted'
             )}
           >
             <Icon size={14} />
             {id}
             {activeSection === id && (
-              <motion.div layoutId="environment-section-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3ECF8E]" />
+              <motion.div layoutId="environment-section-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" />
             )}
           </button>
         ))}
@@ -296,7 +296,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
         {!selectedEnvironment ? (
-          <div className="h-full flex items-center justify-center text-[#555555]">
+          <div className="h-full flex items-center justify-center text-dim">
             <div className="text-center">
               <Globe size={40} className="mx-auto mb-3 opacity-30" />
               <p className="text-[11px] font-black uppercase tracking-widest">No environment selected.</p>
@@ -315,10 +315,10 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                   className="space-y-6"
                 >
                   <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Variables</h3>
-                    <p className="text-[11px] text-[#555555]">Supports add/edit/delete, bulk edit, initial/current values, and masking for sensitive values.</p>
+                    <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Environment Variables</h3>
+                    <p className="text-[11px] text-dim">Supports add/edit/delete, bulk edit, initial/current values, and masking for sensitive values.</p>
                   </div>
-                  <div className="bg-[#111111] rounded-xl border border-[#222222] p-4">
+                  <div className="bg-surface rounded-xl border border-subtle p-4">
                     <KVEditor
                       items={selectedEnvironment.variables || []}
                       onChange={(variables) => updateEnvironment(selectedEnvironment.id, { variables })}
@@ -340,13 +340,13 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                   className="space-y-8"
                 >
                   <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Scripts</h3>
-                    <p className="text-[11px] text-[#555555]">Scripts run before request execution and after response tests for every request while this environment is active.</p>
+                    <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Environment Scripts</h3>
+                    <p className="text-[11px] text-dim">Scripts run before request execution and after response tests for every request while this environment is active.</p>
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Environment Pre-request Script</label>
-                    <div className="border border-[#222222] rounded-xl overflow-hidden bg-[#111111]">
+                    <label className="text-[10px] font-black text-dim uppercase tracking-widest">Environment Pre-request Script</label>
+                    <div className="border border-subtle rounded-xl overflow-hidden bg-surface">
                       <Editor
                         height="240px"
                         language="javascript"
@@ -366,8 +366,8 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                   </div>
 
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Environment Test Script</label>
-                    <div className="border border-[#222222] rounded-xl overflow-hidden bg-[#111111]">
+                    <label className="text-[10px] font-black text-dim uppercase tracking-widest">Environment Test Script</label>
+                    <div className="border border-subtle rounded-xl overflow-hidden bg-surface">
                       <Editor
                         height="240px"
                         language="javascript"
@@ -398,16 +398,16 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Documentation</h3>
-                      <p className="text-[11px] text-[#555555]">Markdown documentation with live preview support.</p>
+                      <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Environment Documentation</h3>
+                      <p className="text-[11px] text-dim">Markdown documentation with live preview support.</p>
                     </div>
 
-                    <div className="flex p-1 bg-[#1A1A1A] rounded-lg border border-[#333333]">
+                    <div className="flex p-1 bg-elevated rounded-lg border border-strong">
                       <button
                         onClick={() => setDocMode('preview')}
                         className={cn(
                           'px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 transition-all',
-                          docMode === 'preview' ? 'bg-[#3ECF8E] text-[#0A0A0A]' : 'text-[#555555] hover:text-[#AAAAAA]'
+                          docMode === 'preview' ? 'bg-brand text-[var(--bg-deep)]' : 'text-dim hover:text-muted'
                         )}
                       >
                         <Eye size={12} />
@@ -417,7 +417,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         onClick={() => setDocMode('edit')}
                         className={cn(
                           'px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 transition-all',
-                          docMode === 'edit' ? 'bg-[#3ECF8E] text-[#0A0A0A]' : 'text-[#555555] hover:text-[#AAAAAA]'
+                          docMode === 'edit' ? 'bg-brand text-[var(--bg-deep)]' : 'text-dim hover:text-muted'
                         )}
                       >
                         <PenLine size={12} />
@@ -426,7 +426,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                     </div>
                   </div>
 
-                  <div className="bg-[#111111] rounded-xl border border-[#222222] overflow-hidden min-h-[400px]">
+                  <div className="bg-surface rounded-xl border border-subtle overflow-hidden min-h-[400px]">
                     {docMode === 'edit' ? (
                       <Editor
                         height="500px"

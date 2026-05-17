@@ -15,12 +15,12 @@ export const OnboardingModal: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-[var(--bg-deep)]/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-deep/40 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--bg-surface)] border border-[#222222] rounded-2xl shadow-2xl"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface border border-subtle rounded-2xl shadow-2xl"
       >
         <AnimatePresence mode="wait">
           {step === 'welcome' && <OnboardingWelcome key="welcome" />}

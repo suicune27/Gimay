@@ -57,7 +57,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
 
   if (!collection) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-[#555555]">
+      <div className="flex-1 flex flex-col items-center justify-center text-dim">
         <Trash2 size={48} className="mb-4 opacity-20" />
         <h2 className="text-xl font-black uppercase tracking-widest">Collection Expired</h2>
         <p className="text-sm">This resource is no longer reachable in this sector.</p>
@@ -76,23 +76,23 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0A0A0A] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-deep overflow-hidden">
       {/* Header Info */}
-      <div className="px-8 py-6 border-b border-[#222222] bg-[#0F0F0F] flex items-center justify-between">
+      <div className="px-8 py-6 border-b border-subtle bg-surface flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-[#3ECF8E]/10 rounded-xl">
-             <Variable className="text-[#3ECF8E]" size={24} />
+          <div className="p-3 bg-brand/10 rounded-xl">
+             <Variable className="text-brand" size={24} />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-xl font-black text-[#E0E0E0] uppercase tracking-tighter">
+              <h1 className="text-xl font-black text-main uppercase tracking-tighter">
                 {collection.name}
               </h1>
-              <div className="px-2 py-0.5 rounded border border-[#3ECF8E]/20 bg-[#3ECF8E]/5 text-[#3ECF8E] text-[8px] font-black uppercase tracking-widest">
+              <div className="px-2 py-0.5 rounded border border-brand/20 bg-brand/5 text-brand text-[8px] font-black uppercase tracking-widest">
                 Collection Protocol
               </div>
             </div>
-            <div className="flex items-center gap-4 text-[10px] font-bold text-[#555555] uppercase tracking-widest">
+            <div className="flex items-center gap-4 text-[10px] font-bold text-dim uppercase tracking-widest">
               <span>Variables Shared Across Requests</span>
               <ChevronRight size={10} />
               <span>Scripts Evaluated Globally</span>
@@ -109,7 +109,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                 exit={{ opacity: 0, x: 20 }}
                 onClick={handleManualSave}
                 disabled={isSavingManual}
-                className="px-4 py-2 bg-[#3ECF8E] text-[#0A0A0A] rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#34B37A] transition-all"
+                className="px-4 py-2 bg-brand text-[var(--bg-deep)] rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#34B37A] transition-all"
               >
                 {isSavingManual ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Collection
@@ -133,7 +133,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
               Changes Staged
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-[10px] font-black text-[#3ECF8E] uppercase tracking-widest">
+            <div className="flex items-center gap-2 text-[10px] font-black text-brand uppercase tracking-widest">
               <Cloud size={12} />
               {syncStatus === 'saved' ? 'Sector Synced' : 'Sector Stored'}
             </div>
@@ -142,7 +142,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
       </div>
 
       {/* Navigation */}
-      <div className="px-8 border-b border-[#222222] flex gap-8 bg-[#0F0F0F]">
+      <div className="px-8 border-b border-subtle flex gap-8 bg-surface">
         {([
           { id: 'Variables', icon: Variable },
           { id: 'Authorization', icon: Key },
@@ -154,7 +154,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
             onClick={() => setActiveSection(id as any)}
             className={cn(
               "flex items-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest relative transition-all",
-              activeSection === id ? "text-[#3ECF8E]" : "text-[#555555] hover:text-[#AAAAAA]"
+              activeSection === id ? "text-brand" : "text-dim hover:text-muted"
             )}
           >
             <Icon size={14} />
@@ -162,7 +162,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
             {activeSection === id && (
               <motion.div 
                 layoutId="collection-section-indicator" 
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3ECF8E]" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" 
               />
             )}
           </button>
@@ -183,11 +183,11 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Collection Variables</h3>
-                    <p className="text-[11px] text-[#555555]">Inject these values using &#123;&#123;variable_name&#125;&#125; in any request within this collection.</p>
+                    <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Collection Variables</h3>
+                    <p className="text-[11px] text-dim">Inject these values using &#123;&#123;variable_name&#125;&#125; in any request within this collection.</p>
                   </div>
                 </div>
-                <div className={cn("bg-[#111111] rounded-xl border border-[#222222] p-4", !canEdit && "opacity-50 pointer-events-none")}>
+                <div className={cn("bg-surface rounded-xl border border-subtle p-4", !canEdit && "opacity-50 pointer-events-none")}>
                   <KVEditor 
                     items={collection.variables || []} 
                     onChange={(variables) => handleUpdate({ variables })}
@@ -208,10 +208,10 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                 className="space-y-6"
               >
                 <div>
-                  <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Sector Clearances</h3>
-                  <p className="text-[11px] text-[#555555]">These credentials will be automatically disseminated to all nested requests using the 'Inherit' protocol.</p>
+                  <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Sector Clearances</h3>
+                  <p className="text-[11px] text-dim">These credentials will be automatically disseminated to all nested requests using the 'Inherit' protocol.</p>
                 </div>
-                <div className={cn("bg-[#111111] rounded-xl border border-[#222222] p-8", !canEdit && "opacity-50 pointer-events-none")}>
+                <div className={cn("bg-surface rounded-xl border border-subtle p-8", !canEdit && "opacity-50 pointer-events-none")}>
                   <AuthEditor 
                     auth={collection.auth} 
                     onChange={(auth) => handleUpdate({ auth })} 
@@ -231,16 +231,16 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Collection Intelligence</h3>
-                    <p className="text-[11px] text-[#555555]">Maintain technical specifications and domain knowledge for this subsystem.</p>
+                    <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Collection Intelligence</h3>
+                    <p className="text-[11px] text-dim">Maintain technical specifications and domain knowledge for this subsystem.</p>
                   </div>
                   {canEdit && (
-                    <div className="flex p-1 bg-[#1A1A1A] rounded-lg border border-[#333333]">
+                    <div className="flex p-1 bg-elevated rounded-lg border border-strong">
                       <button 
                         onClick={() => setDocMode('preview')}
                         className={cn(
                           "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 transition-all",
-                          docMode === 'preview' ? "bg-[#3ECF8E] text-[#0A0A0A]" : "text-[#555555] hover:text-[#AAAAAA]"
+                          docMode === 'preview' ? "bg-brand text-[var(--bg-deep)]" : "text-dim hover:text-muted"
                         )}
                       >
                         <Eye size={12} />
@@ -250,7 +250,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                         onClick={() => setDocMode('edit')}
                         className={cn(
                           "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter flex items-center gap-2 transition-all",
-                          docMode === 'edit' ? "bg-[#3ECF8E] text-[#0A0A0A]" : "text-[#555555] hover:text-[#AAAAAA]"
+                          docMode === 'edit' ? "bg-brand text-[var(--bg-deep)]" : "text-dim hover:text-muted"
                         )}
                       >
                         <PenLine size={12} />
@@ -260,7 +260,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                   )}
                 </div>
 
-                <div className="bg-[#111111] rounded-xl border border-[#222222] overflow-hidden min-h-[400px]">
+                <div className="bg-surface rounded-xl border border-subtle overflow-hidden min-h-[400px]">
                   {docMode === 'edit' && canEdit ? (
                     <Editor
                       height="500px"
@@ -298,15 +298,15 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                 className="space-y-8"
               >
                 <div>
-                  <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Global Interceptors</h3>
-                  <p className="text-[11px] text-[#555555]">Scripts defined here run before every request or after every execution in this collection.</p>
+                  <h3 className="text-sm font-black text-main uppercase tracking-widest mb-1">Global Interceptors</h3>
+                  <p className="text-[11px] text-dim">Scripts defined here run before every request or after every execution in this collection.</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Global Pre-request Sequence</label>
+                    <label className="text-[10px] font-black text-dim uppercase tracking-widest">Global Pre-request Sequence</label>
                   </div>
-                  <div className={cn("border border-[#222222] rounded-xl overflow-hidden bg-[#111111]", !canEdit && "opacity-50 pointer-events-none")}>
+                  <div className={cn("border border-subtle rounded-xl overflow-hidden bg-surface", !canEdit && "opacity-50 pointer-events-none")}>
                     <Editor
                       height="250px"
                       language="javascript"
@@ -327,9 +327,9 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Global Post-Execution Tests</label>
+                    <label className="text-[10px] font-black text-dim uppercase tracking-widest">Global Post-Execution Tests</label>
                   </div>
-                  <div className={cn("border border-[#222222] rounded-xl overflow-hidden bg-[#111111]", !canEdit && "opacity-50 pointer-events-none")}>
+                  <div className={cn("border border-subtle rounded-xl overflow-hidden bg-surface", !canEdit && "opacity-50 pointer-events-none")}>
                     <Editor
                       height="250px"
                       language="javascript"

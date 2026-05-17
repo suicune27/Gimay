@@ -201,9 +201,9 @@ export default function App() {
 
   if (loading || schemaBootstrapLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-deep)]">
-        <div className="w-16 h-16 border-2 border-[var(--brand)]/20 border-t-[var(--brand)] rounded-full animate-spin shadow-[0_0_20px_var(--brand-muted)]" />
-        <p className="mt-4 text-[10px] font-black text-[var(--brand)] uppercase tracking-widest animate-pulse">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-deep">
+        <div className="w-16 h-16 border-2 border-brand/20 border-t-[var(--brand)] rounded-full animate-spin shadow-[0_0_20px_var(--brand-muted)]" />
+        <p className="mt-4 text-[10px] font-black text-brand uppercase tracking-widest animate-pulse">
           {loading ? 'Initializing System...' : schemaBootstrapMessage}
         </p>
       </div>
@@ -212,12 +212,12 @@ export default function App() {
 
   if (schemaBootstrapError && session && isConfigured) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-deep)] px-6">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-deep px-6">
         <p className="text-xs font-black text-red-400 uppercase tracking-widest">Schema Check Failed</p>
-        <p className="mt-3 text-sm text-[var(--text-muted)] max-w-xl text-center">{schemaBootstrapError}</p>
+        <p className="mt-3 text-sm text-muted max-w-xl text-center">{schemaBootstrapError}</p>
         <button
           onClick={runSchemaBootstrap}
-          className="mt-6 px-4 py-2 rounded-lg bg-[var(--brand)] text-black text-xs font-bold uppercase tracking-wider"
+          className="mt-6 px-4 py-2 rounded-lg bg-brand text-black text-xs font-bold uppercase tracking-wider"
         >
           Retry Auto Update
         </button>

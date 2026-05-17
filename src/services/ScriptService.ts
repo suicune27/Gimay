@@ -42,12 +42,31 @@ export class ScriptService {
       newVisited.add(scriptName.toLowerCase());
       
       try {
-        const exports = {};
-        const module = { exports };
+        const exports: any = {};
+        const module: any = { exports };
         
         const { strippedBody, params, args } = this.resolveImports(libScript.content, pm, consoleMock, newVisited);
         
-        const libFn = new Function('pm', 'gmy', 'gimay', 'console', 'exports', 'module', 'CryptoJS', ...params, strippedBody);
+        // Auto-export all top-level declarations to make user libraries state-of-the-art and easy to use
+        const autoExports: string[] = [];
+        const topLevelRegex = /(?:^|[\s;{}])(?:export\s+)?(?:async\s+)?function\s*\*?\s+([a-zA-Z_$][a-zA-Z0-9_$]*)|(?:^|[\s;{}])(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g;
+        let match;
+        const seenNames = new Set<string>();
+        while ((match = topLevelRegex.exec(libScript.content)) !== null) {
+          const name = match[1] || match[2];
+          if (name && !seenNames.has(name) && name !== 'exports' && name !== 'module') {
+            seenNames.add(name);
+            autoExports.push(`
+              if (typeof ${name} !== 'undefined') {
+                if (!exports.${name}) exports.${name} = ${name};
+                if (module.exports && !module.exports.${name}) module.exports.${name} = ${name};
+              }
+            `);
+          }
+        }
+        const bodyWithAutoExports = strippedBody + '\n' + autoExports.join('\n');
+        
+        const libFn = new Function('pm', 'gmy', 'gimay', 'console', 'exports', 'module', 'CryptoJS', ...params, bodyWithAutoExports);
         const result = libFn(pm, pm, pm, consoleMock, exports, module, CryptoJS, ...args);
         
         const exportsResult = result !== undefined ? result : (module.exports !== exports ? module.exports : exports);
@@ -69,6 +88,7 @@ export class ScriptService {
 
   private static buildPmObject(request: any, context: any, response: ResponseData | null = null) {
     const pm: any = {
+      _asyncTasks: [] as Promise<any>[],
       request: {
         url: request.url,
         method: request.method,
@@ -189,7 +209,7 @@ export class ScriptService {
           }
         }
 
-        axios({
+        const requestPromise = axios({
           url: options.url,
           method: options.method || 'GET',
           headers,
@@ -205,7 +225,7 @@ export class ScriptService {
             json: () => response.data,
             toString: () => typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data)
           };
-          callback(null, resMock);
+          try { callback(null, resMock); } catch (e) { /* ignore */ }
         })
         .catch((error) => {
           if (error.response) {
@@ -218,11 +238,14 @@ export class ScriptService {
               json: () => error.response.data,
               toString: () => typeof error.response.data === 'object' ? JSON.stringify(error.response.data) : String(error.response.data)
             };
-            callback(null, resMock);
+            try { callback(null, resMock); } catch (e) { /* ignore */ }
           } else {
-            callback(error, null);
+            try { callback(error, null); } catch (e) { /* ignore */ }
           }
         });
+        if (pm._asyncTasks) {
+          pm._asyncTasks.push(requestPromise);
+        }
       }
     };
 
@@ -267,6 +290,14 @@ export class ScriptService {
         const { strippedBody, params, args } = this.resolveImports(script, pm, consoleMock);
         const fn = new Function('pm', 'gmy', 'gimay', 'console', 'CryptoJS', ...params, strippedBody);
         fn(pm, pm, pm, consoleMock, CryptoJS, ...args);
+        
+        if (pm._asyncTasks) {
+          let i = 0;
+          while (i < pm._asyncTasks.length) {
+            await pm._asyncTasks[i];
+            i++;
+          }
+        }
       } catch (error: any) {
         consoleMock.error('Pre-request Script Error:', error.message);
       }
@@ -377,6 +408,14 @@ export class ScriptService {
         const { strippedBody, params, args } = this.resolveImports(script, pm, consoleMock);
         const fn = new Function('pm', 'gmy', 'gimay', 'console', 'CryptoJS', ...params, strippedBody);
         fn(pm, pm, pm, consoleMock, CryptoJS, ...args);
+
+        if (pm._asyncTasks) {
+          let i = 0;
+          while (i < pm._asyncTasks.length) {
+            await pm._asyncTasks[i];
+            i++;
+          }
+        }
       } catch (error: any) {
         consoleMock.error('Test Script Error:', error.message);
       }

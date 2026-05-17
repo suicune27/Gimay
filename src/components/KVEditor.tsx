@@ -107,20 +107,20 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between border-b border-[#222222] pb-2 mb-2 px-1">
+      <div className="flex items-center justify-between border-b border-subtle pb-2 mb-2 px-1">
         <div className="flex flex-1">
           <div className="w-8" />
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Variable</div>
+          <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">Variable</div>
           {isVariableEditor && (
-             <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Initial Value</div>
+             <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">Initial Value</div>
           )}
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
+          <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
           <div className="w-8" />
         </div>
         
         <button 
           onClick={isBulkEdit ? saveBulkEdit : startBulkEdit}
-          className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-black text-[#666666] hover:text-[#3ECF8E] transition-all uppercase tracking-widest bg-[#1A1A1A] border border-[#222222] rounded"
+          className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-black text-muted hover:text-brand transition-all uppercase tracking-widest bg-elevated border border-subtle rounded"
         >
           {isBulkEdit ? (
             <><CheckCircle2 size={10} /> Save Rows</>
@@ -137,10 +137,10 @@ export const KVEditor: React.FC<KVEditorProps> = ({
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             placeholder="key: value&#10;key,default,initialValue,true,currentValue,"
-            className="w-full h-48 bg-[#0A0A0A] text-[11px] font-mono p-4 outline-none border border-[#222222] rounded-lg text-[#E0E0E0] placeholder:text-[#333333] resize-none"
+            className="w-full h-48 bg-deep text-[11px] font-mono p-4 outline-none border border-subtle rounded-lg text-main placeholder:text-[var(--border-strong)] resize-none"
           />
-          <p className="mt-2 text-[9px] text-[#444444] font-medium italic">
-            Enter key-value pairs (e.g. <code className="text-[#3ECF8E] font-mono">key: value</code>) or paste APIdog format (e.g. <code className="text-[#3ECF8E] font-mono">key,default,initial,true,current,</code>). Each pair on a new line.
+          <p className="mt-2 text-[9px] text-dim font-medium italic">
+            Enter key-value pairs (e.g. <code className="text-brand font-mono">key: value</code>) or paste APIdog format (e.g. <code className="text-brand font-mono">key,default,initial,true,current,</code>). Each pair on a new line.
           </p>
         </div>
       ) : (
@@ -151,7 +151,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
                 onClick={() => handleItemChange(item.id, { active: !item.active })}
                 className={cn(
                   "w-8 flex justify-center transition-colors",
-                  item.active ? "text-[#3ECF8E]" : "text-[#333333] hover:text-[#555555]"
+                  item.active ? "text-brand" : "text-[var(--border-strong)] hover:text-dim"
                 )}
               >
                 {item.active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
@@ -188,7 +188,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
               <button 
                 onClick={() => removeItem(item.id)}
-                className="w-8 flex justify-center text-[#333333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all px-2"
+                className="w-8 flex justify-center text-[var(--border-strong)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all px-2"
               >
                 <Trash2 size={12} />
               </button>
@@ -197,7 +197,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
           <button 
             onClick={addItem}
-            className="mt-2 flex items-center gap-2 px-2 py-1.5 text-[9px] font-black text-[#666666] hover:text-[#3ECF8E] transition-all uppercase tracking-widest"
+            className="mt-2 flex items-center gap-2 px-2 py-1.5 text-[9px] font-black text-muted hover:text-brand transition-all uppercase tracking-widest"
           >
             <Plus size={12} /> Add Pair
           </button>

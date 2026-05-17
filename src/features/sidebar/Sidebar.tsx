@@ -205,7 +205,7 @@ export const Sidebar: React.FC = () => {
     <div 
       ref={sidebarRef}
       className={cn(
-        "h-full bg-[#0F0F0F] border-r border-[#222222] flex flex-col transition-all duration-300 relative z-40 group/sidebar overflow-hidden",
+        "h-full bg-surface border-r border-subtle flex flex-col transition-all duration-300 relative z-40 group/sidebar overflow-hidden",
         sidebarMode === 'hidden' ? "w-0 border-none opacity-0 pointer-events-none" : ""
       )}
       style={{ 
@@ -219,12 +219,12 @@ export const Sidebar: React.FC = () => {
         <div 
           onMouseDown={startResizing}
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-50 transition-all hover:bg-[var(--brand)]/35 hover:w-2",
-            isResizing ? "bg-[var(--brand)] w-2" : "",
+            "absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-50 transition-all hover:bg-brand/35 hover:w-2",
+            isResizing ? "bg-brand w-2" : "",
             isLocked && "cursor-default pointer-events-none"
           )}
         >
-          {isResizing && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-8 bg-[var(--brand)] rounded-full shadow-[0_0_15px_var(--brand)]" />}
+          {isResizing && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-8 bg-brand rounded-full shadow-[0_0_15px_var(--brand)]" />}
         </div>
       )}
 
@@ -290,21 +290,21 @@ export const Sidebar: React.FC = () => {
       />
       <div 
         className={cn(
-          "h-14 border-b border-[var(--border-subtle)] flex items-center px-4 gap-3 bg-black/40 select-none overflow-hidden",
+          "h-14 border-b border-subtle flex items-center px-4 gap-3 bg-deep/40 select-none overflow-hidden",
           sidebarMode === 'compact' && "justify-center px-0"
         )}
       >
-        <div className="w-8 h-8 rounded-lg bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex items-center justify-center text-[#3ECF8E] font-black text-xs shadow-[0_0_15px_rgba(62,207,142,0.1)] shrink-0 font-mono animate-pulse">
+        <div className="w-8 h-8 rounded-lg bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-black text-xs shadow-[0_0_15px_rgba(62,207,142,0.1)] shrink-0 font-mono animate-pulse">
           {activeWorkspace?.name?.[0].toUpperCase() || 'G'}
         </div>
         {sidebarMode === 'expanded' && (
           <div className="flex-1 min-w-0 animate-in fade-in slide-in-from-left-2 duration-200">
-            <h2 className="text-[11px] font-black text-white uppercase tracking-widest truncate">
+            <h2 className="text-[11px] font-black text-main uppercase tracking-widest truncate">
               {activeWorkspace?.name || 'Gimay Workspace'}
             </h2>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-ping" />
-              <p className="text-[9px] text-[#3ECF8E] font-mono tracking-tighter uppercase font-bold">
+              <span className="w-1 h-1 rounded-full bg-brand animate-ping" />
+              <p className="text-[9px] text-brand font-mono tracking-tighter uppercase font-bold">
                 {activeWorkspace?.visibility || 'Active'} Node
               </p>
             </div>
@@ -316,37 +316,37 @@ export const Sidebar: React.FC = () => {
       {sidebarMode === 'expanded' && activeNav === 'collections' && (
         <div className="p-3 space-y-3">
           <div className="relative group">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] group-focus-within:text-[var(--brand)] transition-colors" />
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim group-focus-within:text-brand transition-colors" />
             <input 
               type="text" 
               placeholder="FILTER_COLLECTIONS..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-md py-1.5 pl-8 pr-3 text-[10px] font-mono text-[var(--text-muted)] focus:border-[var(--brand)]/50 outline-none transition-all"
+              className="w-full bg-deep border border-subtle rounded-md py-1.5 pl-8 pr-3 text-[10px] font-mono text-muted focus:border-brand/50 outline-none transition-all"
             />
           </div>
           
           <div className="flex gap-1">
             <button 
               onClick={() => setIsCollectionModalOpen(true)}
-              className="flex-1 py-1.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-deep)] transition-all flex items-center justify-center gap-1.5 uppercase"
+              className="flex-1 py-1.5 bg-elevated border border-subtle rounded text-[9px] font-bold text-muted hover:text-main hover:bg-deep transition-all flex items-center justify-center gap-1.5 uppercase"
             >
-              <Plus size={12} className="text-[var(--brand)]" /> Collection
+              <Plus size={12} className="text-brand" /> Collection
             </button>
             <button 
               onClick={() => setIsImportModalOpen(true)}
-              className="px-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--brand)] transition-all flex items-center justify-center gap-1.5 uppercase disabled:opacity-50"
+              className="px-3 bg-elevated border border-subtle rounded text-[9px] font-bold text-muted hover:text-brand transition-all flex items-center justify-center gap-1.5 uppercase disabled:opacity-50"
             >
-              <Upload size={12} className="text-[var(--brand)]/80" /> Import
+              <Upload size={12} className="text-brand/80" /> Import
             </button>
           </div>
         </div>
       )}
 
       {/* Navigation Icons */}
-      <div className="flex flex-col flex-1 min-h-0 bg-[#0F0F0F]">
+      <div className="flex flex-col flex-1 min-h-0 bg-surface">
         <div className={cn(
-          "flex border-b border-[var(--border-subtle)]",
+          "flex border-b border-subtle",
           sidebarMode === 'compact' ? "flex-col" : ""
         )}>
           {[
@@ -369,10 +369,10 @@ export const Sidebar: React.FC = () => {
               className={cn(
                 "flex-1 flex items-center justify-center transition-all",
                 sidebarMode === 'compact' ? "py-4 border-r-0 border-l-2" : "py-2 border-b-2",
-                "hover:text-[var(--text-main)]",
+                "hover:text-main",
                 (item.id === 'scriptlab' ? isScriptLabOpen : activeNav === item.id)
-                  ? "text-[var(--brand)] border-[var(--brand)] bg-[var(--brand)]/5" 
-                  : "text-[var(--text-dim)] border-transparent"
+                  ? "text-brand border-brand bg-brand/5" 
+                  : "text-dim border-transparent"
               )}
             >
               <item.icon size={16} />
@@ -409,7 +409,7 @@ export const Sidebar: React.FC = () => {
           {activeNav === 'environments' && (
             <div className="p-4 space-y-2">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-widest">Active Env</span>
+                <span className="text-[10px] font-black text-dim uppercase tracking-widest">Active Env</span>
                 <div className="flex gap-2">
                   <button 
                     onClick={() => setIsGlobalModalOpen(true)}
@@ -419,7 +419,7 @@ export const Sidebar: React.FC = () => {
                   </button>
                   <button 
                     onClick={() => setIsEnvModalOpen(true)}
-                    className="text-[var(--brand)] text-[10px] font-black uppercase hover:text-[var(--brand)]/80 transition-all"
+                    className="text-brand text-[10px] font-black uppercase hover:text-brand/80 transition-all"
                   >
                     + New
                   </button>
@@ -430,12 +430,12 @@ export const Sidebar: React.FC = () => {
                   key={env.id} 
                   onClick={() => setActiveEnvId(activeEnvId === env.id ? null : env.id)}
                   className={cn(
-                    "p-3 bg-[var(--bg-elevated)] border rounded-xl hover:bg-[var(--bg-deep)] transition-all cursor-pointer group/env relative",
-                    activeEnvId === env.id ? "border-[var(--brand)] shadow-[0_0_15px_var(--brand-muted)]" : "border-[var(--border-subtle)]"
+                    "p-3 bg-elevated border rounded-xl hover:bg-deep transition-all cursor-pointer group/env relative",
+                    activeEnvId === env.id ? "border-brand shadow-[0_0_15px_var(--brand-muted)]" : "border-subtle"
                   )}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-bold text-[var(--text-main)] mb-1">{env.name}</div>
+                    <div className="text-[11px] font-bold text-main mb-1">{env.name}</div>
                     <div className="flex items-center gap-2 opacity-0 group-hover/env:opacity-100 transition-all">
                        <button 
                         onClick={(e) => {
@@ -443,7 +443,7 @@ export const Sidebar: React.FC = () => {
                           setSelectedEnv(env);
                           setIsEnvModalOpen(true);
                         }}
-                        className="p-1 hover:text-[var(--brand)] text-[var(--text-dim)]"
+                        className="p-1 hover:text-brand text-dim"
                        >
                          <Settings size={12} />
                        </button>
@@ -452,13 +452,13 @@ export const Sidebar: React.FC = () => {
                           e.stopPropagation();
                           setConfirmEnvDelete({ id: env.id, name: env.name });
                         }}
-                        className="p-1 hover:text-red-500 text-[var(--text-dim)]"
+                        className="p-1 hover:text-red-500 text-dim"
                        >
                          <Trash2 size={12} />
                        </button>
                     </div>
                   </div>
-                  <div className="text-[9px] text-[var(--text-dim)] uppercase tracking-tighter">
+                  <div className="text-[9px] text-dim uppercase tracking-tighter">
                     {env.variables?.length || 0} Variables
                   </div>
                 </div>
@@ -503,33 +503,33 @@ export const Sidebar: React.FC = () => {
                       } as any);
                     }
                   }}
-                  className="px-4 py-2 hover:bg-[var(--bg-elevated)] cursor-pointer group border-r-2 border-transparent hover:border-[var(--brand)] transition-all"
+                  className="px-4 py-2 hover:bg-elevated cursor-pointer group border-r-2 border-transparent hover:border-brand transition-all"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className={cn(
-                      "text-[8px] font-black font-mono px-1.5 py-0.5 rounded bg-black/20",
-                      item.method === 'GET' ? 'text-[var(--brand)]' : 
+                      "text-[8px] font-black font-mono px-1.5 py-0.5 rounded bg-deep/20",
+                      item.method === 'GET' ? 'text-brand' : 
                       item.method === 'POST' ? 'text-yellow-500' :
                       item.method === 'PUT' ? 'text-blue-500' :
-                      item.method === 'DELETE' ? 'text-red-500' : 'text-[var(--text-muted)]'
+                      item.method === 'DELETE' ? 'text-red-500' : 'text-muted'
                     )}>{item.method}</span>
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] truncate flex-1">{item.url}</span>
+                    <span className="text-[10px] font-bold text-muted truncate flex-1">{item.url}</span>
                   </div>
                   <div className="flex items-center justify-between">
                      <div className="flex items-center gap-2">
-                        <span className="text-[8px] text-[var(--text-dim)] font-mono">{new Date(item.created_at).toLocaleTimeString()}</span>
+                        <span className="text-[8px] text-dim font-mono">{new Date(item.created_at).toLocaleTimeString()}</span>
                         <div className="w-1 h-1 rounded-full bg-[var(--border-subtle)]" />
-                        <span className="text-[8px] text-[var(--text-dim)] font-mono">{item.time}ms</span>
+                        <span className="text-[8px] text-dim font-mono">{item.time}ms</span>
                         {item.size && (
                            <>
                              <div className="w-1 h-1 rounded-full bg-[var(--border-subtle)]" />
-                             <span className="text-[8px] text-[var(--text-dim)] font-mono">{Math.round(item.size / 1024 * 100) / 100}KB</span>
+                             <span className="text-[8px] text-dim font-mono">{Math.round(item.size / 1024 * 100) / 100}KB</span>
                            </>
                         )}
                      </div>
                      <span className={cn(
                        "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                       item.status < 400 ? "bg-[var(--brand)]/5 text-[var(--brand)]" : "bg-red-500/5 text-red-500"
+                       item.status < 400 ? "bg-brand/5 text-brand" : "bg-red-500/5 text-red-500"
                      )}>{item.status}</span>
                   </div>
                 </div>
@@ -546,10 +546,10 @@ export const Sidebar: React.FC = () => {
           {activeNav === 'teams' && (
             <div className="p-4 space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Deployment Units</span>
+                <span className="text-[10px] font-black text-dim uppercase tracking-widest">Deployment Units</span>
                 <button 
                   onClick={() => setIsTeamModalOpen(true)}
-                  className="text-[#3ECF8E] text-[10px] font-black uppercase shadow-[0_0_10px_rgba(62,207,142,0.2)]"
+                  className="text-brand text-[10px] font-black uppercase shadow-[0_0_10px_rgba(62,207,142,0.2)]"
                 >
                   + Unit
                 </button>
@@ -561,27 +561,27 @@ export const Sidebar: React.FC = () => {
                     setSelectedTeam(team);
                     setIsTeamModalOpen(true);
                   }}
-                  className="p-3 bg-[#111111] border border-[#222222] rounded-xl hover:bg-[#151515] hover:border-[#3ECF8E]/30 transition-all cursor-pointer group/team"
+                  className="p-3 bg-elevated border border-subtle rounded-xl hover:bg-[#151515] hover:border-brand/30 transition-all cursor-pointer group/team"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[#AAAAAA] group-hover/team:text-[#3ECF8E] group-hover/team:border-[#3ECF8E]/30 font-black text-xs uppercase transition-all">
+                    <div className="w-8 h-8 rounded bg-elevated border border-subtle flex items-center justify-center text-main group-hover/team:text-brand group-hover/team:border-brand/30 font-black text-xs uppercase transition-all">
                       {team.name?.[0] || 'T'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] font-bold text-white truncate">{team.name || 'Unnamed Unit'}</div>
-                      <div className="text-[9px] text-[#555555] uppercase tracking-tighter">
+                      <div className="text-[11px] font-bold text-main truncate">{team.name || 'Unnamed Unit'}</div>
+                      <div className="text-[9px] text-dim uppercase tracking-tighter">
                         {team.team_members?.length || 1} Operators
                       </div>
                     </div>
-                    <Settings size={12} className="text-[#333333] group-hover/team:text-[#AAAAAA] transition-colors" />
+                    <Settings size={12} className="text-[var(--border-strong)] group-hover/team:text-main transition-colors" />
                   </div>
                 </div>
               ))}
               {teams.length === 0 && (
-                <div className="py-8 text-center border border-dashed border-[#222222] rounded-xl bg-[#0A0A0A]/50">
-                  <Users size={32} className="mx-auto mb-2 text-[#222222]" />
-                  <p className="text-[9px] font-black text-[#333333] uppercase tracking-widest">No Sector Presence</p>
-                  <p className="text-[8px] text-[#222222] uppercase tracking-tighter mt-2">Initialize a unit to begin collaborative ops.</p>
+                <div className="py-8 text-center border border-dashed border-subtle rounded-xl bg-deep/50">
+                  <Users size={32} className="mx-auto mb-2 text-[var(--border-subtle)]" />
+                  <p className="text-[9px] font-black text-[var(--border-strong)] uppercase tracking-widest">No Sector Presence</p>
+                  <p className="text-[8px] text-[var(--border-subtle)] uppercase tracking-tighter mt-2">Initialize a unit to begin collaborative ops.</p>
                 </div>
               )}
             </div>
@@ -590,7 +590,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="p-2 border-t border-[#222222] bg-[#0A0A0A]">
+      <div className="p-2 border-t border-subtle bg-deep">
         <div className="flex flex-col gap-2">
           
           <div className={cn(
@@ -600,7 +600,7 @@ export const Sidebar: React.FC = () => {
             <button
               onClick={toggleSidebar}
               title={sidebarMode === 'expanded' ? 'Collapse Sidebar' : 'Expand Sidebar'}
-              className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded hover:bg-white/5"
+              className="p-1.5 text-dim hover:text-brand transition-all rounded hover:bg-white/5"
             >
               {sidebarMode === 'expanded' ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
             </button>
@@ -610,14 +610,14 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={() => setIsLocked(!isLocked)}
                   title={isLocked ? 'Unlock Width' : 'Lock Width'}
-                  className={cn("p-1.5 transition-all rounded hover:bg-white/5", isLocked ? "text-[var(--brand)]" : "text-[var(--text-dim)] hover:text-[#AAAAAA]")}
+                  className={cn("p-1.5 transition-all rounded hover:bg-white/5", isLocked ? "text-brand" : "text-dim hover:text-main")}
                 >
                   {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
                 </button>
                 <button
                   onClick={() => setSidebarMode(sidebarMode === 'expanded' ? 'compact' : 'expanded')}
                   title={sidebarMode === 'expanded' ? 'Compact Mode' : 'Expanded Mode'}
-                  className="p-1.5 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded hover:bg-white/5"
+                  className="p-1.5 text-dim hover:text-brand transition-all rounded hover:bg-white/5"
                 >
                   {sidebarMode === 'expanded' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
@@ -626,24 +626,24 @@ export const Sidebar: React.FC = () => {
           </div>
           
           {sidebarMode === 'expanded' ? (
-            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-[#111112]/40 border border-[#222224]/30 rounded-xl animate-in fade-in slide-in-from-bottom-1 duration-300 group/profile mt-1">
+            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-elevated/40 border border-subtle/30 rounded-xl animate-in fade-in slide-in-from-bottom-1 duration-300 group/profile mt-1">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-black border border-[#3ECF8E]/30 flex items-center justify-center text-[11px] font-black text-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.15)] select-none">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-[var(--bg-deep)] border border-brand/30 flex items-center justify-center text-[11px] font-black text-brand shadow-[0_0_10px_rgba(62,207,142,0.15)] select-none">
                   {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A]" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-brand border-2 border-[var(--bg-deep)]" />
               </div>
               
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-white/90 truncate leading-tight uppercase tracking-wider">{profile?.full_name || 'Operator'}</p>
-                <p className="text-[8px] text-[#555555] font-mono truncate leading-none mt-1">{profile?.email}</p>
+                <p className="text-[10px] font-black text-main/90 truncate leading-tight uppercase tracking-wider">{profile?.full_name || 'Operator'}</p>
+                <p className="text-[8px] text-dim font-mono truncate leading-none mt-1">{profile?.email}</p>
               </div>
 
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setIsSettingsModalOpen(true)}
                   title="System Settings"
-                  className="p-1.5 text-[#555555] hover:text-white hover:bg-white/5 rounded-md transition-all active:scale-95 shrink-0"
+                  className="p-1.5 text-dim hover:text-main hover:bg-white/5 rounded-md transition-all active:scale-95 shrink-0"
                 >
                   <Settings size={13} />
                 </button>
@@ -657,7 +657,7 @@ export const Sidebar: React.FC = () => {
                     }
                   }}
                   title="Logout Session"
-                  className="p-1.5 text-[#555555] hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all active:scale-95 shrink-0"
+                  className="p-1.5 text-dim hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all active:scale-95 shrink-0"
                 >
                   <LogOut size={13} />
                 </button>
@@ -668,10 +668,10 @@ export const Sidebar: React.FC = () => {
               <button 
                 onClick={() => setIsSettingsModalOpen(true)}
                 title="System Settings"
-                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-black border border-[#3ECF8E]/30 flex items-center justify-center text-[11px] font-black text-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.15)] hover:border-[#3ECF8E] transition-all relative"
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3ECF8E]/20 to-black border border-brand/30 flex items-center justify-center text-[11px] font-black text-brand shadow-[0_0_10px_rgba(62,207,142,0.15)] hover:border-brand transition-all relative"
               >
                 {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A]" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-brand border-2 border-[var(--bg-deep)]" />
               </button>
             </div>
           )}
@@ -828,12 +828,12 @@ const CollectionNode: React.FC<{
               setIsOpen(!isOpen);
             }}
             className={cn(
-              "group flex items-center px-4 py-2 hover:bg-[#1A1A1A] cursor-pointer transition-colors border-l-2",
-              activeTabId === collection.id ? "bg-[#3ECF8E]/5 border-[#3ECF8E]" : "border-transparent"
+              "group flex items-center px-4 py-2 hover:bg-elevated cursor-pointer transition-colors border-l-2",
+              activeTabId === collection.id ? "bg-brand/5 border-brand" : "border-transparent"
             )}
           >
             <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical size={10} className="text-[#333333]" />
+              <GripVertical size={10} className="text-[var(--border-strong)]" />
             </div>
             <div 
               onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
@@ -841,15 +841,15 @@ const CollectionNode: React.FC<{
             >
               <ChevronRight 
                 size={12} 
-                className={cn("text-[#444444] transition-transform", isOpen && "rotate-90 text-[#3ECF8E]")} 
+                className={cn("text-[var(--border-strong)] transition-transform", isOpen && "rotate-90 text-brand")} 
               />
             </div>
-            <Folder size={14} className={cn("ml-2 mr-2", isOpen ? "text-[#3ECF8E]" : "text-[#555555]")} />
+            <Folder size={14} className={cn("ml-2 mr-2", isOpen ? "text-brand" : "text-dim")} />
             <div className="flex flex-col flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className={cn(
                   "text-[11px] font-bold uppercase tracking-wider truncate",
-                  isOpen ? "text-white" : "text-[#888888]"
+                  isOpen ? "text-main" : "text-muted"
                 )}>
                   {collection.name}
                 </span>
@@ -857,7 +857,7 @@ const CollectionNode: React.FC<{
               </div>
               {collection.visibility === 'team' && (
                 <div className="flex items-center gap-1">
-                  <span className="text-[7px] font-black text-[#3ECF8E] uppercase tracking-tighter">Shared: {collection.permission}</span>
+                  <span className="text-[7px] font-black text-brand uppercase tracking-tighter">Shared: {collection.permission}</span>
                 </div>
               )}
             </div>
@@ -866,14 +866,14 @@ const CollectionNode: React.FC<{
             <>
               <button 
                 onClick={(e) => { e.stopPropagation(); setIsFolderModalOpen(true); }}
-                className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
+                className="p-1 hover:text-brand text-dim transition-all"
                 title="Add Folder"
               >
-                <Plus size={10} strokeWidth={3} className="text-[#3ECF8E]/50" />
+                <Plus size={10} strokeWidth={3} className="text-brand/50" />
               </button>
               <button 
                 onClick={(e) => { e.stopPropagation(); setIsRequestModalOpen(true); }}
-                className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
+                className="p-1 hover:text-brand text-dim transition-all"
                 title="Add Request"
               >
                 <Plus size={12} />
@@ -883,16 +883,16 @@ const CollectionNode: React.FC<{
           <div ref={menuRef} className="relative">
             <button
               onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
-              className="p-1 hover:text-white text-[#555555] transition-all"
+              className="p-1 hover:text-main text-dim transition-all"
             >
               <MoreVertical size={12} />
             </button>
             {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
+              <div className="absolute right-0 top-full mt-1 w-36 bg-elevated border border-subtle rounded-lg shadow-2xl py-1 z-[100]">
                 {canEdit && (
                   <button
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
-                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-main hover:bg-elevated hover:text-main"
                   >
                     Rename
                   </button>
@@ -900,20 +900,20 @@ const CollectionNode: React.FC<{
                 {collection.user_id === profile?.id && (
                   <button
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsShareModalOpen(true); }}
-                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
+                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-brand hover:bg-brand/10"
                   >
                     Share
                   </button>
                 )}
                 <button
                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); onOpenImport(); }}
-                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-main hover:bg-elevated hover:text-main"
                 >
                   Import Collection
                 </button>
                 <button
                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); CollectionExportService.exportCollection(collection); addToast({ type: 'success', message: 'Exporting collection...' }); }}
-                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
+                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-brand hover:bg-brand/10"
                 >
                   Export
                 </button>
@@ -937,7 +937,7 @@ const CollectionNode: React.FC<{
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-l border-[#222222] ml-5"
+            className="overflow-hidden border-l border-subtle ml-5"
           >
             <Droppable droppableId={`${collection.id}:folders`} type="folder">
               {(provided) => (
@@ -973,7 +973,7 @@ const CollectionNode: React.FC<{
             </Droppable>
 
             {(!collection.requests?.length && !collection.folders?.length) && (
-              <div className="px-4 py-2 text-[8px] font-black text-[#333333] uppercase tracking-widest italic">
+              <div className="px-4 py-2 text-[8px] font-black text-[var(--border-strong)] uppercase tracking-widest italic">
                 Void Node
               </div>
             )}
@@ -1096,21 +1096,21 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
           />
           <div 
             onClick={() => setIsOpen(!isOpen)}
-            className="group flex items-center px-4 py-1.5 hover:bg-[#1A1A1A] cursor-pointer transition-colors"
+            className="group flex items-center px-4 py-1.5 hover:bg-elevated cursor-pointer transition-colors"
           >
             <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical size={10} className="text-[#333333]" />
+              <GripVertical size={10} className="text-[var(--border-strong)]" />
             </div>
             <ChevronRight 
               size={10} 
-              className={cn("text-[#444444] transition-transform", isOpen && "rotate-90 text-[#3ECF8E]")} 
+              className={cn("text-[var(--border-strong)] transition-transform", isOpen && "rotate-90 text-brand")} 
             />
-            <Folder size={12} className={cn("ml-2 mr-2", isOpen ? "text-[#3ECF8E]" : "text-[#555555]")} />
+            <Folder size={12} className={cn("ml-2 mr-2", isOpen ? "text-brand" : "text-dim")} />
             <div className="flex flex-col flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className={cn(
                   "text-[10px] font-bold truncate",
-                  isOpen ? "text-white" : "text-[#777777]"
+                  isOpen ? "text-main" : "text-[#777777]"
                 )}>
                   {folder.name}
                 </span>
@@ -1121,7 +1121,7 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
               {canEdit && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsRequestModalOpen(true); }}
-                  className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
+                  className="p-1 hover:text-brand text-dim transition-all"
                   title="Add Request"
                 >
                   <Plus size={10} strokeWidth={3} />
@@ -1130,17 +1130,17 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
               <div ref={menuRef} className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
-                  className="p-1 hover:text-white text-[#555555] transition-all"
+                  className="p-1 hover:text-main text-dim transition-all"
                 >
                   <MoreVertical size={12} />
                 </button>
                 {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-elevated border border-subtle rounded-lg shadow-2xl py-1 z-[100]">
                     {canEdit && (
                       <>
                         <button
                           onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
-                          className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                          className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-main hover:bg-elevated hover:text-main"
                         >
                           Rename
                         </button>
@@ -1163,7 +1163,7 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden border-l border-[#222222] ml-4"
+                className="overflow-hidden border-l border-subtle ml-4"
               >
                 {/* Recursively render child folders */}
                 {folder.folders && folder.folders.length > 0 && (
@@ -1285,17 +1285,17 @@ const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollecti
           <div 
             onClick={() => !isEditing && addTab(request)}
             className={cn(
-              "group flex items-center px-4 py-1.5 hover:bg-[#1A1A1A] cursor-pointer transition-all border-r-2",
-              isActive ? "bg-[#3ECF8E]/5 border-[#3ECF8E] text-white" : "border-transparent text-[#666666]"
+              "group flex items-center px-4 py-1.5 hover:bg-elevated cursor-pointer transition-all border-r-2",
+              isActive ? "bg-brand/5 border-brand text-main" : "border-transparent text-muted"
             )}
           >
             <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripVertical size={10} className="text-[#333333]" />
+              <GripVertical size={10} className="text-[var(--border-strong)]" />
             </div>
             
             <div className={cn(
               "text-[8px] font-black w-8 tracking-tighter shrink-0",
-              request.method === 'GET' ? 'text-[#3ECF8E]' : 
+              request.method === 'GET' ? 'text-brand' : 
               request.method === 'POST' ? 'text-yellow-500' :
               request.method === 'PUT' ? 'text-blue-500' :
               request.method === 'DELETE' ? 'text-red-500' : 'text-[#777777]'
@@ -1317,7 +1317,7 @@ const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollecti
                       setIsEditing(false);
                     }
                   }}
-                  className="text-[10px] font-bold bg-[#0A0A0A] border border-[#3ECF8E]/50 rounded px-1 flex-1 min-w-0 outline-none text-white focus:ring-1 ring-[#3ECF8E]/20"
+                  className="text-[10px] font-bold bg-deep border border-brand/50 rounded px-1 flex-1 min-w-0 outline-none text-main focus:ring-1 ring-[#3ECF8E]/20"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
@@ -1333,24 +1333,24 @@ const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollecti
             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
               <div ref={menuRef} className="relative">
                 <button
-                  className="p-1 hover:text-white text-[#555555] transition-all"
+                  className="p-1 hover:text-main text-dim transition-all"
                   onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
                 >
                   <MoreVertical size={12} />
                 </button>
                 {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
+                  <div className="absolute right-0 top-full mt-1 w-32 bg-elevated border border-subtle rounded-lg shadow-2xl py-1 z-[100]">
                     {canEdit && (
                       <button
                         onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsEditing(true); }}
-                        className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                        className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-main hover:bg-elevated hover:text-main"
                       >
                         Rename
                       </button>
                     )}
                     <button
                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); useStore.getState().duplicateRequest(request.id); }}
-                      className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
+                      className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-brand hover:bg-brand/10"
                     >
                       Duplicate
                     </button>

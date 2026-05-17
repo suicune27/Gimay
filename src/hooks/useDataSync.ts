@@ -300,7 +300,26 @@ export const useDataSync = () => {
         schema: 'public', 
         table: 'environments',
         filter: `workspace_id=eq.${store.activeWorkspaceId}` 
-      }, () => fetchEnvironments(store.activeWorkspaceId!))
+      }, (payload) => {
+        const { eventType, new: newRecord, old: oldRecord } = payload;
+        const currentEnvs = store.environments || [];
+        
+        if (eventType === 'INSERT') {
+          if (newRecord && !currentEnvs.some(e => e.id === newRecord.id)) {
+            store.setEnvironments([newRecord as any, ...currentEnvs]);
+          }
+        } else if (eventType === 'UPDATE') {
+          if (newRecord) {
+            const updated = currentEnvs.map(e => e.id === newRecord.id ? { ...e, ...newRecord } as any : e);
+            store.setEnvironments(updated);
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRecord) {
+            const remaining = currentEnvs.filter(e => e.id !== oldRecord.id);
+            store.setEnvironments(remaining);
+          }
+        }
+      })
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 

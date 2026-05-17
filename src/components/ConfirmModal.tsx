@@ -39,15 +39,15 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   const iconColor =
-    variant === 'danger' ? 'text-red-500' : variant === 'warning' ? 'text-yellow-500' : 'text-[#3ECF8E]';
+    variant === 'danger' ? 'text-red-500' : variant === 'warning' ? 'text-yellow-500' : 'text-brand';
   const bgColor =
-    variant === 'danger' ? 'bg-red-500/10' : variant === 'warning' ? 'bg-yellow-500/10' : 'bg-[#3ECF8E]/10';
+    variant === 'danger' ? 'bg-red-500/10' : variant === 'warning' ? 'bg-yellow-500/10' : 'bg-brand/10';
   const confirmBtnClass =
     variant === 'danger'
-      ? 'bg-red-500 hover:bg-red-600 text-white shadow-[0_0_20px_rgba(239,68,68,0.15)]'
+      ? 'bg-red-500 hover:bg-red-600 text-main shadow-[0_0_20px_rgba(239,68,68,0.15)]'
       : variant === 'warning'
-        ? 'bg-yellow-500 hover:bg-yellow-600 text-[#0A0A0A] shadow-[0_0_20px_rgba(234,179,8,0.15)]'
-        : 'bg-[#3ECF8E] hover:bg-[#34B37A] text-[#0A0A0A] shadow-[0_0_20px_rgba(62,207,142,0.15)]';
+        ? 'bg-yellow-500 hover:bg-yellow-600 text-[var(--bg-deep)] shadow-[0_0_20px_rgba(234,179,8,0.15)]'
+        : 'bg-brand hover:bg-[#34B37A] text-[var(--bg-deep)] shadow-[0_0_20px_rgba(62,207,142,0.15)]';
 
   return (
     <div
@@ -68,7 +68,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 8 }}
         transition={{ duration: 0.15, ease: 'easeOut' }}
-        className="relative w-full max-w-md bg-[#111111] border border-[#222222] rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md bg-surface border border-subtle rounded-2xl shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="p-5 flex items-start gap-4">
@@ -80,14 +80,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             )}
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
-            <h3 className="text-[13px] font-black text-white uppercase tracking-widest leading-tight">{title}</h3>
+            <h3 className="text-[13px] font-black text-main uppercase tracking-widest leading-tight">{title}</h3>
             {description && (
-              <p className="mt-1.5 text-[11px] text-[#888888] leading-relaxed">{description}</p>
+              <p className="mt-1.5 text-[11px] text-muted leading-relaxed">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 p-1 text-[#444444] hover:text-white transition-colors"
+            className="shrink-0 p-1 text-dim hover:text-main transition-colors"
           >
             <X size={16} />
           </button>
@@ -95,7 +95,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
         {/* Optional preview */}
         {preview && (
-          <div className="mx-5 mb-4 p-3 bg-[#0A0A0A] border border-[#222222] rounded-xl text-[10px] font-mono text-[#AAAAAA]">
+          <div className="mx-5 mb-4 p-3 bg-deep border border-subtle rounded-xl text-[10px] font-mono text-muted">
             {preview}
           </div>
         )}
@@ -104,7 +104,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="px-5 pb-5 flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-[#222222] bg-[#0A0A0A] hover:bg-[#1A1A1A] text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest transition-all"
+            className="px-4 py-2 rounded-lg border border-subtle bg-deep hover:bg-elevated text-[10px] font-black text-muted uppercase tracking-widest transition-all"
           >
             {cancelText}
           </button>

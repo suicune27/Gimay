@@ -37,6 +37,8 @@
   "dependencies": {
     "@google/genai": "^1.29.0",
     "@hello-pangea/dnd": "^18.0.1",
+    "@heroui/react": "^3.0.5",
+    "@heroui/styles": "^3.0.5",
     "@monaco-editor/react": "^4.7.0",
     "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/vite": "^4.1.14",
@@ -55,6 +57,7 @@
     "electron": "^42.0.1",
     "electron-is-dev": "^3.0.1",
     "express": "^4.21.2",
+    "framer-motion": "^12.38.0",
     "js-yaml": "^4.1.1",
     "lodash": "^4.18.1",
     "lucide-react": "^0.546.0",

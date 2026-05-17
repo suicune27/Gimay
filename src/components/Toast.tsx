@@ -28,14 +28,14 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
   }, [onRemove, isHovered]);
 
   const icons = {
-    success: <CheckCircle2 size={16} className="text-[#3ECF8E]" />,
+    success: <CheckCircle2 size={16} className="text-brand" />,
     error: <AlertCircle size={16} className="text-red-500" />,
     info: <Info size={16} className="text-blue-400" />,
     warning: <AlertTriangle size={16} className="text-yellow-500" />,
   };
 
   const borders = {
-    success: 'border-[#3ECF8E]/20 hover:border-[#3ECF8E]/30',
+    success: 'border-brand/20 hover:border-brand/30',
     error: 'border-red-500/20 hover:border-red-500/30',
     info: 'border-blue-400/20 hover:border-blue-400/30',
     warning: 'border-yellow-500/20 hover:border-yellow-500/30',
@@ -51,14 +51,14 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
       onMouseLeave={() => setIsHovered(false)}
       onClick={onRemove}
       className={cn(
-        "pointer-events-auto cursor-pointer flex items-center gap-4 px-4 py-3 bg-[#0F0F0F] border rounded-xl shadow-2xl min-w-[300px] max-w-sm hover:bg-[#121212] active:scale-[0.98] transition-all select-none group",
+        "pointer-events-auto cursor-pointer flex items-center gap-4 px-4 py-3 bg-surface border rounded-xl shadow-2xl min-w-[300px] max-w-sm hover:bg-[#121212] active:scale-[0.98] transition-all select-none group",
         borders[toast.type as keyof typeof borders]
       )}
     >
       <div className="flex-shrink-0">
         {icons[toast.type as keyof typeof icons]}
       </div>
-      <div className="flex-1 text-[11px] font-medium text-white/90 leading-normal">
+      <div className="flex-1 text-[11px] font-medium text-main/90 leading-normal">
         {toast.message}
       </div>
       <button 
@@ -66,7 +66,7 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
           e.stopPropagation();
           onRemove();
         }}
-        className="text-[#444444] group-hover:text-white hover:text-white transition-colors p-1 rounded-md hover:bg-white/5"
+        className="text-dim group-hover:text-main hover:text-main transition-colors p-1 rounded-md hover:bg-white/5"
       >
         <X size={14} />
       </button>
