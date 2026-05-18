@@ -34,6 +34,21 @@ export class ScriptService {
           }
         }
         
+        // Sync request modifications back
+        if (result.changedRequest) {
+          if (result.changedRequest.url) request.url = result.changedRequest.url;
+          if (result.changedRequest.method) request.method = result.changedRequest.method;
+          if (result.changedRequest.headers) request.headers = result.changedRequest.headers;
+          if (result.changedRequest.body !== undefined) {
+             if (typeof request.body === 'object' && request.body !== null) {
+                 if ('content' in request.body) request.body.content = result.changedRequest.body;
+                 else request.body = result.changedRequest.body;
+             } else {
+                 request.body = result.changedRequest.body;
+             }
+          }
+        }
+        
         // Collect sandbox logs
         result.logs.forEach(log => {
           logs.push({

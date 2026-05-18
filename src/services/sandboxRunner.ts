@@ -23,6 +23,12 @@ export interface SandboxResult {
   logs: Array<{ level: 'log' | 'info' | 'warn' | 'error' | 'success'; message: string; timestamp?: string }>;
   testResults: Array<{ name: string; status: 'pass' | 'fail'; message?: string }>;
   changedVariables: Record<string, any>;
+  changedRequest?: {
+    method?: string;
+    url?: string;
+    headers?: Array<{ key: string; value: string; active?: boolean }>;
+    body?: any;
+  };
   error?: string;
 }
 
@@ -125,7 +131,22 @@ const WORKER_SOURCE = `
       raw: typeof context.request?.body === 'object' ? JSON.stringify(context.request?.body) : String(context.request?.body || '')
     };
     requestFunc.headers = {
-      get: (key) => headersMap.get(String(key || '').toLowerCase()) || ''
+      get: (key) => headersMap.get(String(key || '').toLowerCase()) || '',
+      add: (headerObj) => {
+        if (headerObj && headerObj.key) {
+           headersMap.set(String(headerObj.key).toLowerCase(), String(headerObj.value || ''));
+        }
+      },
+      remove: (key) => {
+        if (key) {
+           headersMap.delete(String(key).toLowerCase());
+        }
+      },
+      upsert: (headerObj) => {
+        if (headerObj && headerObj.key) {
+           headersMap.set(String(headerObj.key).toLowerCase(), String(headerObj.value || ''));
+        }
+      }
     };
 
     const gmy = {
@@ -307,7 +328,13 @@ const WORKER_SOURCE = `
         type: 'result',
         logs,
         testResults: resolvedTests,
-        changedVariables
+        changedVariables,
+        changedRequest: {
+          method: requestFunc.method,
+          url: requestFunc.url,
+          body: requestFunc.body.raw,
+          headers: Array.from(headersMap.entries()).map(([k, v]) => ({ key: k, value: v, active: true }))
+        }
       });
     } catch (e) {
       logs.push({ level: 'error', message: e.message });
@@ -316,6 +343,12 @@ const WORKER_SOURCE = `
         logs,
         testResults: [],
         changedVariables,
+        changedRequest: {
+          method: requestFunc.method,
+          url: requestFunc.url,
+          body: requestFunc.body.raw,
+          headers: Array.from(headersMap.entries()).map(([k, v]) => ({ key: k, value: v, active: true }))
+        },
         error: e.message
       });
     }
@@ -351,7 +384,7 @@ export class SandboxRunner {
 
       // 3. Set up communication channel
       worker.onmessage = async (e) => {
-        const { type, action, id, data, logs, testResults, changedVariables, error } = e.data;
+        const { type, action, id, data, logs, testResults, changedVariables, changedRequest, error } = e.data;
         
         if (type === 'coordination') {
           if (action === 'request') {
@@ -418,6 +451,7 @@ export class SandboxRunner {
             logs: logs || [],
             testResults: testResults || [],
             changedVariables: changedVariables || {},
+            changedRequest,
             error
           });
         }

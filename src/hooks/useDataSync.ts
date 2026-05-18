@@ -46,10 +46,19 @@ export const useDataSync = () => {
            store.setWorkspaces([newWs]);
            store.setActiveWorkspaceId(newWs.id);
         }
-      } else if (!store.activeWorkspaceId || !isValidActiveWorkspace) {
+      } else if (!store.activeWorkspaceId) {
+        // Only set default if NO workspace is currently active
         const lastId = store.profile?.preferences?.last_workspace_id;
         const workspaceToSelect = data.find(w => w.id === lastId) || data[0];
         store.setActiveWorkspaceId(workspaceToSelect.id);
+      } else if (!isValidActiveWorkspace) {
+        // Try to verify if the workspace still exists via direct fetch (bypassing list RLS limits)
+        const check = await supabase.from('workspaces').select('id').eq('id', store.activeWorkspaceId).maybeSingle();
+        if (!check.data) {
+           const lastId = store.profile?.preferences?.last_workspace_id;
+           const workspaceToSelect = data.find(w => w.id === lastId) || data[0];
+           store.setActiveWorkspaceId(workspaceToSelect.id);
+        }
       }
     }
   };

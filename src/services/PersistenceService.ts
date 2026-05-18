@@ -647,16 +647,16 @@ export class PersistenceService {
   }
 
   // --- Environment Actions ---
-  static async createEnvironment(workspaceId: string, userId: string, name: string, variables: KeyValue[] = [], isGlobal: boolean = false) {
+  static async createEnvironment(workspaceId: string, userId: string, name: string, variables: KeyValue[] = [], isGlobal: boolean = false, preRequestScript = '', testScript = '', documentation = '') {
     let insertData: any = {
       name,
       workspace_id: workspaceId,
       user_id: userId,
       variables,
       is_global: isGlobal,
-      pre_request_script: '',
-      test_script: '',
-      documentation: ''
+      pre_request_script: preRequestScript,
+      test_script: testScript,
+      documentation
     };
 
     let { data, error } = await supabase

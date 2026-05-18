@@ -58,8 +58,8 @@ import { useDataSync } from '../../hooks/useDataSync';
 
 // Slim navigation tab configuration
 const NAV_ITEMS = [
-  { id: 'collections', icon: LayoutGrid, label: 'Explorer', desc: 'Collection Tree' },
-  { id: 'environments', icon: Globe, label: 'Registry', desc: 'API Environments' },
+  { id: 'collections', icon: LayoutGrid, label: 'Collections', desc: 'Collection Tree' },
+  { id: 'environments', icon: Globe, label: 'Environments', desc: 'API Environments' },
   { id: 'scripts', icon: Zap, label: 'Scripts', desc: 'Logic Library' },
   { id: 'history', icon: Activity, label: 'Logs', desc: 'Realtime Traffic' },
   { id: 'teams', icon: Users, label: 'Teams', desc: 'Collaborators' }
@@ -748,7 +748,7 @@ export const Sidebar: React.FC = () => {
                 <div className="px-1 flex flex-col h-full">
                   {/* Explorer Sub-Toolbar */}
                   <div className="flex items-center justify-between px-4 py-1.5 border-b border-[#1A1A1E]/30 bg-[#070708]/10 mb-2 shrink-0">
-                    <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Hierarchy tree</span>
+                    <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Collections</span>
                     <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => setIsCollectionModalOpen(true)}
@@ -820,12 +820,12 @@ export const Sidebar: React.FC = () => {
                           {filteredCollections.length === 0 && (
                             <div className="text-center py-16 px-4">
                               <Database size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                              <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest leading-relaxed">No active components mapped</p>
+                              <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest leading-relaxed">No collections found</p>
                               <button 
                                 onClick={() => setIsCollectionModalOpen(true)}
                                 className="mt-3 px-3 py-1.5 bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 text-[9px] text-[#3ECF8E] font-black uppercase tracking-widest rounded hover:bg-[#3ECF8E]/20 transition-all"
                               >
-                                Deploy Node
+                                New Collection
                               </button>
                             </div>
                           )}
@@ -836,11 +836,11 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
 
-              {/* SECTION B: Registry (Environments catalog) */}
+              {/* SECTION B: Environments */}
               {activeNav === 'environments' && (
                 <div className="px-5 space-y-4 animate-in fade-in duration-300">
                   <div className="flex items-center justify-between border-b border-[#1A1A1E]/30 pb-2">
-                    <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest font-mono">Registry modules</span>
+                    <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest font-mono">Environments</span>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setIsGlobalModalOpen(true)}
@@ -852,7 +852,7 @@ export const Sidebar: React.FC = () => {
                         onClick={() => { setSelectedEnv(null); setIsEnvModalOpen(true); }}
                         className="text-[#3ECF8E] text-[8px] font-black uppercase tracking-wider border border-[#3ECF8E]/30 px-2 py-0.5 rounded-full hover:bg-[#3ECF8E]/10 transition-all"
                       >
-                        + Registry
+                        + Environment
                       </button>
                     </div>
                   </div>
@@ -944,7 +944,7 @@ export const Sidebar: React.FC = () => {
                     {(!environments || environments.length === 0) && (
                       <div className="text-center py-16 border border-dashed border-[#1A1A22] rounded-2xl bg-[#09090B]/30">
                         <Globe size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                        <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest">Registry empty</p>
+                        <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest">No environments</p>
                       </div>
                     )}
                   </div>

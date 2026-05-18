@@ -58,10 +58,25 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
           test_script: testScript,
           documentation
         });
-        updateEnvironment(environment.id, { name, variables });
+        updateEnvironment(environment.id, { 
+          name, 
+          variables,
+          pre_request_script: preRequestScript,
+          test_script: testScript,
+          documentation
+        });
         addToast({ type: 'success', message: 'Environment updated.' });
       } else {
-        const created = await PersistenceService.createEnvironment(activeWorkspaceId!, userId, name, variables);
+        const created = await PersistenceService.createEnvironment(
+          activeWorkspaceId!, 
+          userId, 
+          name, 
+          variables, 
+          false, 
+          preRequestScript, 
+          testScript, 
+          documentation
+        );
         const currentEnvs = useStore.getState().environments || [];
         if (!currentEnvs.some(e => e.id === created.id)) {
           setEnvironments([...currentEnvs, created]);
