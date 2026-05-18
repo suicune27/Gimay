@@ -493,7 +493,7 @@ export const useStore = create<AppState>()(
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
       sidebarMode: 'compact',
       setSidebarMode: (mode) => set({ sidebarMode: mode, sidebarCollapsed: mode !== 'expanded' }),
-      isSidebarPinned: false,
+      isSidebarPinned: true,
       setIsSidebarPinned: (pinned) => set({ isSidebarPinned: pinned }),
       layoutOrientation: 'vertical',
       setLayoutOrientation: (orientation) => set({ layoutOrientation: orientation }),

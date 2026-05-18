@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Folder, 
   ChevronRight, 
@@ -67,12 +67,8 @@ export const Sidebar: React.FC = () => {
     collections, 
     addTab, 
     updateRequest,
-    sidebarCollapsed,
-    setSidebarCollapsed,
     sidebarWidth,
     setSidebarWidth,
-    sidebarMode,
-    setSidebarMode,
     isSidebarPinned,
     setIsSidebarPinned,
     activeWorkspaceId,
@@ -91,8 +87,6 @@ export const Sidebar: React.FC = () => {
     setIsSettingsModalOpen
   } = useStore();
   
-  const { logout } = useAuth();
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNav, setActiveNav] = useState('collections');
   const [isResizing, setIsResizing] = useState(false);
@@ -100,6 +94,34 @@ export const Sidebar: React.FC = () => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   
   const isExpanded = isSidebarPinned;
+
+  // Handle Resizing
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = e.clientX;
+      if (newWidth > 200 && newWidth < 600) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -162,14 +184,22 @@ export const Sidebar: React.FC = () => {
       ref={sidebarRef}
       initial={false}
       animate={{ 
-        width: isExpanded ? 320 : 0,
+        width: isExpanded ? sidebarWidth : 0,
         opacity: isExpanded ? 1 : 0,
         transition: { type: 'spring', stiffness: 350, damping: 35 }
       }}
       className={cn(
         "h-full bg-[#0F0F0F] border-r border-[#222222] flex flex-col relative z-40 overflow-hidden shrink-0 shadow-[10px_0_40px_rgba(0,0,0,0.6)]",
+        isResizing && "transition-none"
       )}
     >
+      {/* Resize Handle */}
+      {isExpanded && (
+        <div 
+          onMouseDown={startResizing}
+          className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#3ECF8E]/40 z-[100] transition-colors"
+        />
+      )}
       <NameModal 
         isOpen={isCollectionModalOpen}
         onClose={() => setIsCollectionModalOpen(false)}

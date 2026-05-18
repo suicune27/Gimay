@@ -22,7 +22,9 @@ import {
   ChevronDown,
   LayoutGrid,
   Plus,
-  Globe
+  Globe,
+  PanelLeftOpen,
+  PanelLeftClose
 } from 'lucide-react';
 import { Workspace } from '../types';
 import { cn } from '../lib/utils';
@@ -50,7 +52,9 @@ export const RootLayout: React.FC = () => {
     settings,
     updateSettings,
     isSettingsModalOpen,
-    setIsSettingsModalOpen
+    setIsSettingsModalOpen,
+    isSidebarPinned,
+    setIsSidebarPinned
   } = useStore();
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
 
@@ -239,6 +243,16 @@ export const RootLayout: React.FC = () => {
       <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsSidebarPinned(!isSidebarPinned)}
+              className={cn(
+                "p-1.5 rounded-md transition-all",
+                isSidebarPinned ? "text-[#3ECF8E] bg-[#3ECF8E]/10" : "text-[#555555] hover:text-[#3ECF8E] hover:bg-white/[0.03]"
+              )}
+              title={isSidebarPinned ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              {isSidebarPinned ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+            </button>
             <div className="w-5 h-5 bg-[#3ECF8E] rounded flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
               <Terminal size={12} className="text-black" />
             </div>
