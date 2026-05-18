@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Github, Terminal } from 'lucide-react';
+import React, { useState } from 'react';
+import { globalSupabase } from '../lib/supabase';
+import { LogIn, UserPlus, Terminal } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const AuthUI: React.FC = () => {
@@ -16,8 +16,8 @@ export const AuthUI: React.FC = () => {
     setError(null);
 
     const { error: authError } = isLogin 
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
+      ? await globalSupabase.auth.signInWithPassword({ email, password })
+      : await globalSupabase.auth.signUp({ email, password });
 
     if (authError) {
       setError(authError.message);

@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, globalSupabase } from '../lib/supabase';
 import { RequestData, Collection, Environment, Workspace, Folder, Profile, KeyValue, ScriptExecutionLog } from '../types';
 
 export class PersistenceService {
@@ -14,7 +14,10 @@ export class PersistenceService {
       payload.team_id = teamId;
     }
 
-    let { data, error } = await supabase
+    // Use global if teamId is present or if we want to ensure it's in the global registry
+    const client = teamId ? globalSupabase : supabase;
+
+    let { data, error } = await client
       .from('workspaces')
       .insert([payload])
       .select()
@@ -25,7 +28,7 @@ export class PersistenceService {
       delete payload.visibility;
       delete payload.team_id;
       
-      const fallback = await supabase
+      const fallback = await client
         .from('workspaces')
         .insert([payload])
         .select()
@@ -192,7 +195,7 @@ export class PersistenceService {
     }
 
     console.log('Checking for existing team with same name...');
-    const { data: existingTeam, error: checkError } = await supabase
+    const { data: existingTeam, error: checkError } = await globalSupabase
       .from('teams')
       .select('id, name')
       .ilike('name', normalizedName)
@@ -212,7 +215,7 @@ export class PersistenceService {
 
     // 1. Create the team
     console.log('Inserting team record...');
-    const { data: team, error: teamError } = await supabase
+    const { data: team, error: teamError } = await globalSupabase
       .from('teams')
       .insert([{ name: normalizedName }])
       .select()
@@ -228,14 +231,14 @@ export class PersistenceService {
 
     // 2. Add creator as admin
     console.log('Adding owner to team_members...');
-    const { error: memberError } = await supabase
+    const { error: memberError } = await globalSupabase
       .from('team_members')
       .insert([{ team_id: team.id, user_id: ownerId, role: 'admin' }]);
 
     if (memberError) {
       console.error('Member insertion error:', memberError);
       console.log('Rolling back team record...', team.id);
-      await supabase.from('teams').delete().eq('id', team.id); // Rollback
+      await globalSupabase.from('teams').delete().eq('id', team.id); // Rollback
       console.groupEnd();
       throw memberError;
     }
@@ -256,7 +259,7 @@ export class PersistenceService {
   static async addTeamMember(teamId: string, userEmail: string, role: 'viewer' | 'editor' | 'admin' = 'viewer') {
     // Find user by email first
     const identifier = userEmail.trim();
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await globalSupabase
       .from('profiles')
       .select('id, email, username, full_name')
       .or(`email.eq.${identifier},username.eq.${identifier},full_name.eq.${identifier}`)
@@ -272,14 +275,14 @@ export class PersistenceService {
       dbRole = 'member' as any;
     }
 
-    const { error } = await supabase
+    const { error } = await globalSupabase
       .from('team_members')
       .insert([{ team_id: teamId, user_id: profile.id, role: dbRole }]);
 
     if (error) {
       // If even with mapping it fails, try without role
       if (String(error.message || '').toLowerCase().includes('role')) {
-        const { error: fallbackError } = await supabase
+        const { error: fallbackError } = await globalSupabase
           .from('team_members')
           .insert([{ team_id: teamId, user_id: profile.id }]);
         if (fallbackError) throw fallbackError;
@@ -290,7 +293,7 @@ export class PersistenceService {
   }
 
   static async updateTeamMemberRole(teamId: string, userId: string, role: 'viewer' | 'editor' | 'admin') {
-    const { error } = await supabase
+    const { error } = await globalSupabase
       .from('team_members')
       .update({ role })
       .match({ team_id: teamId, user_id: userId });
@@ -299,7 +302,7 @@ export class PersistenceService {
   }
 
   static async removeTeamMember(teamId: string, userId: string) {
-    const { error } = await supabase
+    const { error } = await globalSupabase
       .from('team_members')
       .delete()
       .match({ team_id: teamId, user_id: userId });
@@ -627,7 +630,7 @@ export class PersistenceService {
 
   static async inviteCollectionCollaborator(collectionId: string, identifier: string, role: 'viewer' | 'editor' | 'admin', invitedBy: string) {
     const query = identifier.trim();
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await globalSupabase
       .from('profiles')
       .select('id, email, username, full_name')
       .or(`email.eq.${query},username.eq.${query},full_name.eq.${query}`)
@@ -638,6 +641,7 @@ export class PersistenceService {
       throw new Error('No registered user found for that email or username.');
     }
 
+    // For inviting to a collection, we use the tenant client if it's a team workspace collection
     const { data, error } = await supabase
       .from('collection_collaborators')
       .upsert({
@@ -752,14 +756,14 @@ export class PersistenceService {
   }
 
   static async fetchUserTeams(userId: string) {
-    let { data, error } = await supabase
+    let { data, error } = await globalSupabase
       .from('teams')
       .select('*, team_members!inner(*, profiles(email, full_name, username))')
       .eq('team_members.user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error && String(error.message || '').match(/profiles|relation|schema cache/i)) {
-      const fallback = await supabase
+      const fallback = await globalSupabase
         .from('teams')
         .select('*, team_members!inner(*)')
         .eq('team_members.user_id', userId)
@@ -773,7 +777,7 @@ export class PersistenceService {
   }
 
   static async fetchWorkspacesByTeam(teamId: string) {
-    let { data, error } = await supabase
+    let { data, error } = await globalSupabase
       .from('workspaces')
       .select('*')
       .eq('team_id', teamId);

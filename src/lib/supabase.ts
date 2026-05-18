@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SecureConfigStorage } from './SecureConfigStorage';
 
-export function getSupabaseConfig() {
+export function getGlobalSupabaseConfig() {
   const envUrl = typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL
     ? (import.meta as any).env.VITE_SUPABASE_URL
     : process.env.VITE_SUPABASE_URL;
@@ -10,15 +10,37 @@ export function getSupabaseConfig() {
     ? (import.meta as any).env.VITE_SUPABASE_ANON_KEY
     : process.env.VITE_SUPABASE_ANON_KEY;
 
-  const storedConfig = SecureConfigStorage.getSupabaseConfig();
-
   return {
-    url: envUrl || storedConfig?.url || null,
-    anonKey: envAnonKey || storedConfig?.anonKey || null,
+    url: envUrl || null,
+    anonKey: envAnonKey || null,
   };
 }
 
-// Create a client that always uses current config
+export function getTenantSupabaseConfig() {
+  return SecureConfigStorage.getSupabaseConfig();
+}
+
+// Global client: Only uses environment variables
+export const globalSupabase = (() => {
+  const { url, anonKey } = getGlobalSupabaseConfig();
+  return createClient(
+    url || 'https://placeholder-project.supabase.co',
+    anonKey || 'placeholder-anon-key'
+  );
+})();
+
+export function getSupabaseConfig() {
+  const global = getGlobalSupabaseConfig();
+  const tenant = getTenantSupabaseConfig();
+
+  // If we have tenant config, it takes priority for the general client
+  return {
+    url: tenant?.url || global.url || null,
+    anonKey: tenant?.anonKey || global.anonKey || null,
+  };
+}
+
+// Create a client that always uses current config (tenant preferred)
 function createSupabaseClient() {
   const { url, anonKey } = getSupabaseConfig();
   const supabaseUrl = url || 'https://placeholder-project.supabase.co';

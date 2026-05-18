@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, getSupabaseConfig } from './lib/supabase';
+import { supabase, globalSupabase, getSupabaseConfig } from './lib/supabase';
 import { AuthUI } from './components/AuthUI';
 import { RootLayout } from './layouts/RootLayout';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
@@ -47,7 +47,7 @@ export default function App() {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await globalSupabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -97,7 +97,7 @@ export default function App() {
       setSyncStatus(status);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    globalSupabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user?.id) {
         fetchProfile(session.user.id);
@@ -130,7 +130,7 @@ export default function App() {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user?.id) {
         fetchProfile(session.user.id);
