@@ -117,18 +117,18 @@ export const ScriptEditor: React.FC = () => {
 
   if (!activeTab || !activeScript) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-surface text-[var(--border-subtle)]">
+      <div className="flex-1 flex flex-col items-center justify-center bg-[var(--bg-surface)] text-[var(--border-subtle)]">
         <FileCode size={64} className="mb-4 opacity-50" />
-        <h3 className="text-sm font-black uppercase tracking-[0.3em] opacity-50 text-dim">Select a script to edit</h3>
-        <p className="text-[10px] mt-2 font-mono opacity-30 text-dim">Ctrl+N to create new</p>
+        <h3 className="text-sm font-black uppercase tracking-[0.3em] opacity-50 text-[var(--text-dim)]">Select a script to edit</h3>
+        <p className="text-[10px] mt-2 font-mono opacity-30 text-[var(--text-dim)]">Ctrl+N to create new</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-surface">
+    <div className="flex-1 flex flex-col min-w-0 bg-[var(--bg-surface)]">
       {/* Tabs */}
-      <div className="h-10 bg-deep border-b border-subtle flex items-center px-1 gap-px overflow-x-auto no-scrollbar">
+      <div className="h-10 bg-[var(--bg-deep)] border-b border-[var(--border-subtle)] flex items-center px-1 gap-px overflow-x-auto no-scrollbar">
         {openTabs.map((tab) => {
           const script = scripts.find(s => s.id === tab.scriptId);
           if (!script) return null;
@@ -139,16 +139,16 @@ export const ScriptEditor: React.FC = () => {
               className={cn(
                 "h-full px-4 flex items-center gap-2 cursor-pointer transition-all border-t-2 text-[10px] font-bold min-w-[120px] max-w-[200px] shrink-0",
                 activeTabId === tab.id 
-                  ? "bg-surface border-brand text-main" 
-                  : "bg-deep border-transparent text-dim hover:bg-elevated"
+                  ? "bg-[var(--bg-surface)] border-[var(--brand)] text-[var(--text-main)]" 
+                  : "bg-[var(--bg-deep)] border-transparent text-[var(--text-dim)] hover:bg-[var(--bg-elevated)]"
               )}
             >
-              <FileCode size={12} className={activeTabId === tab.id ? "text-brand" : ""} />
+              <FileCode size={12} className={activeTabId === tab.id ? "text-[var(--brand)]" : ""} />
               <span className="truncate flex-1">{script.name}</span>
-              {tab.isDirty && <div className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
+              {tab.isDirty && <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shrink-0" />}
               <button 
                 onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                className="p-1 hover:bg-elevated rounded transition-all opacity-0 group-hover:opacity-100"
+                className="p-1 hover:bg-[var(--bg-elevated)] rounded transition-all opacity-0 group-hover:opacity-100"
               >
                 <X size={10} />
               </button>
@@ -158,15 +158,15 @@ export const ScriptEditor: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="h-12 border-b border-subtle flex items-center justify-between px-6 shrink-0 bg-elevated">
+      <div className="h-12 border-b border-[var(--border-subtle)] flex items-center justify-between px-6 shrink-0 bg-[var(--bg-elevated)]">
         <div className="flex items-center gap-4">
           <input 
             value={activeScript.name}
             onChange={(e) => updateScript(activeScript.id, { name: e.target.value })}
-            className="bg-transparent border-none text-[12px] font-black text-main uppercase tracking-widest outline-none focus:text-brand transition-all"
+            className="bg-transparent border-none text-[12px] font-black text-[var(--text-main)] uppercase tracking-widest outline-none focus:text-[var(--brand)] transition-all"
           />
           {activeTab.isDirty && (
-            <span className="text-[9px] font-black text-brand uppercase tracking-tighter bg-brand/10 px-2 py-0.5 rounded">Unsaved Changes</span>
+            <span className="text-[9px] font-black text-[var(--brand)] uppercase tracking-tighter bg-[var(--brand)]/10 px-2 py-0.5 rounded">Unsaved Changes</span>
           )}
         </div>
         
@@ -175,15 +175,15 @@ export const ScriptEditor: React.FC = () => {
             onClick={handleSave}
             disabled={isSaving}
             className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-lg border border-subtle text-[10px] font-black transition-all uppercase",
-              isSaving ? "opacity-50 cursor-not-allowed" : "text-muted hover:text-brand hover:border-brand/30"
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[10px] font-black transition-all uppercase",
+              isSaving ? "opacity-50 cursor-not-allowed" : "text-[var(--text-muted)] hover:text-[var(--brand)] hover:border-[var(--brand)]/30"
             )}
           >
             <Save size={14} className={isSaving ? "animate-spin" : ""} /> {isSaving ? 'Saving...' : 'Save'}
           </button>
           <button 
             onClick={handleRun}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-brand text-[var(--bg-deep)] text-[10px] font-black hover:shadow-[0_0_15px_var(--brand-muted)] transition-all uppercase"
+            className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[var(--brand)] text-[var(--bg-deep)] text-[10px] font-black hover:shadow-[0_0_15px_var(--brand-muted)] transition-all uppercase"
           >
             <Play size={14} fill="currentColor" /> Run Script
           </button>

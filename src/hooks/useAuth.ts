@@ -5,7 +5,7 @@ import { useStore } from '../store/useStore';
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
-  const { setProfile } = useStore();
+  const { reset } = useStore();
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
@@ -53,10 +53,10 @@ export const useAuth = () => {
       toast.info('Session Terminated', {
         description: 'Secure connection closed.'
       });
-      setProfile(null);
+      reset();
     }
     return res.success;
-  }, [setProfile]);
+  }, [reset]);
 
   return {
     loading,

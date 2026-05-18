@@ -18,8 +18,7 @@ import {
   Pencil,
   TerminalSquare,
   Layout,
-  Columns,
-  Check
+  Columns
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -40,7 +39,6 @@ import { VariableInput } from '../../components/VariableInput';
 import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { VariableService } from '../../services/VariableService';
 import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
-import { useScriptStore } from '../../store/scriptStore';
 import { parseCurl } from '../../lib/curlParser';
 import Editor from '@monaco-editor/react';
 
@@ -175,15 +173,6 @@ export const RequestEditor: React.FC = () => {
   const [editingRequestTabId, setEditingRequestTabId] = useState<string | null>(null);
   const [requestTabNameDraft, setRequestTabNameDraft] = useState('');
   const [activeScriptTarget, setActiveScriptTarget] = useState<'pre_request_script' | 'test_script'>('pre_request_script');
-  const { scripts } = useScriptStore();
-  const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
-  const [importSearchQuery, setImportSearchQuery] = useState('');
-
-  const filteredLabScripts = useMemo(() => {
-    const list = scripts || [];
-    if (!importSearchQuery) return list;
-    return list.filter((s) => s.name.toLowerCase().includes(importSearchQuery.toLowerCase()));
-  }, [scripts, importSearchQuery]);
   const [isSavingManual, setIsSavingManual] = useState(false);
   const paramUrlSyncSourceRef = useRef<'url' | 'params' | null>(null);
 
@@ -193,7 +182,7 @@ export const RequestEditor: React.FC = () => {
   const activeRequest = isCollection || isEnvironmentTab ? null : (activeItem as RequestData);
 
   const isPending = !!activeRequest && pendingSyncIds.has(activeRequest.id);
-  const showSaveButton = !settings.general.autoSave;
+  const showSaveButton = !settings.general.autoSave && isPending;
 
   const handleManualSave = async () => {
     if (!activeRequest) return;
@@ -439,8 +428,8 @@ export const RequestEditor: React.FC = () => {
   }
 
   return (
-    <div ref={containerRef} className="flex-1 flex flex-col min-w-0 bg-deep relative overflow-hidden">
-      <div className="h-10 bg-surface border-b border-subtle flex items-center px-2 shrink-0 overflow-hidden">
+    <div ref={containerRef} className="flex-1 flex flex-col min-w-0 bg-[var(--bg-deep)] relative overflow-hidden">
+      <div className="h-10 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center px-2 shrink-0 overflow-hidden">
         <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth">
           {openTabs.map((tab) => {
             const isTabEnvironment = 'type' in tab && (tab as EnvironmentTab).type === 'environment-manager';
@@ -465,26 +454,26 @@ export const RequestEditor: React.FC = () => {
                   "group h-8 min-w-[140px] max-w-[200px] flex items-center px-3 rounded-md transition-all cursor-pointer relative border shrink-0",
                   isEditingThisTab && "cursor-text",
                   activeTabId === tab.id
-                    ? "bg-elevated border-brand/20 text-brand shadow-lg shadow-black/20"
-                    : "bg-transparent border-transparent text-dim hover:bg-deep hover:text-muted"
+                    ? "bg-[var(--bg-elevated)] border-[var(--brand)]/20 text-[var(--brand)] shadow-lg shadow-black/20"
+                    : "bg-transparent border-transparent text-[var(--text-dim)] hover:bg-[var(--bg-deep)] hover:text-[var(--text-muted)]"
                 )}
               >
                 {!isTabCollection && !isTabEnvironment ? (
                   <div className={cn(
                     "text-[8px] font-black mr-2 min-w-[32px]",
-                    (tab as RequestData).method === 'GET' ? 'text-brand' :
+                    (tab as RequestData).method === 'GET' ? 'text-[var(--brand)]' :
                       (tab as RequestData).method === 'POST' ? 'text-yellow-500' :
                         (tab as RequestData).method === 'PUT' ? 'text-blue-500' :
-                          (tab as RequestData).method === 'DELETE' ? 'text-red-500' : 'text-dim'
+                          (tab as RequestData).method === 'DELETE' ? 'text-red-500' : 'text-[var(--text-dim)]'
                   )}>
                     {(tab as RequestData).method}
                   </div>
                 ) : isTabCollection ? (
-                  <div className="text-[10px] mr-2 text-brand">
+                  <div className="text-[10px] mr-2 text-[var(--brand)]">
                     <Cloud size={10} />
                   </div>
                 ) : (
-                  <div className="text-[10px] mr-2 text-brand">
+                  <div className="text-[10px] mr-2 text-[var(--brand)]">
                     <RefreshCcw size={10} />
                   </div>
                 )}
@@ -518,7 +507,7 @@ export const RequestEditor: React.FC = () => {
                         setCollectionTabNameDraft('');
                       }
                     }}
-                    className="text-[10px] font-bold flex-1 uppercase tracking-tighter bg-deep border border-brand/30 rounded px-1 outline-none"
+                    className="text-[10px] font-bold flex-1 uppercase tracking-tighter bg-[#0A0A0A] border border-[#3ECF8E]/30 rounded px-1 outline-none"
                   />
                 ) : !isTabCollection && !isTabEnvironment && editingRequestTabId === tab.id ? (
                   <input
@@ -538,7 +527,7 @@ export const RequestEditor: React.FC = () => {
                       if (e.key === 'Escape') { e.preventDefault(); setEditingRequestTabId(null); setRequestTabNameDraft(''); }
                     }}
                     style={{ width: Math.min(Math.max((requestTabNameDraft.length || 4) * 7, 60), 140) + 'px' }}
-                    className="text-[10px] font-bold uppercase tracking-tighter bg-deep border border-brand/40 rounded px-1.5 outline-none text-brand min-w-[60px] max-w-[140px] transition-[width] duration-75"
+                    className="text-[10px] font-bold uppercase tracking-tighter bg-[#0A0A0A] border border-[#3ECF8E]/40 rounded px-1.5 outline-none text-[#3ECF8E] min-w-[60px] max-w-[140px] transition-[width] duration-75"
                   />
                 ) : (
                   <>
@@ -571,18 +560,18 @@ export const RequestEditor: React.FC = () => {
                   <X size={10} />
                 </button>
                 {activeTabId === tab.id && (
-                  <motion.div layoutId="active-tab-indicator" className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand" />
+                  <motion.div layoutId="active-tab-indicator" className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#3ECF8E]" />
                 )}
               </div>
             );
           })}
         </div>
-        <div className="flex items-center gap-1 shrink-0 ml-2 border-l border-subtle pl-2">
+        <div className="flex items-center gap-1 shrink-0 ml-2 border-l border-[var(--border-subtle)] pl-2">
           <button
             onClick={() => setLayoutOrientation('vertical')}
             className={cn(
-              "p-1.5 rounded hover:bg-elevated transition-all",
-              layoutOrientation === 'vertical' ? "text-brand bg-brand/10" : "text-dim"
+              "p-1.5 rounded hover:bg-[var(--bg-elevated)] transition-all",
+              layoutOrientation === 'vertical' ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-[var(--text-dim)]"
             )}
             title="Vertical Layout"
           >
@@ -591,8 +580,8 @@ export const RequestEditor: React.FC = () => {
           <button
             onClick={() => setLayoutOrientation('horizontal')}
             className={cn(
-              "p-1.5 rounded hover:bg-elevated transition-all",
-              layoutOrientation === 'horizontal' ? "text-brand bg-brand/10" : "text-dim"
+              "p-1.5 rounded hover:bg-[var(--bg-elevated)] transition-all",
+              layoutOrientation === 'horizontal' ? "text-[var(--brand)] bg-[var(--brand)]/10" : "text-[var(--text-dim)]"
             )}
             title="Horizontal Layout"
           >
@@ -620,19 +609,14 @@ export const RequestEditor: React.FC = () => {
             <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
 
               {/* URL & Send Module */}
-              <div className="flex gap-2 p-1.5 bg-surface border border-subtle rounded-xl shadow-2xl focus-within:border-brand/30 transition-all">
-                <div className="relative group min-w-[100px]">
+              <div className="flex gap-2 p-1 bg-[#141414] border border-[#222222] rounded-xl shadow-2xl focus-within:border-[#3ECF8E]/30 transition-all">
+                <div className="relative group min-w-[90px]">
                   <select
                     disabled={!canEdit}
                     value={activeRequest!.method}
                     onChange={(e) => updateRequest(activeRequest!.id, { method: e.target.value as any })}
                     className={cn(
-                      "w-full bg-elevated text-[10px] font-black py-2 px-4 rounded-lg outline-none cursor-pointer appearance-none transition-all border border-subtle hover:border-strong text-center",
-                      activeRequest!.method === 'GET' && "text-brand border-brand/20 bg-brand/5",
-                      activeRequest!.method === 'POST' && "text-yellow-500 border-yellow-500/20 bg-yellow-500/5",
-                      activeRequest!.method === 'PUT' && "text-blue-400 border-blue-400/20 bg-blue-400/5",
-                      activeRequest!.method === 'PATCH' && "text-purple-400 border-purple-400/20 bg-purple-400/5",
-                      activeRequest!.method === 'DELETE' && "text-red-400 border-red-400/20 bg-red-400/5",
+                      "w-full bg-transparent text-[9px] font-black py-2 px-3 outline-none cursor-pointer text-[#3ECF8E] appearance-none",
                       !canEdit && "opacity-50 cursor-not-allowed"
                     )}
                   >
@@ -644,9 +628,9 @@ export const RequestEditor: React.FC = () => {
                     <option value="OPTIONS">OPTIONS</option>
                     <option value="HEAD">HEAD</option>
                   </select>
-                  <ChevronDown size={10} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 text-current" />
+                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40" />
                 </div>
-                <div className="flex-1 border-x border-subtle flex items-center px-4">
+                <div className="flex-1 border-x border-white/5 flex items-center px-4">
                   <VariableInput
                     disabled={!canEdit}
                     value={activeRequest!.url}
@@ -670,7 +654,7 @@ export const RequestEditor: React.FC = () => {
                     }}
                     placeholder="ENTER_REQUEST_URL_OR_PASTE_CURL..."
                     className={cn(
-                      "w-full bg-transparent text-[13px] font-mono text-main outline-none placeholder:text-[var(--border-strong)]",
+                      "w-full bg-transparent text-[13px] font-mono text-[#E0E0E0] outline-none placeholder:text-[#333333]",
                       !canEdit && "opacity-50 cursor-not-allowed"
                     )}
                   />
@@ -683,22 +667,11 @@ export const RequestEditor: React.FC = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       onClick={handleManualSave}
-                      disabled={isSavingManual || !isPending}
-                      className={cn(
-                        "px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all",
-                        isPending
-                          ? "bg-brand/10 border border-brand/40 text-brand hover:bg-brand/20 hover:scale-[1.01] active:scale-[0.99] shadow-[0_0_15px_rgba(62,207,142,0.1)] cursor-pointer"
-                          : "bg-elevated border border-subtle text-muted cursor-not-allowed"
-                      )}
+                      disabled={isSavingManual}
+                      className="px-4 py-2.5 rounded-lg font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all bg-[#1A1A1A] border border-[#3ECF8E]/30 text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
                     >
-                      {isSavingManual ? (
-                        <RefreshCcw size={14} className="animate-spin text-brand" />
-                      ) : isPending ? (
-                        <Save size={14} className="text-brand animate-pulse" />
-                      ) : (
-                        <Check size={14} className="text-muted" />
-                      )}
-                      {isSavingManual ? 'Saving' : isPending ? 'Save' : 'Saved'}
+                      {isSavingManual ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />}
+                      Save
                     </motion.button>
                   )}
                 </AnimatePresence>
@@ -709,8 +682,8 @@ export const RequestEditor: React.FC = () => {
                   className={cn(
                     "px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg",
                     (isSending || !canExecute)
-                      ? "bg-[var(--border-subtle)] text-[var(--border-strong)] cursor-not-allowed"
-                      : "bg-brand hover:bg-[#34B37A] text-[var(--bg-deep)] shadow-[0_0_20px_rgba(62,207,142,0.15)] hover:shadow-[0_0_25px_rgba(62,207,142,0.3)] hover:scale-[1.01] active:scale-[0.99]"
+                      ? "bg-[#222222] text-[#444444] cursor-not-allowed"
+                      : "bg-[#3ECF8E] hover:bg-[#34B37A] text-[#0A0A0A] shadow-[#3ECF8E20] hover:scale-[1.01] active:scale-[0.99]"
                   )}
                 >
                   {isSending ? <Zap size={13} className="animate-pulse" /> : <Play size={13} />}
@@ -726,7 +699,7 @@ export const RequestEditor: React.FC = () => {
                       syncStatus === 'saving' ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
                         syncStatus === 'error' ? "bg-red-500/10 border-red-500/20 text-red-500" :
                         syncStatus === 'pending' ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500" :
-                          "bg-brand/10 border-brand/20 text-brand"
+                          "bg-[#3ECF8E]/10 border-[#3ECF8E]/20 text-[#3ECF8E]"
                     )}>
                       {syncStatus === 'saving' ? <RefreshCcw size={10} className="animate-spin" /> : 
                        syncStatus === 'pending' ? <Clock size={10} /> : <Cloud size={10} />}
@@ -743,27 +716,28 @@ export const RequestEditor: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 text-[9px] font-bold text-[var(--border-strong)] uppercase tracking-widest">
+                <div className="flex items-center gap-4 text-[9px] font-bold text-[#444444] uppercase tracking-widest">
                   <span>UUID: {activeRequest!.id.split('-')[0]}</span>
-                  <div className="w-px h-3 bg-[var(--border-subtle)]" />
+                  <div className="w-px h-3 bg-[#222222]" />
                   <span>Last Saved: {new Date(activeRequest!.updated_at || Date.now()).toLocaleTimeString()}</span>
                 </div>
               </div>
 
               {/* Section Selector */}
-              <div className="flex bg-deep border border-subtle p-1 rounded-xl gap-1 shrink-0 overflow-x-auto no-scrollbar max-w-max">
+              <div className="flex border-b border-[#222222] gap-6 px-1">
                 {(['Parameters', 'Authorization', 'Headers', 'Body', 'Scripts', 'Settings'] as const).map((section) => (
                   <button
                     key={section}
                     onClick={() => setActiveSection(section)}
                     className={cn(
-                      "px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest relative transition-all duration-200 border",
-                      activeSection === section 
-                        ? "bg-elevated border-subtle text-brand shadow-lg shadow-black/40" 
-                        : "text-dim hover:text-main hover:bg-white/5 border-transparent"
+                      "pb-2.5 text-[9px] font-black uppercase tracking-widest relative transition-colors",
+                      activeSection === section ? "text-[#3ECF8E]" : "text-[#555555] hover:text-[#AAAAAA]"
                     )}
                   >
                     {section}
+                    {activeSection === section && (
+                      <motion.div layoutId="active-section-indicator" className="absolute -bottom-[1px] left-0 right-0 h-0.5 bg-[#3ECF8E]" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -814,8 +788,8 @@ export const RequestEditor: React.FC = () => {
                           className={cn(
                             "px-3 py-1 rounded border text-[8px] font-black uppercase tracking-widest transition-all",
                             activeRequest!.bodyType === type
-                              ? "bg-brand/20 text-brand border-brand/40"
-                              : "border-subtle text-dim hover:border-strong hover:text-main"
+                              ? "bg-[#3ECF8E]/20 text-[#3ECF8E] border-[#3ECF8E]/40"
+                              : "border-[#222222] text-[#555555] hover:border-[#444444] hover:text-[#AAAAAA]"
                           )}
                         >
                           {type}
@@ -825,14 +799,14 @@ export const RequestEditor: React.FC = () => {
 
                     <div className="min-h-[300px]">
                       {activeRequest!.bodyType === 'none' && (
-                        <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-subtle rounded-xl bg-deep/50">
+                        <div className="h-[300px] flex flex-col items-center justify-center border border-dashed border-[#222222] rounded-xl bg-[#0A0A0A]/50">
                           <CloudOff size={32} className="mb-3 opacity-10" />
                           <p className="text-[10px] font-black uppercase tracking-widest opacity-20">No Transmission Payload</p>
                         </div>
                       )}
 
                       {(activeRequest!.bodyType === 'json' || activeRequest!.bodyType === 'raw' || activeRequest!.bodyType === 'xml') && (
-                        <div className="border border-subtle rounded-xl bg-surface overflow-hidden focus-within:border-brand/30 transition-all">
+                        <div className="border border-[#222222] rounded-xl bg-[#0F0F0F] overflow-hidden focus-within:border-[#3ECF8E]/30 transition-all">
                           <Editor
                             height="300px"
                             language={
@@ -898,8 +872,8 @@ export const RequestEditor: React.FC = () => {
 
                       {activeRequest!.bodyType === 'graphql' && (
                         <div className="grid grid-rows-2 gap-4 h-[500px]">
-                          <div className="flex flex-col border border-subtle rounded-xl bg-surface overflow-hidden">
-                            <div className="px-4 py-2 border-b border-subtle bg-elevated text-[9px] font-black uppercase tracking-widest text-dim">
+                          <div className="flex flex-col border border-[#222222] rounded-xl bg-[#0F0F0F] overflow-hidden">
+                            <div className="px-4 py-2 border-b border-[#222222] bg-[#141414] text-[9px] font-black uppercase tracking-widest text-[#555555]">
                               GraphQL Query
                             </div>
                             <Editor
@@ -922,8 +896,8 @@ export const RequestEditor: React.FC = () => {
                               }}
                             />
                           </div>
-                          <div className="flex flex-col border border-subtle rounded-xl bg-surface overflow-hidden">
-                            <div className="px-4 py-2 border-b border-subtle bg-elevated text-[9px] font-black uppercase tracking-widest text-dim">
+                          <div className="flex flex-col border border-[#222222] rounded-xl bg-[#0F0F0F] overflow-hidden">
+                            <div className="px-4 py-2 border-b border-[#222222] bg-[#141414] text-[9px] font-black uppercase tracking-widest text-[#555555]">
                               JSON Variables
                             </div>
                             <Editor
@@ -950,7 +924,7 @@ export const RequestEditor: React.FC = () => {
                       )}
 
                       {activeRequest!.bodyType === 'binary' && (
-                        <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-subtle rounded-xl bg-deep/50">
+                        <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-[#222222] rounded-xl bg-[#0A0A0A]/50">
                            <Save size={32} className="mb-3 opacity-10" />
                            <input 
                              type="file" 
@@ -968,7 +942,7 @@ export const RequestEditor: React.FC = () => {
                            />
                            <label 
                              htmlFor="binary-file-upload"
-                             className="px-6 py-2 bg-elevated border border-subtle rounded-lg text-[10px] font-black text-muted hover:text-brand hover:border-brand/30 transition-all uppercase tracking-widest cursor-pointer"
+                             className="px-6 py-2 bg-[#1A1A1A] border border-[#222222] rounded-lg text-[10px] font-black text-[#888888] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all uppercase tracking-widest cursor-pointer"
                            >
                              {(activeRequest!.body as RequestBody).binary?.name || 'Select Binary Protocol File'}
                            </label>
@@ -987,252 +961,67 @@ export const RequestEditor: React.FC = () => {
 
                 {activeSection === 'Scripts' && (
                   <div className="space-y-6">
-                    {/* Importer Panel Header */}
-                    <div className="flex justify-between items-center bg-surface border border-subtle p-4 rounded-xl relative">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-black text-main uppercase tracking-widest">Script Laboratory Integrator</span>
-                        <span className="text-[8px] text-dim font-mono">LINK CUSTOM LABORATORY SCRIPTS AND AUTOMATION PIPELINES</span>
-                      </div>
-                      <div className="relative">
-                        <button
-                          onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
-                          className="px-3.5 py-2 rounded-lg border border-brand/30 bg-brand/10 hover:bg-brand/20 text-[9px] font-black text-brand uppercase tracking-widest flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(62,207,142,0.05)] hover:shadow-[0_0_20px_rgba(62,207,142,0.15)]"
-                        >
-                          <Code2 size={12} />
-                          Import from Script Laboratory
-                        </button>
+                    <div className="flex justify-end -mb-4">
+                      <button
+                        onClick={() => setIsScriptLibraryOpen(true)}
+                        className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                      >
+                        <TerminalSquare size={12} />
+                        Open Script Library
+                      </button>
+                    </div>
 
-                        {isImportDropdownOpen && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setIsImportDropdownOpen(false)} />
-                            <div className="absolute right-0 top-9 w-72 bg-deep border border-subtle rounded-xl shadow-2xl overflow-hidden flex flex-col z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                              <div className="p-2 border-b border-subtle bg-deep">
-                                <input
-                                  type="text"
-                                  placeholder="Search scripts..."
-                                  value={importSearchQuery}
-                                  onChange={(e) => setImportSearchQuery(e.target.value)}
-                                  className="w-full bg-elevated border border-subtle rounded-lg px-2.5 py-1.5 text-[10px] text-main focus:outline-none focus:border-brand/40 font-bold uppercase tracking-widest placeholder:text-dim"
-                                />
-                              </div>
-                              <div className="max-h-48 overflow-y-auto py-1">
-                                {filteredLabScripts.length === 0 ? (
-                                  <div className="px-4 py-3 text-[9px] font-bold text-dim uppercase tracking-widest text-center">
-                                    No scripts found
-                                  </div>
-                                ) : (
-                                  filteredLabScripts.map((script) => (
-                                    <button
-                                      key={script.id}
-                                      onClick={() => {
-                                        const variableName = script.name
-                                          .replace(/[^a-zA-Z0-9\s]/g, '')
-                                          .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => index === 0 ? word.toLowerCase() : word.toUpperCase())
-                                          .replace(/\s+/g, '');
-                                        const validVar = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(variableName) ? variableName : 'importedScript';
-                                        
-                                        // Auto-generated import structure with instantiation and invocation call
-                                        const importStatement = `import ${validVar} from "${script.name}";\n${validVar}.Run();\n\n`;
-                                        
-                                        const current = activeRequest![activeScriptTarget] || '';
-                                        updateRequest(activeRequest!.id, {
-                                          [activeScriptTarget]: importStatement + current
-                                        });
-                                        
-                                        addToast({
-                                          type: 'success',
-                                          message: `Imported '${script.name}' and added execution call!`
-                                        });
-                                        setIsImportDropdownOpen(false);
-                                        setImportSearchQuery('');
-                                      }}
-                                      className="w-full px-4 py-2.5 hover:bg-brand/10 text-left transition-colors flex flex-col gap-0.5 group border-b border-[var(--bg-elevated)] last:border-0"
-                                    >
-                                      <span className="text-[10px] font-black text-main group-hover:text-brand transition-colors uppercase tracking-widest truncate">
-                                        {script.name}
-                                      </span>
-                                      <span className="text-[8px] text-dim font-mono truncate max-w-full">
-                                        {script.content.slice(0, 50).replace(/\n/g, ' ')}...
-                                      </span>
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        )}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Pre-request Protocol</label>
+                        <span className="text-[8px] text-[#3ECF8E]/50 font-mono">JS / PM_API</span>
+                      </div>
+                      <div
+                        className="border border-[#222222] rounded-xl overflow-hidden focus-within:border-[#3ECF8E]/30 transition-colors"
+                        onFocus={() => setActiveScriptTarget('pre_request_script')}
+                      >
+                        <Editor
+                          height="200px"
+                          language="javascript"
+                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                          value={activeRequest!.pre_request_script || ''}
+                          onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 12,
+                            fontFamily: 'JetBrains Mono',
+                            lineNumbers: 'on',
+                            automaticLayout: true,
+                            padding: { top: 10 }
+                          }}
+                        />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Pre-Request Card */}
-                      <div className={cn(
-                        "flex flex-col bg-surface border rounded-xl overflow-hidden transition-all duration-300",
-                        activeScriptTarget === 'pre_request_script' 
-                          ? "border-brand/40 shadow-[0_0_30px_rgba(62,207,142,0.03)]" 
-                          : "border-subtle hover:border-strong"
-                      )}>
-                        {/* Card Header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-subtle">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                              activeScriptTarget === 'pre_request_script' 
-                                ? "bg-brand animate-pulse shadow-[0_0_10px_var(--brand)]" 
-                                : "bg-[var(--border-strong)]"
-                            )} />
-                            <span className="text-[10px] font-black text-main uppercase tracking-widest">Pre-Request Protocol</span>
-                            <span className="text-[8px] text-dim font-mono bg-elevated px-1.5 py-0.5 rounded border border-subtle">JS / GMY_API</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5">
-                            {/* Template Quick Injectors */}
-                            <button
-                              onClick={() => {
-                                const template = `// HMAC SHA256 Signature Builder\nconst partnerId = gmy.request.headers.get("x-cb-partner-id") || "PARTNER_ID";\nconst timestamp = new Date().toISOString();\nconst payload = gmy.request.method === "GET" ? "" : gmy.request.body.raw;\n\nconst message = partnerId + timestamp + payload;\nconst secret = gmy.environment.get("hashing_key") || "SECRET_KEY";\n\nconst signature = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA256(message, secret));\ngmy.environment.set("signature", signature);\ngmy.environment.set("request_dt", timestamp);\n`;
-                                const current = activeRequest!.pre_request_script || '';
-                                updateRequest(activeRequest!.id, { pre_request_script: current + (current ? '\n' : '') + template });
-                                addToast({ type: 'success', message: 'HMAC Template Injected' });
-                              }}
-                              className="px-2 py-0.5 rounded bg-elevated hover:bg-[var(--border-subtle)] border border-subtle text-[8px] font-black text-main uppercase tracking-tighter transition-all"
-                              title="HMAC Hashing Template"
-                            >
-                              + Signature
-                            </button>
-                            <button
-                              onClick={() => {
-                                const template = `// Asynchronous OAuth Token Fetcher\ngmy.sendRequest({\n  url: "https://api.example.com/oauth/token",\n  method: 'POST',\n  header: { 'Content-Type': 'application/x-www-form-urlencoded' },\n  body: {\n    mode: 'urlencoded',\n    urlencoded: [\n      { key: 'grant_type', value: 'client_credentials' },\n      { key: 'client_id', value: gmy.environment.get("client_id") },\n      { key: 'client_secret', value: gmy.environment.get("client_secret") }\n    ]\n  }\n}, function (err, res) {\n  if (!err && res.code === 200) {\n    gmy.environment.set("bearer_token", "Bearer " + res.json().access_token);\n    console.log("Bearer token resolved!");\n  }\n});\n`;
-                                const current = activeRequest!.pre_request_script || '';
-                                updateRequest(activeRequest!.id, { pre_request_script: current + (current ? '\n' : '') + template });
-                                addToast({ type: 'success', message: 'OAuth Template Injected' });
-                              }}
-                              className="px-2 py-0.5 rounded bg-elevated hover:bg-[var(--border-subtle)] border border-subtle text-[8px] font-black text-main uppercase tracking-tighter transition-all"
-                              title="OAuth Flow Template"
-                            >
-                              + OAuth Flow
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm("Clear Pre-request protocol script?")) {
-                                  updateRequest(activeRequest!.id, { pre_request_script: '' });
-                                }
-                              }}
-                              className="p-1 text-dim hover:text-[#FF4A4A] rounded hover:bg-elevated transition-all"
-                              title="Clear Script"
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Editor Wrapper */}
-                        <div 
-                          className="flex-1 min-h-[280px]"
-                          onFocus={() => setActiveScriptTarget('pre_request_script')}
-                        >
-                          <Editor
-                            height="280px"
-                            language="javascript"
-                            theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                            value={activeRequest!.pre_request_script || ''}
-                            onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 11.5,
-                              fontFamily: "'JetBrains Mono', monospace",
-                              lineNumbers: 'on',
-                              automaticLayout: true,
-                              padding: { top: 12 },
-                              smoothScrolling: true,
-                              bracketPairColorization: { enabled: true }
-                            }}
-                          />
-                        </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Post-Execution Validation (Tests)</label>
+                        <span className="text-[8px] text-[#3ECF8E]/50 font-mono">JS / ASSERTION_ENGINE</span>
                       </div>
-
-                      {/* Tests Card */}
-                      <div className={cn(
-                        "flex flex-col bg-surface border rounded-xl overflow-hidden transition-all duration-300",
-                        activeScriptTarget === 'test_script' 
-                          ? "border-brand/40 shadow-[0_0_30px_rgba(62,207,142,0.03)]" 
-                          : "border-subtle hover:border-strong"
-                      )}>
-                        {/* Card Header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-subtle">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                              activeScriptTarget === 'test_script' 
-                                ? "bg-brand animate-pulse shadow-[0_0_10px_var(--brand)]" 
-                                : "bg-[var(--border-strong)]"
-                            )} />
-                            <span className="text-[10px] font-black text-main uppercase tracking-widest">Post-Execution Validation (Tests)</span>
-                            <span className="text-[8px] text-dim font-mono bg-elevated px-1.5 py-0.5 rounded border border-subtle">JS / ASSERTIONS</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5">
-                            {/* Template Quick Injectors */}
-                            <button
-                              onClick={() => {
-                                const template = `gmy.test("Status code is 200 OK", function () {\n  gmy.expect(gmy.response.code).to.equal(200);\n});\n`;
-                                const current = activeRequest!.test_script || '';
-                                updateRequest(activeRequest!.id, { test_script: current + (current ? '\n' : '') + template });
-                                addToast({ type: 'success', message: 'Status 200 Assertion Injected' });
-                              }}
-                              className="px-2 py-0.5 rounded bg-elevated hover:bg-[var(--border-subtle)] border border-subtle text-[8px] font-black text-main uppercase tracking-tighter transition-all"
-                              title="Assert Status 200"
-                            >
-                              + Status 200
-                            </button>
-                            <button
-                              onClick={() => {
-                                const template = `gmy.test("Response body parses to valid JSON status success", function () {\n  const data = gmy.response.json();\n  gmy.expect(data).to.be.an('object');\n  gmy.expect(data.status).to.equal('success');\n});\n`;
-                                const current = activeRequest!.test_script || '';
-                                updateRequest(activeRequest!.id, { test_script: current + (current ? '\n' : '') + template });
-                                addToast({ type: 'success', message: 'JSON Validation Injected' });
-                              }}
-                              className="px-2 py-0.5 rounded bg-elevated hover:bg-[var(--border-subtle)] border border-subtle text-[8px] font-black text-main uppercase tracking-tighter transition-all"
-                              title="Assert JSON Schema"
-                            >
-                              + Schema Assert
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm("Clear post-execution tests script?")) {
-                                  updateRequest(activeRequest!.id, { test_script: '' });
-                                }
-                              }}
-                              className="p-1 text-dim hover:text-[#FF4A4A] rounded hover:bg-elevated transition-all"
-                              title="Clear Script"
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Editor Wrapper */}
-                        <div 
-                          className="flex-1 min-h-[280px]"
-                          onFocus={() => setActiveScriptTarget('test_script')}
-                        >
-                          <Editor
-                            height="280px"
-                            language="javascript"
-                            theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                            value={activeRequest!.test_script || ''}
-                            onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 11.5,
-                              fontFamily: "'JetBrains Mono', monospace",
-                              lineNumbers: 'on',
-                              automaticLayout: true,
-                              padding: { top: 12 },
-                              smoothScrolling: true,
-                              bracketPairColorization: { enabled: true }
-                            }}
-                          />
-                        </div>
+                      <div
+                        className="border border-[#222222] rounded-xl overflow-hidden focus-within:border-[#3ECF8E]/30 transition-colors"
+                        onFocus={() => setActiveScriptTarget('test_script')}
+                      >
+                        <Editor
+                          height="200px"
+                          language="javascript"
+                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                          value={activeRequest!.test_script || ''}
+                          onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 12,
+                            fontFamily: 'JetBrains Mono',
+                            lineNumbers: 'on',
+                            automaticLayout: true,
+                            padding: { top: 10 }
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1245,18 +1034,18 @@ export const RequestEditor: React.FC = () => {
           <div
             onMouseDown={startResizing}
             className={cn(
-              "bg-elevated transition-all relative z-10 flex items-center justify-center group/handle",
+              "bg-[#1A1A1A] transition-all relative z-[60] flex items-center justify-center group/handle",
               layoutOrientation === 'vertical' ? "h-1.5 cursor-ns-resize" : "w-1.5 cursor-ew-resize",
-              isResizing ? "bg-brand shadow-[0_0_10px_rgba(62,207,142,0.3)]" : "hover:bg-brand/50"
+              isResizing ? "bg-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.3)]" : "hover:bg-[#3ECF8E]/50"
             )}
           >
             <div className={cn(
-              "rounded-full bg-[var(--border-strong)] group-hover/handle:bg-brand/50 transition-colors",
+              "rounded-full bg-[#333333] group-hover/handle:bg-[#3ECF8E]/50 transition-colors",
               layoutOrientation === 'vertical' ? "w-12 h-1" : "h-12 w-1"
             )} />
             <div className={cn(
               "absolute",
-              layoutOrientation === 'vertical' ? "inset-x-0 -top-1 -bottom-1" : "inset-y-0 -left-1 -right-1"
+              layoutOrientation === 'vertical' ? "inset-x-0 -top-2 -bottom-2" : "inset-y-0 -left-2 -right-2"
             )} />
           </div>
 
@@ -1267,13 +1056,21 @@ export const RequestEditor: React.FC = () => {
               minHeight: layoutOrientation === 'vertical' ? '150px' : 'auto',
               minWidth: layoutOrientation === 'horizontal' ? '300px' : 'auto'
             }}
-            className="shrink-0 flex flex-col bg-deep border-l border-subtle"
+            className="shrink-0 flex flex-col bg-[var(--bg-deep)] border-l border-[var(--border-subtle)]"
           >
             <ResponseViewer />
           </div>
         </div>
       )}
-      {/* Removed ScriptLibraryModal */}
+      <ScriptLibraryModal
+        onInsertScript={(script) => {
+          const current = activeRequest![activeScriptTarget] || '';
+          updateRequest(activeRequest!.id, {
+            [activeScriptTarget]: current + (current ? '\n\n' : '') + script
+          });
+          addToast({ type: 'success', message: 'Script integrated into protocol' });
+        }}
+      />
     </div>
   );
 };
@@ -1300,7 +1097,7 @@ const EmptyEditorState = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-12 bg-deep">
+    <div className="flex-1 flex flex-col items-center justify-center p-12 bg-[var(--bg-deep)]">
       <NameModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -1315,23 +1112,23 @@ const EmptyEditorState = () => {
         userId={profile?.id}
         addToast={addToast}
       />
-      <div className="w-24 h-24 rounded-full bg-elevated border border-subtle flex items-center justify-center mb-8 shadow-[0_0_50px_var(--brand-muted)]">
-        <Zap size={40} className="text-brand opacity-20" />
+      <div className="w-24 h-24 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center mb-8 shadow-[0_0_50px_var(--brand-muted)]">
+        <Zap size={40} className="text-[var(--brand)] opacity-20" />
       </div>
-      <h2 className="text-sm font-bold text-main uppercase tracking-[0.3em] mb-2">Omni-Station Standby</h2>
-      <p className="text-[10px] text-dim uppercase tracking-widest max-w-xs text-center leading-relaxed opacity-50">
+      <h2 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-[0.3em] mb-2">Omni-Station Standby</h2>
+      <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-widest max-w-xs text-center leading-relaxed opacity-50">
         Select a protocol from the explorer or initialize a new transmission to begin sector operations.
       </p>
       <div className="mt-8 grid grid-cols-2 gap-3">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-6 py-2.5 bg-elevated border border-subtle rounded-lg text-[10px] font-black text-muted hover:text-brand hover:border-brand/30 transition-all uppercase tracking-widest"
+          className="px-6 py-2.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--brand)] hover:border-[var(--brand)]/30 transition-all uppercase tracking-widest"
         >
           New Request
         </button>
         <button
           onClick={() => setIsImportOpen(true)}
-          className="px-6 py-2.5 bg-elevated border border-subtle rounded-lg text-[10px] font-black text-muted hover:text-brand hover:border-brand/30 transition-all uppercase tracking-widest"
+          className="px-6 py-2.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-lg text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--brand)] hover:border-[var(--brand)]/30 transition-all uppercase tracking-widest"
         >
           Import Collection
         </button>

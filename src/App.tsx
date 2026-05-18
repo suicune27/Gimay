@@ -6,21 +6,24 @@ import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { useStore } from './store/useStore';
 import { useOnboardingStore } from './store/onboardingStore';
 import { syncManager } from './services/SyncService';
-import { ensureDatabaseSchema } from './services/ensureDatabaseSchema';
+import { compareDatabaseStructure, ensureDatabaseSchema } from './services/ensureDatabaseSchema';
 import { isElectron } from './lib/platform';
 import { LandingPage } from './components/LandingPage';
+import { PersistenceService } from './services/PersistenceService';
+import { ToastContainer } from './components/Toast';
 
 export default function App() {
-  const { setSyncStatus, settings, setProfile } = useStore();
+  const { setSyncStatus, settings, setProfile, landingSkipped, setLandingSkipped, reset: resetStore } = useStore();
   const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [skipLanding, setSkipLanding] = useState(() => {
-    // If electron, always skip
-    if (isElectron()) return true;
-    // Check session storage to see if they just clicked "Launch" in this session
-    return sessionStorage.getItem('landing_skipped') === 'true';
-  });
+
+  // If electron, always skip landing
+  useEffect(() => {
+    if (isElectron() && !landingSkipped) {
+      setLandingSkipped(true);
+    }
+  }, [landingSkipped, setLandingSkipped]);
 
   // Check for deep link invite
   useEffect(() => {
@@ -30,7 +33,7 @@ export default function App() {
       if (inviteCode) {
         setStep('join-invite');
         setSetupMode('join-invite');
-        setSkipLanding(true); // Auto skip landing on invite
+        setLandingSkipped(true); // Auto skip landing on invite
         // Clear param without refreshing to avoid re-run
         const newUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, newUrl);
@@ -50,33 +53,9 @@ export default function App() {
         .eq('id', userId)
         .single();
 
-      if (error || !profile) {
-        console.warn('Profile not found for authenticated user, creating/falling back...', error);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const fallbackProfile = {
-            id: user.id,
-            email: user.email || '',
-            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            preferences: { theme: 'dark', accentColor: '#6366f1' }
-          };
-          
-          const { data: inserted, error: insertError } = await supabase
-            .from('profiles')
-            .insert(fallbackProfile)
-            .select()
-            .single();
-            
-          if (insertError) {
-            console.error('Failed to auto-create user profile row:', insertError);
-            setProfile(fallbackProfile as any);
-          } else {
-            console.log('Successfully auto-created user profile:', inserted);
-            setProfile(inserted);
-          }
-        } else {
-          setProfile(null);
-        }
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setProfile(null);
       } else {
         setProfile(profile);
       }
@@ -122,13 +101,29 @@ export default function App() {
       setSession(session);
       if (session?.user?.id) {
         fetchProfile(session.user.id);
+        
+        // Check for teams if not configured
+        if (!isConfigured) {
+          PersistenceService.fetchUserTeams(session.user.id).then(teams => {
+            if (teams && teams.length > 0) {
+              setStep('team-select');
+            } else {
+              setStep('welcome');
+            }
+          }).catch(err => {
+            console.error('Initial team check failed:', err);
+            setStep('welcome');
+          });
+        }
+
         // If userId in store is different, reset onboarding
         if (userId !== session.user.id) {
           resetOnboarding();
+          resetStore();
           setUserId(session.user.id);
         }
       } else {
-        setProfile(null);
+        resetStore();
         resetOnboarding();
         setUserId(null);
       }
@@ -139,12 +134,28 @@ export default function App() {
       setSession(session);
       if (session?.user?.id) {
         fetchProfile(session.user.id);
+
+        // Check for teams if not configured
+        if (!isConfigured) {
+          PersistenceService.fetchUserTeams(session.user.id).then(teams => {
+            if (teams && teams.length > 0) {
+              setStep('team-select');
+            } else {
+              setStep('welcome');
+            }
+          }).catch(err => {
+            console.error('Auth change team check failed:', err);
+            setStep('welcome');
+          });
+        }
+
         if (userId !== session.user.id) {
           resetOnboarding();
+          resetStore();
           setUserId(session.user.id);
         }
       } else {
-        setProfile(null);
+        resetStore();
         resetOnboarding();
         setUserId(null);
       }
@@ -175,14 +186,26 @@ export default function App() {
     setSchemaBootstrapMessage('Checking database structure...');
     setSchemaBootstrapLoading(true);
 
-    const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
-      setSchemaBootstrapMessage(label);
-    });
+    const compare = await compareDatabaseStructure(config.url, config.anonKey);
 
-    if (!update.success) {
+    if (!compare.success) {
       setSchemaBootstrapLoading(false);
-      setSchemaBootstrapError(update.error || 'Failed to verify database structure.');
+      setSchemaBootstrapError(compare.error || 'Failed to compare database structure.');
       return;
+    }
+
+    if (!compare.upToDate) {
+      setSchemaBootstrapMessage(`Structure out of date (${compare.missingTables.length} missing tables). Auto-updating...`);
+
+      const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
+        setSchemaBootstrapMessage(label);
+      });
+
+      if (!update.success) {
+        setSchemaBootstrapLoading(false);
+        setSchemaBootstrapError(update.error || 'Failed to auto-update database structure.');
+        return;
+      }
     }
 
     schemaCheckedUserRef.current = session.user.id;
@@ -201,9 +224,9 @@ export default function App() {
 
   if (loading || schemaBootstrapLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-deep">
-        <div className="w-16 h-16 border-2 border-brand/20 border-t-[var(--brand)] rounded-full animate-spin shadow-[0_0_20px_var(--brand-muted)]" />
-        <p className="mt-4 text-[10px] font-black text-brand uppercase tracking-widest animate-pulse">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-deep)]">
+        <div className="w-16 h-16 border-2 border-[var(--brand)]/20 border-t-[var(--brand)] rounded-full animate-spin shadow-[0_0_20px_var(--brand-muted)]" />
+        <p className="mt-4 text-[10px] font-black text-[var(--brand)] uppercase tracking-widest animate-pulse">
           {loading ? 'Initializing System...' : schemaBootstrapMessage}
         </p>
       </div>
@@ -212,12 +235,12 @@ export default function App() {
 
   if (schemaBootstrapError && session && isConfigured) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-deep px-6">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-deep)] px-6">
         <p className="text-xs font-black text-red-400 uppercase tracking-widest">Schema Check Failed</p>
-        <p className="mt-3 text-sm text-muted max-w-xl text-center">{schemaBootstrapError}</p>
+        <p className="mt-3 text-sm text-[var(--text-muted)] max-w-xl text-center">{schemaBootstrapError}</p>
         <button
           onClick={runSchemaBootstrap}
-          className="mt-6 px-4 py-2 rounded-lg bg-brand text-black text-xs font-bold uppercase tracking-wider"
+          className="mt-6 px-4 py-2 rounded-lg bg-[var(--brand)] text-black text-xs font-bold uppercase tracking-wider"
         >
           Retry Auto Update
         </button>
@@ -225,12 +248,11 @@ export default function App() {
     );
   }
 
-  if (!skipLanding) {
+  if (!landingSkipped) {
     return (
       <LandingPage 
         onStart={() => {
-          sessionStorage.setItem('landing_skipped', 'true');
-          setSkipLanding(true);
+          setLandingSkipped(true);
         }} 
       />
     );
@@ -238,6 +260,7 @@ export default function App() {
 
   return (
     <>
+      <ToastContainer />
       {!session && <AuthUI />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}

@@ -105,38 +105,38 @@ export const JoinTeamWizard: React.FC = () => {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-black text-main tracking-tight">
+        <h2 className="text-2xl font-black text-white tracking-tight">
           Join Team
         </h2>
         <button
           onClick={() => setOnboardingStep('option-select')}
-          className="p-2 hover:bg-elevated rounded-lg transition-all"
+          className="p-2 hover:bg-[#1A1A1A] rounded-lg transition-all"
         >
-          <ArrowLeft size={20} className="text-muted" />
+          <ArrowLeft size={20} className="text-[#888888]" />
         </button>
       </div>
 
       {/* Content */}
       <div className="space-y-6">
-        <div className="p-4 rounded-xl bg-brand/10 border border-brand/20 flex gap-4 items-center mb-2">
-          <div className="w-12 h-12 rounded-lg bg-brand/20 flex items-center justify-center shrink-0">
-            <CheckCircle2 size={24} className="text-brand" />
+        <div className="p-4 rounded-xl bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex gap-4 items-center mb-2">
+          <div className="w-12 h-12 rounded-lg bg-[#3ECF8E]/20 flex items-center justify-center shrink-0">
+            <CheckCircle2 size={24} className="text-[#3ECF8E]" />
           </div>
           <div>
-            <p className="text-sm font-bold text-main">Simplified Access</p>
-            <p className="text-xs text-muted">
+            <p className="text-sm font-bold text-white">Simplified Access</p>
+            <p className="text-xs text-[#888888]">
               Supabase credentials will be configured automatically from your code.
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-muted">
+        <p className="text-sm text-[#888888]">
           Enter your team's temporary code to automatically configure your workspace.
         </p>
 
         {/* Temporary Code Input */}
         <div>
-          <label className="block text-xs font-black uppercase text-muted mb-2 tracking-widest">
+          <label className="block text-xs font-black uppercase text-[#888888] mb-2 tracking-widest">
             Temporary Code
           </label>
           <input
@@ -145,16 +145,16 @@ export const JoinTeamWizard: React.FC = () => {
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
             maxLength={24}
-            className="w-full px-4 py-4 bg-elevated border border-subtle rounded-lg text-main placeholder:text-dim focus:border-brand focus:outline-none transition-all font-mono tracking-widest text-center text-xl"
+            className="w-full px-4 py-4 bg-[#1A1A1A] border border-[#222222] rounded-lg text-white placeholder:text-[#555555] focus:border-[#3ECF8E] focus:outline-none transition-all font-mono tracking-widest text-center text-xl"
           />
-          <p className="text-xs text-dim mt-2 text-center font-mono">
+          <p className="text-xs text-[#555555] mt-2 text-center font-mono">
             Format: TEMP-XXXX-XXXX-XXXX
           </p>
         </div>
 
         {/* Optional Team Code Input */}
         <div>
-          <label className="block text-xs font-black uppercase text-muted mb-2 tracking-widest">
+          <label className="block text-xs font-black uppercase text-[#888888] mb-2 tracking-widest">
             Team Code (Optional)
           </label>
           <input
@@ -163,9 +163,9 @@ export const JoinTeamWizard: React.FC = () => {
             value={teamCode}
             onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
             maxLength={24}
-            className="w-full px-4 py-3 bg-elevated border border-subtle rounded-lg text-main placeholder:text-dim focus:border-brand focus:outline-none transition-all font-mono tracking-wider text-center"
+            className="w-full px-4 py-3 bg-[#1A1A1A] border border-[#222222] rounded-lg text-white placeholder:text-[#555555] focus:border-[#3ECF8E] focus:outline-none transition-all font-mono tracking-wider text-center"
           />
-          <p className="text-[10px] text-dim mt-2 italic text-center">
+          <p className="text-[10px] text-[#555555] mt-2 italic text-center">
             Usually fetched automatically from your temporary code.
           </p>
         </div>
@@ -190,7 +190,7 @@ export const JoinTeamWizard: React.FC = () => {
             !inviteCode ||
             !OnboardingService.isValidInviteCodeFormat(inviteCode)
           }
-          className="w-full px-4 py-4 bg-brand text-[var(--text-on-brand)] font-black rounded-lg hover:shadow-[0_0_20px_rgba(62,207,142,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
+          className="w-full px-4 py-4 bg-[#3ECF8E] text-[var(--text-on-brand)] font-black rounded-lg hover:shadow-[0_0_20px_rgba(62,207,142,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
         >
           {isJoining && <Loader size={20} className="animate-spin" />}
           {isJoining ? 'Initializing...' : 'Join Workspace'}

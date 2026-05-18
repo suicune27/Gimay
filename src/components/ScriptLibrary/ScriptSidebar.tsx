@@ -71,13 +71,13 @@ export const ScriptSidebar: React.FC = () => {
   };
 
   return (
-    <div className="w-64 bg-surface border-r border-subtle flex flex-col shrink-0">
-      <div className="p-4 border-b border-subtle space-y-4">
+    <div className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col shrink-0">
+      <div className="p-4 border-b border-[var(--border-subtle)] space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-black text-main uppercase tracking-widest">Script Explorer</h2>
+          <h2 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Script Explorer</h2>
           <button 
             onClick={handleCreateScript}
-            className="p-1.5 hover:bg-brand/10 hover:text-brand text-muted rounded-md transition-all border border-subtle hover:border-brand/30"
+            className="p-1.5 hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] text-[var(--text-muted)] rounded-md transition-all border border-[var(--border-subtle)] hover:border-[var(--brand)]/30"
             title="New Script"
           >
             <Plus size={14} />
@@ -85,12 +85,12 @@ export const ScriptSidebar: React.FC = () => {
         </div>
 
         <div className="relative group">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--border-strong)] group-focus-within:text-brand transition-colors" />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--border-strong)] group-focus-within:text-[var(--brand)] transition-colors" />
           <input 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="FILTER_SCRIPTS..."
-            className="w-full bg-deep border border-subtle rounded-md py-1.5 pl-8 pr-3 text-[10px] font-mono text-muted focus:border-brand/40 outline-none transition-all"
+            className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-md py-1.5 pl-8 pr-3 text-[10px] font-mono text-[var(--text-muted)] focus:border-[var(--brand)]/40 outline-none transition-all"
           />
         </div>
       </div>
@@ -102,7 +102,7 @@ export const ScriptSidebar: React.FC = () => {
             <p className="text-[9px] font-black text-[var(--border-strong)] uppercase tracking-widest mb-4">No scripts found</p>
             <button 
               onClick={handleCreateScript}
-              className="px-4 py-2 bg-brand/10 border border-brand/30 rounded-lg text-[9px] font-black text-brand uppercase tracking-widest hover:bg-brand/20 transition-all flex items-center gap-2"
+              className="px-4 py-2 bg-[var(--brand)]/10 border border-[var(--brand)]/30 rounded-lg text-[9px] font-black text-[var(--brand)] uppercase tracking-widest hover:bg-[var(--brand)]/20 transition-all flex items-center gap-2"
             >
               <Plus size={12} />
               Create First Script
@@ -116,8 +116,8 @@ export const ScriptSidebar: React.FC = () => {
               className={cn(
                 "group flex items-center px-4 py-2 cursor-pointer transition-all border-l-2",
                 useScriptStore.getState().openTabs.find(t => t.scriptId === script.id && t.id === activeTabId)
-                  ? "bg-brand/5 border-brand text-main" 
-                  : "border-transparent text-dim hover:bg-elevated hover:text-muted"
+                  ? "bg-[var(--brand)]/5 border-[var(--brand)] text-[var(--text-main)]" 
+                  : "border-transparent text-[var(--text-dim)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-muted)]"
               )}
             >
               <FileCode size={14} className="mr-3 shrink-0" />
@@ -131,7 +131,7 @@ export const ScriptSidebar: React.FC = () => {
                     if (e.key === 'Escape') setRenamingId(null);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="bg-deep border border-brand/30 rounded px-2 py-0.5 text-[10px] text-main outline-none w-full"
+                  className="bg-[var(--bg-deep)] border border-[var(--brand)]/30 rounded px-2 py-0.5 text-[10px] text-[var(--text-main)] outline-none w-full"
                 />
               ) : (
                 <span className="text-[10px] font-bold truncate flex-1">{script.name}</span>
@@ -140,7 +140,7 @@ export const ScriptSidebar: React.FC = () => {
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                 <button 
                   onClick={(e) => { e.stopPropagation(); setRenamingId(script.id); }}
-                  className="p-1 hover:text-brand text-[var(--border-strong)] transition-all"
+                  className="p-1 hover:text-[var(--brand)] text-[var(--border-strong)] transition-all"
                 >
                   <Edit3 size={12} />
                 </button>

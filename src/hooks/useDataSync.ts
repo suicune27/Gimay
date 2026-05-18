@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { PersistenceService } from '../services/PersistenceService';
 import { RequestUtils } from '../utils/RequestUtils';
-import { useScriptStore } from '../store/scriptStore';
 
 export const useDataSync = () => {
   const store = useStore();
@@ -23,6 +22,8 @@ export const useDataSync = () => {
     if (data) {
       store.setWorkspaces(data);
       
+      const isValidActiveWorkspace = data.some(w => w.id === store.activeWorkspaceId);
+
       if (data.length === 0) {
         // Create initial personal workspace
         let { data: newWs, error: createError } = await supabase
@@ -45,7 +46,7 @@ export const useDataSync = () => {
            store.setWorkspaces([newWs]);
            store.setActiveWorkspaceId(newWs.id);
         }
-      } else if (!store.activeWorkspaceId) {
+      } else if (!store.activeWorkspaceId || !isValidActiveWorkspace) {
         const lastId = store.profile?.preferences?.last_workspace_id;
         const workspaceToSelect = data.find(w => w.id === lastId) || data[0];
         store.setActiveWorkspaceId(workspaceToSelect.id);
@@ -103,58 +104,7 @@ export const useDataSync = () => {
         }
       }
 
-      let data = result.data;
-      let error = result.error;
-
-      // Ultimate Fallback: If PostgREST relationship query fails due to stale schema cache (e.g. PGRST200 / relationship mismatch)
-      if (error && (error.code === 'PGRST200' || String(error.message || '').toLowerCase().includes('relationship'))) {
-        console.warn('[Sync] PostgREST schema cache relationship mismatch detected. Switching to resilient parallel query mode...');
-        
-        let colsQuery = supabase.from('collections').select('*');
-        if (teamIds.length > 0) {
-          colsQuery = colsQuery.or(`workspace_id.eq.${workspaceId},team_id.in.(${teamIds.join(',')})`);
-        } else {
-          colsQuery = colsQuery.eq('workspace_id', workspaceId);
-        }
-        const { data: cols, error: colsErr } = await colsQuery.order('created_at', { ascending: false });
-        
-        if (colsErr) throw colsErr;
-
-        if (cols && cols.length > 0) {
-          const colIds = cols.map(c => c.id);
-          
-          const fetchCollabs = async () => {
-            try {
-              const { data: cData } = await supabase.from('collection_collaborators').select('*').in('collection_id', colIds);
-              return { data: cData || [], error: null };
-            } catch (e) {
-              return { data: [], error: null };
-            }
-          };
-
-          const [reqsRes, foldersRes, collabRes] = await Promise.all([
-            supabase.from('requests').select('*').eq('workspace_id', workspaceId),
-            supabase.from('folders').select('*').in('collection_id', colIds),
-            fetchCollabs()
-          ]);
-
-          const reqs = reqsRes.data || [];
-          const folders = foldersRes.data || [];
-          const collabs = collabRes.data || [];
-
-          data = cols.map(col => ({
-            ...col,
-            requests: reqs.filter((r: any) => r.collection_id === col.id),
-            folders: folders.filter((f: any) => f.collection_id === col.id),
-            collection_collaborators: collabs.filter((c: any) => c.collection_id === col.id)
-          })) as any;
-          error = null;
-        } else {
-          data = [];
-          error = null;
-        }
-      }
-
+      const { data, error } = result;
       if (error) throw error;
  
        const mappedData = (data || []).map((col: any) => {
@@ -197,15 +147,6 @@ export const useDataSync = () => {
       .order('created_at', { ascending: false });
     
     if (data) store.setEnvironments(data);
-  };
-
-  const fetchScripts = async (workspaceId: string) => {
-    try {
-      const loadedScripts = await PersistenceService.fetchScripts(workspaceId);
-      useScriptStore.getState().setScripts(loadedScripts);
-    } catch (e) {
-      console.error('Failed to sync scripts:', e);
-    }
   };
 
   const fetchUserTabs = async () => {
@@ -300,32 +241,7 @@ export const useDataSync = () => {
         schema: 'public', 
         table: 'environments',
         filter: `workspace_id=eq.${store.activeWorkspaceId}` 
-      }, (payload) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload;
-        const currentEnvs = store.environments || [];
-        
-        if (eventType === 'INSERT') {
-          if (newRecord && !currentEnvs.some(e => e.id === newRecord.id)) {
-            store.setEnvironments([newRecord as any, ...currentEnvs]);
-          }
-        } else if (eventType === 'UPDATE') {
-          if (newRecord) {
-            const updated = currentEnvs.map(e => e.id === newRecord.id ? { ...e, ...newRecord } as any : e);
-            store.setEnvironments(updated);
-          }
-        } else if (eventType === 'DELETE') {
-          if (oldRecord) {
-            const remaining = currentEnvs.filter(e => e.id !== oldRecord.id);
-            store.setEnvironments(remaining);
-          }
-        }
-      })
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'scripts',
-        filter: `workspace_id=eq.${store.activeWorkspaceId}` 
-      }, () => fetchScripts(store.activeWorkspaceId!))
+      }, () => fetchEnvironments(store.activeWorkspaceId!))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -365,7 +281,6 @@ export const useDataSync = () => {
     fetchCollections(store.activeWorkspaceId);
     fetchEnvironments(store.activeWorkspaceId);
     fetchHistory(store.activeWorkspaceId);
-    fetchScripts(store.activeWorkspaceId);
     fetchUserTabs();
 
     return () => {

@@ -49,47 +49,8 @@ export class RequestService {
     const effectiveAuth = AuthService.getEffectiveAuth(request, context.collections);
     this.applyAuth(config, effectiveAuth, variableContext);
 
-    // 6. Check if no custom proxy is setuped (use local proxy fallback to bypass CORS in browser)
-    const hasCustomProxy = globalSettings.proxy?.enabled && (
-      globalSettings.proxy.httpProxy || 
-      globalSettings.proxy.httpsProxy || 
-      globalSettings.proxy.socksProxy
-    );
-    const useLocalProxy = !hasCustomProxy;
-
     try {
-      let response: AxiosResponse;
-
-      if (useLocalProxy) {
-        const proxyPayload = {
-          method: config.method,
-          url: config.url,
-          headers: config.headers,
-          params: config.params,
-          data: config.data,
-        };
-
-        const proxyRes = await axios.post('/api/proxy', proxyPayload, {
-          validateStatus: () => true,
-          timeout: config.timeout,
-          maxContentLength: config.maxContentLength,
-        });
-
-        if (proxyRes.data && proxyRes.data.error) {
-          throw new Error(proxyRes.data.error + (proxyRes.data.details ? `: ${JSON.stringify(proxyRes.data.details)}` : ''));
-        }
-
-        response = {
-          status: proxyRes.data.status,
-          statusText: proxyRes.data.statusText,
-          headers: proxyRes.data.headers || {},
-          data: proxyRes.data.data,
-          config: config,
-        } as any;
-      } else {
-        response = await axios(config);
-      }
-
+      const response: AxiosResponse = await axios(config);
       const end = Date.now();
 
       return {

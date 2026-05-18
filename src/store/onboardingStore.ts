@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type OnboardingStep = 'idle' | 'welcome' | 'option-select' | 'create-setup' | 'join-team' | 'join-invite' | 'complete';
-export type SetupMode = 'create' | 'join' | 'join-invite' | null;
+export type OnboardingStep = 'idle' | 'welcome' | 'option-select' | 'create-setup' | 'join-team' | 'join-invite' | 'team-select' | 'complete';
+export type SetupMode = 'create' | 'join' | 'join-invite' | 'select' | null;
 
 interface OnboardingState {
   // State

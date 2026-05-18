@@ -571,7 +571,7 @@ export class CollectionImportService {
   ) {
     for (const node of nodes) {
       if (node.type === 'folder') {
-        const folder = await PersistenceService.createFolder(node.name, collectionId, userId, folderId || undefined);
+        const folder = await PersistenceService.createFolder(node.name, collectionId, userId, folderId || undefined, workspaceId);
         await this.importNodes(node.children, collectionId, workspaceId, userId, folder.id);
       } else {
         await PersistenceService.createRequest({

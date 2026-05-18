@@ -217,42 +217,42 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, initi
         initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 10 }}
-        className="relative w-full max-w-4xl bg-surface border border-subtle rounded-2xl shadow-2xl flex flex-col h-[85vh]"
+        className="relative w-full max-w-4xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl flex flex-col h-[85vh]"
       >
         {/* Header */}
-        <div className="p-5 border-b border-subtle flex items-center justify-between bg-elevated">
+        <div className="p-5 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-elevated)]">
           <div>
-            <h2 className="text-[13px] font-black text-main uppercase tracking-widest">Export Selection</h2>
-            <p className="text-[10px] text-dim uppercase tracking-tighter mt-1">
+            <h2 className="text-[13px] font-black text-[var(--text-main)] uppercase tracking-widest">Export Selection</h2>
+            <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-tighter mt-1">
               Select items and format for backup or transfer
             </p>
           </div>
-          <button onClick={onClose} className="p-1 text-dim hover:text-main transition-colors">
+          <button onClick={onClose} className="p-1 text-[var(--text-dim)] hover:text-[var(--text-main)] transition-colors">
             <X size={18} />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left Side: Tree Selection */}
-          <div className="flex-1 flex flex-col border-r border-subtle bg-deep/30">
-            <div className="p-4 border-b border-subtle space-y-3">
+          <div className="flex-1 flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-deep)]/30">
+            <div className="p-4 border-b border-[var(--border-subtle)] space-y-3">
               <div className="relative group">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim group-focus-within:text-brand transition-colors" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] group-focus-within:text-[var(--brand)] transition-colors" />
                 <input 
                   autoFocus
                   type="text" 
                   placeholder="SEARCH_ITEMS..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-deep border border-subtle rounded-lg py-2 pl-10 pr-3 text-[11px] font-mono text-main outline-none focus:border-brand/50 transition-all"
+                  className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg py-2 pl-10 pr-3 text-[11px] font-mono text-[var(--text-main)] outline-none focus:border-[var(--brand)]/50 transition-all"
                 />
               </div>
               <div className="flex items-center justify-between px-1">
-                <span className="text-[9px] font-black text-muted uppercase tracking-widest">
+                <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest">
                   {selectedIds.size} Items Selected
                 </span>
                 <div className="flex gap-3">
-                  <button onClick={handleSelectAll} className="text-[9px] font-black text-brand uppercase hover:opacity-80">Select All</button>
+                  <button onClick={handleSelectAll} className="text-[9px] font-black text-[var(--brand)] uppercase hover:opacity-80">Select All</button>
                   <button onClick={handleClearSelection} className="text-[9px] font-black text-red-400 uppercase hover:opacity-80">Clear</button>
                 </div>
               </div>
@@ -281,9 +281,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, initi
           </div>
 
           {/* Right Side: Export Options */}
-          <div className="w-[300px] flex flex-col bg-elevated/50">
-            <div className="p-4 border-b border-subtle">
-              <span className="text-[10px] font-black text-muted uppercase tracking-widest">Export Format</span>
+          <div className="w-[300px] flex flex-col bg-[var(--bg-elevated)]/50">
+            <div className="p-4 border-b border-[var(--border-subtle)]">
+              <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Export Format</span>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
               {FORMAT_OPTIONS.map(opt => (
@@ -294,26 +294,26 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, initi
                     "w-full text-left p-3 rounded-xl border transition-all relative group overflow-hidden",
                     format === opt.id
                       ? opt.color
-                      : "bg-deep border-subtle hover:border-[var(--text-dim)]/30"
+                      : "bg-[var(--bg-deep)] border-[var(--border-subtle)] hover:border-[var(--text-dim)]/30"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      format === opt.id ? "bg-white/10" : "bg-elevated"
+                      format === opt.id ? "bg-white/10" : "bg-[var(--bg-elevated)]"
                     )}>
                       <opt.icon size={16} />
                     </div>
                     <div>
                       <div className={cn(
                         "text-[11px] font-black uppercase tracking-wide",
-                        format === opt.id ? "" : "text-main"
+                        format === opt.id ? "" : "text-[var(--text-main)]"
                       )}>
                         {opt.title}
                       </div>
                       <div className={cn(
                         "text-[9px] uppercase tracking-tighter opacity-60",
-                        format === opt.id ? "" : "text-dim"
+                        format === opt.id ? "" : "text-[var(--text-dim)]"
                       )}>
                         {opt.subtitle}
                       </div>
@@ -331,28 +331,28 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, initi
             </div>
 
             {/* Summary */}
-            <div className="p-4 border-t border-subtle bg-deep/50 space-y-3">
+            <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-deep)]/50 space-y-3">
               <div className="space-y-2">
-                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-dim">
+                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-[var(--text-dim)]">
                   <span>Collections:</span>
-                  <span className="font-bold text-main">
+                  <span className="font-bold text-[var(--text-main)]">
                     {collections.filter(c => selectedIds.has(c.id)).length}
                   </span>
                 </div>
-                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-dim">
+                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-[var(--text-dim)]">
                   <span>Selected Units:</span>
-                  <span className="font-bold text-main">{selectedIds.size}</span>
+                  <span className="font-bold text-[var(--text-main)]">{selectedIds.size}</span>
                 </div>
-                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-dim">
+                <div className="flex justify-between text-[10px] uppercase tracking-tighter text-[var(--text-dim)]">
                   <span>Output Type:</span>
-                  <span className="font-bold text-brand">{format.toUpperCase()}</span>
+                  <span className="font-bold text-[var(--brand)]">{format.toUpperCase()}</span>
                 </div>
               </div>
 
               <button
                 onClick={handleExport}
                 disabled={selectedIds.size === 0 || isExporting}
-                className="w-full h-10 bg-brand hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center gap-2 text-[11px] font-black text-[var(--bg-deep)] uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                className="w-full h-10 bg-[var(--brand)] hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg flex items-center justify-center gap-2 text-[11px] font-black text-[var(--bg-deep)] uppercase tracking-widest transition-all shadow-lg active:scale-95"
               >
                 {isExporting ? (
                   <>Exporting...</>
@@ -405,17 +405,17 @@ const TreeNode: React.FC<{
           }}
           className={cn(
             "w-4 h-4 rounded border flex items-center justify-center transition-all",
-            isSelected === true ? "bg-brand border-brand" : 
-            isSelected === 'indeterminate' ? "bg-brand/30 border-brand/50" :
-            "border-subtle bg-deep group-hover:border-brand/50"
+            isSelected === true ? "bg-[var(--brand)] border-[var(--brand)]" : 
+            isSelected === 'indeterminate' ? "bg-[var(--brand)]/30 border-[var(--brand)]/50" :
+            "border-[var(--border-subtle)] bg-[var(--bg-deep)] group-hover:border-[var(--brand)]/50"
           )}
         >
           {isSelected === true && <Check size={10} className="text-[var(--bg-deep)]" />}
-          {isSelected === 'indeterminate' && <div className="w-2 h-0.5 bg-brand" />}
+          {isSelected === 'indeterminate' && <div className="w-2 h-0.5 bg-[var(--brand)]" />}
         </div>
 
         {hasChildren ? (
-          isOpen ? <ChevronDown size={14} className="text-dim" /> : <ChevronRight size={14} className="text-dim" />
+          isOpen ? <ChevronDown size={14} className="text-[var(--text-dim)]" /> : <ChevronRight size={14} className="text-[var(--text-dim)]" />
         ) : (
           <div className="w-3.5" />
         )}
@@ -423,20 +423,20 @@ const TreeNode: React.FC<{
         {isRequest ? (
           <div className={cn(
             "text-[8px] font-black w-7 text-center shrink-0",
-            node.method === 'GET' ? 'text-brand' : 
+            node.method === 'GET' ? 'text-[var(--brand)]' : 
             node.method === 'POST' ? 'text-yellow-500' :
             node.method === 'PUT' ? 'text-blue-500' :
-            node.method === 'DELETE' ? 'text-red-500' : 'text-dim'
+            node.method === 'DELETE' ? 'text-red-500' : 'text-[var(--text-dim)]'
           )}>
             {node.method}
           </div>
         ) : (
-          <Folder size={12} className={cn(isSelected ? "text-brand" : "text-dim")} />
+          <Folder size={12} className={cn(isSelected ? "text-[var(--brand)]" : "text-[var(--text-dim)]")} />
         )}
 
         <span className={cn(
           "text-[11px] truncate flex-1",
-          isSelected ? "text-main font-bold" : "text-muted"
+          isSelected ? "text-[var(--text-main)] font-bold" : "text-[var(--text-muted)]"
         )}>
           {node.name}
         </span>

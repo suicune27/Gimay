@@ -29,24 +29,27 @@ import {
   Trash2,
   Download,
   Upload,
-  RotateCcw
+  RotateCcw,
+  Github,
+  CloudDownload
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 import { AppSettings } from '../types';
-import { DatabaseMigrationSection } from './DatabaseMigrationSection';
+import { GitHubService } from '../services/GitHubService';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Data & Migration' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
+type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'GitHub Sync' | 'Experimental' | 'Diagnostics' | 'About';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { settings, updateSettings, resetSettings } = useStore();
+  const { settings, updateSettings, resetSettings, activeWorkspaceId, profile, addToast } = useStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>('General');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPulling, setIsPulling] = useState(false);
 
   const handleUpdate = (path: string, value: any) => {
     const parts = path.split('.');
@@ -68,9 +71,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     { id: 'Themes', icon: Layout, label: 'Appearance' },
     { id: 'Proxy', icon: Globe, label: 'Proxy' },
     { id: 'SSL/TLS', icon: Shield, label: 'SSL / TLS' },
-    { id: 'Cookies', icon: HardDrive, label: 'Cookies' },
-    { id: 'Data & Migration', icon: Database, label: 'Data & Migration' },
+    { id: 'Cookies', icon: Database, label: 'Cookies' },
     { id: 'Response & Network', icon: Zap, label: 'Network' },
+    { id: 'GitHub Sync', icon: Github, label: 'GitHub Sync' },
     { id: 'Experimental', icon: FlaskConical, label: 'Experimental' },
     { id: 'Diagnostics', icon: Activity, label: 'Diagnostics' },
     { id: 'About', icon: Info, label: 'About' },
@@ -98,7 +101,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gimay-settings-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `putman-settings-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
   };
 
@@ -134,12 +137,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-4xl h-[650px] bg-deep border border-subtle rounded-xl overflow-hidden shadow-2xl flex"
+        className="relative w-full max-w-4xl h-[650px] bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl overflow-hidden shadow-2xl flex"
       >
         {/* Sidebar */}
-        <div className="w-64 bg-surface border-r border-subtle flex flex-col">
+        <div className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col">
           <div className="p-6">
-            <h2 className="text-[11px] font-black uppercase tracking-widest text-dim mb-4">Operations Center</h2>
+            <h2 className="text-[11px] font-black uppercase tracking-widest text-[var(--text-dim)] mb-4">Operations Center</h2>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--border-strong)]" />
               <input 
@@ -147,7 +150,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 placeholder="Find Setting..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-deep border border-subtle rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold text-main placeholder:text-[var(--border-strong)] focus:border-brand/50 outline-none transition-all"
+                className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg pl-9 pr-4 py-2 text-[10px] font-bold text-[var(--text-main)] placeholder:text-[var(--border-strong)] focus:border-[var(--brand)]/50 outline-none transition-all"
               />
             </div>
           </div>
@@ -160,20 +163,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all group",
                   activeSection === section.id 
-                    ? "bg-brand/10 text-brand" 
-                    : "text-dim hover:text-main hover:bg-elevated"
+                    ? "bg-[var(--brand)]/10 text-[var(--brand)]" 
+                    : "text-[var(--text-dim)] hover:text-[var(--text-main)] hover:bg-[var(--bg-elevated)]"
                 )}
               >
                 <section.icon size={16} className={cn(
                   "transition-all",
-                  activeSection === section.id ? "text-brand" : "text-[var(--border-strong)] group-hover:text-dim"
+                  activeSection === section.id ? "text-[var(--brand)]" : "text-[var(--border-strong)] group-hover:text-[var(--text-dim)]"
                 )} />
                 {section.label}
               </button>
             ))}
           </div>
 
-          <div className="p-4 border-t border-subtle flex flex-col gap-2">
+          <div className="p-4 border-t border-[var(--border-subtle)] flex flex-col gap-2">
             <button 
               onClick={() => {
                 if(confirm('Reset all settings to default factory values?')) resetSettings();
@@ -184,19 +187,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               Reset All
             </button>
             <div className="flex items-center gap-2 px-3 opacity-30 mt-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
-              <span className="text-[8px] font-black uppercase tracking-widest text-muted">Mainframe Sync Active</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-pulse" />
+              <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">Mainframe Sync Active</span>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col bg-deep">
-          <div className="h-16 border-b border-subtle flex items-center justify-between px-8">
-            <h1 className="text-sm font-black text-main uppercase tracking-[0.2em]">{activeSection}</h1>
+        <div className="flex-1 flex flex-col bg-[var(--bg-deep)]">
+          <div className="h-16 border-b border-[var(--border-subtle)] flex items-center justify-between px-8">
+            <h1 className="text-sm font-black text-[var(--text-main)] uppercase tracking-[0.2em]">{activeSection}</h1>
             <button 
               onClick={onClose}
-              className="p-2 text-dim hover:text-main transition-all"
+              className="p-2 text-[var(--text-dim)] hover:text-[var(--text-main)] transition-all"
             >
               <X size={18} />
             </button>
@@ -303,8 +306,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           className={cn(
                             "flex flex-col items-center justify-center gap-3 p-6 rounded-xl border transition-all",
                             settings.appearance.theme === t.id 
-                              ? "bg-brand/5 border-brand text-brand" 
-                              : "bg-elevated border-subtle text-dim hover:border-strong"
+                              ? "bg-[var(--brand)]/5 border-[var(--brand)] text-[var(--brand)]" 
+                              : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-dim)] hover:border-[var(--border-strong)]"
                           )}
                         >
                           <t.icon size={24} />
@@ -340,7 +343,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           onChange={(v) => handleUpdate('appearance.fontSize', parseInt(v) || 12)}
                         />
                         <div className="space-y-2">
-                          <label className="text-[9px] font-black text-dim uppercase tracking-widest">Accent Chroma</label>
+                          <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Accent Chroma</label>
                           <div className="flex items-center gap-3">
                             <input 
                               type="color" 
@@ -348,7 +351,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                               onChange={(e) => handleUpdate('appearance.accentColor', e.target.value)}
                               className="w-10 h-10 bg-transparent border-none cursor-pointer"
                             />
-                            <span className="text-[10px] font-mono text-muted">{settings.appearance.accentColor.toUpperCase()}</span>
+                            <span className="text-[10px] font-mono text-[var(--text-muted)]">{settings.appearance.accentColor.toUpperCase()}</span>
                           </div>
                         </div>
                       </div>
@@ -512,6 +515,96 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </motion.div>
               )}
 
+              {activeSection === 'GitHub Sync' && (
+                <motion.div
+                  key="github"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-8"
+                >
+                  <Section title="Authentication">
+                    <SettingInput 
+                      label="GitHub Personal Access Token" 
+                      description="Create a token with 'repo' scope at github.com/settings/tokens"
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      value={settings.github.token}
+                      type="password"
+                      onChange={(v) => handleUpdate('github.token', v)}
+                    />
+                  </Section>
+
+                  <Section title="Repository Link">
+                    <div className="space-y-4">
+                      <SettingInput 
+                        label="Target Repository" 
+                        description="Format: owner/repo"
+                        placeholder="whitehats27/api-collections"
+                        value={settings.github.repo}
+                        onChange={(v) => handleUpdate('github.repo', v)}
+                      />
+                      <div className="grid grid-cols-2 gap-6">
+                        <SettingInput 
+                          label="Branch" 
+                          placeholder="main"
+                          value={settings.github.branch}
+                          onChange={(v) => handleUpdate('github.branch', v)}
+                        />
+                        <SettingInput 
+                          label="Root Path" 
+                          description="Directory for collections"
+                          placeholder="collections"
+                          value={settings.github.path}
+                          onChange={(v) => handleUpdate('github.path', v)}
+                        />
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Operational Sync">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
+                        <div>
+                          <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">Pull Remote Updates</div>
+                          <div className="text-[10px] text-[var(--text-dim)] mt-0.5">Fetch latest collection nodes from specified repository.</div>
+                          {settings.github.lastPulledAt && (
+                            <div className="text-[8px] text-[var(--brand)] font-mono mt-1 uppercase tracking-tighter">
+                              Last Pulled: {new Date(settings.github.lastPulledAt).toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                        <button 
+                          onClick={async () => {
+                            if (!activeWorkspaceId || !profile?.id) return;
+                            setIsPulling(true);
+                            try {
+                              const count = await GitHubService.pullUpdates(activeWorkspaceId, profile.id);
+                              addToast({ type: 'success', message: `Uplink successful: Imported ${count} nodes.` });
+                            } catch (e: any) {
+                              addToast({ type: 'error', message: `Uplink failed: ${e.message}` });
+                            } finally {
+                              setIsPulling(false);
+                            }
+                          }}
+                          disabled={isPulling || !settings.github.token || !settings.github.repo}
+                          className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all disabled:opacity-20"
+                        >
+                          {isPulling ? <RefreshCw size={14} className="animate-spin" /> : <CloudDownload size={14} />}
+                          Pull Updates
+                        </button>
+                      </div>
+
+                      <SettingToggle 
+                        label="Background Synchronization" 
+                        description="Automatically push local changes to GitHub in intervals (Experimental)." 
+                        enabled={settings.github.autoSync}
+                        onChange={(v) => handleUpdate('github.autoSync', v)}
+                      />
+                    </div>
+                  </Section>
+                </motion.div>
+              )}
+
               {activeSection === 'Experimental' && (
                 <motion.div
                   key="experimental"
@@ -549,20 +642,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </motion.div>
               )}
 
-              {activeSection === 'Data & Migration' && (
-                <motion.div
-                  key="data-migration"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="space-y-8"
-                >
-                  <Section title="Data Portability">
-                    <DatabaseMigrationSection />
-                  </Section>
-                </motion.div>
-              )}
-
               {activeSection === 'Diagnostics' && (
                 <motion.div
                   key="diagnostics"
@@ -573,10 +652,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 >
                   <Section title="Maintenance & Health">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-elevated rounded-lg border border-subtle">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
                         <div>
-                          <div className="text-[11px] font-bold text-main uppercase tracking-tight">Application Storage</div>
-                          <div className="text-[10px] text-dim mt-0.5">Clear all locally cached data and settings.</div>
+                          <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">Application Storage</div>
+                          <div className="text-[10px] text-[var(--text-dim)] mt-0.5">Clear all locally cached data and settings.</div>
                         </div>
                         <button 
                           onClick={handleClearCache}
@@ -587,20 +666,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between p-4 bg-elevated rounded-lg border border-subtle">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
                         <div>
-                          <div className="text-[11px] font-bold text-main uppercase tracking-tight">Configuration Backup</div>
-                          <div className="text-[10px] text-dim mt-0.5">Export or import your current operations setup.</div>
+                          <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">Configuration Backup</div>
+                          <div className="text-[10px] text-[var(--text-dim)] mt-0.5">Export or import your current operations setup.</div>
                         </div>
                         <div className="flex gap-2">
                           <button 
                             onClick={handleExportSettings}
-                            className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand hover:bg-brand/10 rounded-lg transition-all"
+                            className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all"
                           >
                             <Download size={14} />
                             Export
                           </button>
-                          <label className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand hover:bg-brand/10 rounded-lg transition-all cursor-pointer">
+                          <label className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all cursor-pointer">
                             <Upload size={14} />
                             Import
                             <input type="file" className="hidden" accept=".json" onChange={handleImportSettings} />
@@ -611,13 +690,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   </Section>
 
                   <Section title="System Trace">
-                    <div className="bg-deep border border-subtle rounded-lg font-mono text-[10px] p-4 text-dim space-y-2 max-h-40 overflow-y-auto">
-                      <p><span className="text-brand">[SYSTEM]</span> Initializing diagnostics module...</p>
-                      <p><span className="text-brand">[SYSTEM]</span> Kernel version: Gimay-OS-Core-9</p>
+                    <div className="bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg font-mono text-[10px] p-4 text-[var(--text-dim)] space-y-2 max-h-40 overflow-y-auto">
+                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Initializing diagnostics module...</p>
+                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Kernel version: Putman-OS-Core-9</p>
                       <p><span className="text-yellow-500">[WARN]</span> High memory latency detected in tab sector B</p>
-                      <p><span className="text-brand">[SYSTEM]</span> Sync manager operational (IDLE)</p>
+                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Sync manager operational (IDLE)</p>
                       <p><span className="text-blue-400">[INFO]</span> Persistence link secured via Supabase-Tunnel-1</p>
-                      <p><span className="text-brand">[SYSTEM]</span> Awaiting next operation sequence...</p>
+                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Awaiting next operation sequence...</p>
                     </div>
                   </Section>
                 </motion.div>
@@ -631,42 +710,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   exit={{ opacity: 0, x: -10 }}
                   className="space-y-8 flex flex-col items-center justify-center py-10"
                 >
-                   <div className="w-24 h-24 rounded-2xl bg-elevated border border-subtle flex items-center justify-center mb-6">
-                      <Terminal size={48} className="text-brand" />
+                   <div className="w-24 h-24 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center mb-6">
+                      <Terminal size={48} className="text-[var(--brand)]" />
                    </div>
                    <div className="text-center space-y-2">
-                     <h2 className="text-2xl font-black text-main tracking-tighter uppercase italic">GIMAY <span className="text-brand">v0.5.0-ALPHA</span></h2>
-                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-dim">Cortex API Management Suite</p>
+                     <h2 className="text-2xl font-black text-[var(--text-main)] tracking-tighter uppercase italic">PUTMAN <span className="text-[var(--brand)]">v0.5.0-ALPHA</span></h2>
+                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-dim)]">Cortex API Management Suite</p>
                    </div>
 
                    <div className="w-full max-w-sm space-y-2 mt-8">
-                      <div className="flex items-center justify-between p-4 bg-elevated rounded-lg border border-subtle">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
                         <div className="flex items-center gap-3">
                            <Cpu size={14} className="text-[var(--border-strong)]" />
-                           <span className="text-[9px] font-black uppercase text-dim">Runtime</span>
+                           <span className="text-[9px] font-black uppercase text-[var(--text-dim)]">Runtime</span>
                         </div>
-                        <span className="text-[10px] font-mono text-muted">v18.16.0 (Node.js)</span>
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">v18.16.0 (Node.js)</span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-elevated rounded-lg border border-subtle">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
                         <div className="flex items-center gap-3">
                            <Clock size={14} className="text-[var(--border-strong)]" />
-                           <span className="text-[9px] font-black uppercase text-dim">Up-Cycle</span>
+                           <span className="text-[9px] font-black uppercase text-[var(--text-dim)]">Up-Cycle</span>
                         </div>
-                        <span className="text-[10px] font-mono text-muted">04:22:11:09</span>
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">04:22:11:09</span>
                       </div>
-                      <div className="flex items-center justify-between p-4 bg-elevated rounded-lg border border-subtle">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
                         <div className="flex items-center gap-3">
                            <HardDrive size={14} className="text-[var(--border-strong)]" />
-                           <span className="text-[9px] font-black uppercase text-dim">Identifier</span>
+                           <span className="text-[9px] font-black uppercase text-[var(--text-dim)]">Identifier</span>
                         </div>
-                        <span className="text-[10px] font-mono text-muted">CORTEX-X-RAI</span>
+                        <span className="text-[10px] font-mono text-[var(--text-muted)]">CORTEX-X-RAI</span>
                       </div>
                    </div>
 
                    <div className="flex items-center gap-6 mt-8">
-                      <button className="text-[10px] font-black uppercase tracking-widest text-dim hover:text-brand transition-all">Protocol</button>
-                      <button className="text-[10px] font-black uppercase tracking-widest text-dim hover:text-brand transition-all">Uplink</button>
-                      <button className="text-[10px] font-black uppercase tracking-widest text-dim hover:text-brand transition-all flex items-center gap-2">
+                      <button className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] hover:text-[var(--brand)] transition-all">Protocol</button>
+                      <button className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] hover:text-[var(--brand)] transition-all">Uplink</button>
+                      <button className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] hover:text-[var(--brand)] transition-all flex items-center gap-2">
                         <RefreshCw size={12} />
                         Sync Check
                       </button>
@@ -684,8 +763,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-4">
-    <h3 className="text-[10px] font-black text-dim uppercase tracking-[0.2em]">{title}</h3>
-    <div className="bg-elevated border border-subtle rounded-xl p-6 space-y-6">
+    <h3 className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-[0.2em]">{title}</h3>
+    <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl p-6 space-y-6">
       {children}
     </div>
   </div>
@@ -699,14 +778,14 @@ const SettingToggle: React.FC<{
 }> = ({ label, description, enabled, onChange }) => (
   <div className="flex items-center justify-between">
     <div className="flex-1 pr-4">
-      <div className="text-[11px] font-bold text-main uppercase tracking-tight">{label}</div>
-      {description && <div className="text-[10px] text-dim mt-0.5">{description}</div>}
+      <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">{label}</div>
+      {description && <div className="text-[10px] text-[var(--text-dim)] mt-0.5">{description}</div>}
     </div>
     <button 
       onClick={() => onChange(!enabled)}
       className={cn(
         "relative w-10 h-5 rounded-full transition-all duration-300",
-        enabled ? "bg-brand" : "bg-[var(--border-strong)]"
+        enabled ? "bg-[var(--brand)]" : "bg-[var(--border-strong)]"
       )}
     >
       <div className={cn(
@@ -726,13 +805,13 @@ const SettingInput: React.FC<{
   onChange: (v: string) => void 
 }> = ({ label, description, placeholder, value, type = 'text', onChange }) => (
   <div className="space-y-2">
-    <label className="text-[9px] font-black text-dim uppercase tracking-widest">{label}</label>
+    <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">{label}</label>
     <input 
       type={type}
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-deep border border-subtle rounded-lg px-4 py-2.5 text-[11px] font-mono text-muted placeholder:text-[var(--border-strong)] focus:border-brand/50 outline-none transition-all"
+      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-[11px] font-mono text-[var(--text-muted)] placeholder:text-[var(--border-strong)] focus:border-[var(--brand)]/50 outline-none transition-all"
     />
     {description && <p className="text-[9px] text-[var(--border-strong)] uppercase italic">{description}</p>}
   </div>
@@ -746,12 +825,12 @@ const SettingSelect: React.FC<{
   onChange: (v: any) => void 
 }> = ({ label, description, value, options, onChange }) => (
   <div className="space-y-2">
-    <label className="text-[9px] font-black text-dim uppercase tracking-widest">{label}</label>
+    <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">{label}</label>
     <div className="relative">
       <select 
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-deep border border-subtle rounded-lg px-4 py-2.5 text-[11px] font-bold text-muted appearance-none outline-none focus:border-brand/50 transition-all cursor-pointer"
+        className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg px-4 py-2.5 text-[11px] font-bold text-[var(--text-muted)] appearance-none outline-none focus:border-[var(--brand)]/50 transition-all cursor-pointer"
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>

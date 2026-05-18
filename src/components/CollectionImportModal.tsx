@@ -52,7 +52,7 @@ const SOURCE_CARDS: Array<{
     title: 'Auto Detect',
     subtitle: 'Recommended',
     mark: 'AUTO',
-    markClass: 'bg-brand/20 text-brand border-brand/40',
+    markClass: 'bg-[#3ECF8E]/20 text-[#3ECF8E] border-[#3ECF8E]/40',
     features: 'Detect Postman / API Dog / Insomnia',
   },
 ];
@@ -168,14 +168,14 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
         exit={{ opacity: 0, scale: 0.96, y: 10 }}
         className="relative w-full max-w-4xl theme-surface border rounded-2xl shadow-2xl overflow-hidden"
       >
-        <div className="p-5 border-b border-subtle flex items-center justify-between">
+        <div className="p-5 border-b border-[#222222] flex items-center justify-between">
           <div>
-            <h2 className="text-[13px] font-black text-main uppercase tracking-widest">Import Collection</h2>
-            <p className="text-[10px] text-dim uppercase tracking-tighter mt-1">
+            <h2 className="text-[13px] font-black text-white uppercase tracking-widest">Import Collection</h2>
+            <p className="text-[10px] text-[#555555] uppercase tracking-tighter mt-1">
               Postman, API Dog, and Insomnia exports
             </p>
           </div>
-          <button onClick={handleClose} className="p-1 text-dim hover:text-main transition-colors">
+          <button onClick={handleClose} className="p-1 text-[#444444] hover:text-white transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -193,8 +193,8 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                 className={cn(
                   'text-left p-3 rounded-xl border transition-all',
                   source === card.id
-                    ? 'border-brand/50 bg-brand/10'
-                    : 'border-subtle bg-surface hover:border-brand/25'
+                    ? 'border-[#3ECF8E]/50 bg-[#3ECF8E]/10'
+                    : 'border-[#222222] bg-[#111111] hover:border-[#3ECF8E]/25'
                 )}
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -202,11 +202,11 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                     {card.mark}
                   </div>
                   <div>
-                    <div className="text-[11px] font-black text-main uppercase tracking-wide">{card.title}</div>
-                    <div className="text-[9px] text-dim uppercase tracking-wide">{card.subtitle}</div>
+                    <div className="text-[11px] font-black text-white uppercase tracking-wide">{card.title}</div>
+                    <div className="text-[9px] text-[#555555] uppercase tracking-wide">{card.subtitle}</div>
                   </div>
                 </div>
-                <div className="text-[9px] text-muted uppercase tracking-wide">{card.features}</div>
+                <div className="text-[9px] text-[#888888] uppercase tracking-wide">{card.features}</div>
               </button>
             ))}
           </div>
@@ -228,22 +228,22 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
             }}
             className={cn(
               'rounded-xl border-2 border-dashed p-5 transition-all',
-              isDragging ? 'border-brand bg-brand/10' : 'border-subtle bg-surface'
+              isDragging ? 'border-[#3ECF8E] bg-[#3ECF8E]/10' : 'border-[#222222] bg-[#0F0F0F]'
             )}
           >
             <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-elevated border border-subtle flex items-center justify-center">
-                  <FileJson size={18} className="text-brand" />
+                <div className="w-10 h-10 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-center">
+                  <FileJson size={18} className="text-[#3ECF8E]" />
                 </div>
                 <div>
-                  <div className="text-[11px] font-black text-main uppercase tracking-wide">Drop JSON export here</div>
-                  <div className="text-[9px] text-dim uppercase tracking-wide">
+                  <div className="text-[11px] font-black text-white uppercase tracking-wide">Drop JSON export here</div>
+                  <div className="text-[9px] text-[#555555] uppercase tracking-wide">
                     or select file / paste raw export below
                   </div>
                 </div>
               </div>
-              <label className="px-4 py-2 rounded-lg border border-subtle bg-surface hover:border-brand/40 cursor-pointer text-[10px] font-black text-muted uppercase tracking-wide">
+              <label className="px-4 py-2 rounded-lg border border-[#222222] bg-[#111111] hover:border-[#3ECF8E]/40 cursor-pointer text-[10px] font-black text-[#AAAAAA] uppercase tracking-wide">
                 <input
                   type="file"
                   accept=".json,application/json,text/plain"
@@ -260,8 +260,8 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
               </label>
             </div>
 
-            <div className="mt-4 border border-subtle rounded-xl overflow-hidden">
-              <div className="px-3 py-2 bg-surface border-b border-subtle flex items-center gap-2 text-[9px] text-dim uppercase tracking-wide">
+            <div className="mt-4 border border-[#222222] rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-[#111111] border-b border-[#222222] flex items-center gap-2 text-[9px] text-[#555555] uppercase tracking-wide">
                 <ClipboardPaste size={12} /> Paste raw export data
               </div>
               <textarea
@@ -272,7 +272,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                   setError(null);
                 }}
                 placeholder="Paste exported JSON from Postman / API Dog / Insomnia"
-                className="w-full h-44 bg-deep p-3 text-[11px] font-mono text-muted placeholder:text-dim outline-none"
+                className="w-full h-44 bg-[#0A0A0A] p-3 text-[11px] font-mono text-[#AAAAAA] placeholder:text-[#444444] outline-none"
               />
             </div>
           </div>
@@ -283,19 +283,19 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 6 }}
-                className="rounded-xl border border-subtle bg-surface p-4 space-y-3"
+                className="rounded-xl border border-[#222222] bg-[#0F0F0F] p-4 space-y-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand/10 text-brand text-[9px] font-black uppercase tracking-wide">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[#3ECF8E]/10 text-[#3ECF8E] text-[9px] font-black uppercase tracking-wide">
                     <CheckCircle2 size={11} /> {preview.format.toUpperCase()}
                   </span>
-                  <span className="text-[10px] text-main font-black uppercase tracking-wide">{preview.normalized.name}</span>
+                  <span className="text-[10px] text-white font-black uppercase tracking-wide">{preview.normalized.name}</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[9px] uppercase tracking-wide">
-                  <div className="p-2 rounded-lg bg-surface border border-subtle text-muted">Folders: {preview.stats.folders}</div>
-                  <div className="p-2 rounded-lg bg-surface border border-subtle text-muted">Requests: {preview.stats.requests}</div>
-                  <div className="p-2 rounded-lg bg-surface border border-subtle text-muted">Variables: {preview.stats.variables}</div>
-                  <div className="p-2 rounded-lg bg-surface border border-subtle text-muted">Scripts: {preview.stats.scripts}</div>
+                  <div className="p-2 rounded-lg bg-[#111111] border border-[#222222] text-[#AAAAAA]">Folders: {preview.stats.folders}</div>
+                  <div className="p-2 rounded-lg bg-[#111111] border border-[#222222] text-[#AAAAAA]">Requests: {preview.stats.requests}</div>
+                  <div className="p-2 rounded-lg bg-[#111111] border border-[#222222] text-[#AAAAAA]">Variables: {preview.stats.variables}</div>
+                  <div className="p-2 rounded-lg bg-[#111111] border border-[#222222] text-[#AAAAAA]">Scripts: {preview.stats.scripts}</div>
                 </div>
                 {preview.warnings.length > 0 && (
                   <div className="text-[10px] text-yellow-400 uppercase tracking-wide flex items-center gap-2">
@@ -313,30 +313,30 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
           )}
         </div>
 
-        <div className="p-4 border-t border-subtle bg-[#101010] flex flex-col md:flex-row gap-2 justify-end">
+        <div className="p-4 border-t border-[#222222] bg-[#101010] flex flex-col md:flex-row gap-2 justify-end">
           <button
             onClick={handleClose}
-            className="px-4 py-2 rounded-lg border border-subtle text-[10px] font-black text-muted uppercase tracking-wide hover:text-main"
+            className="px-4 py-2 rounded-lg border border-[#222222] text-[10px] font-black text-[#AAAAAA] uppercase tracking-wide hover:text-white"
           >
             Cancel
           </button>
           <button
             onClick={handlePreview}
             disabled={isPreviewing || !raw.trim()}
-            className="px-4 py-2 rounded-lg border border-brand/30 bg-brand/10 text-[10px] font-black text-brand uppercase tracking-wide disabled:opacity-50"
+            className="px-4 py-2 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 text-[10px] font-black text-[#3ECF8E] uppercase tracking-wide disabled:opacity-50"
           >
             {isPreviewing ? 'Validating...' : 'Preview Import'}
           </button>
           <button
             onClick={handleImport}
             disabled={!canImport}
-            className="px-4 py-2 rounded-lg bg-brand text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-wide disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-[#3ECF8E] text-[#0A0A0A] text-[10px] font-black uppercase tracking-wide disabled:opacity-50"
           >
             {isImporting ? 'Importing...' : 'Import Collection'}
           </button>
         </div>
 
-        <div className="px-4 pb-4 text-[9px] text-dim uppercase tracking-wide">
+        <div className="px-4 pb-4 text-[9px] text-[#555555] uppercase tracking-wide">
           Selected source: {selectedCard.title}
         </div>
       </motion.div>

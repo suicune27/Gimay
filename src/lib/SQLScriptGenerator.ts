@@ -257,11 +257,23 @@ CREATE TABLE IF NOT EXISTS public.folders (
   collection_id UUID REFERENCES public.collections(id) ON DELETE CASCADE NOT NULL,
   parent_id UUID REFERENCES public.folders(id) ON DELETE CASCADE,
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE,
   description TEXT,
   variables JSONB DEFAULT '[]'::jsonb,
   auth JSONB DEFAULT '{"type": "inherit"}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- REPAIR SECTION: Ensure columns exist in existing tables (for older versions)
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.environments ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.environments ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.scripts ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
 
 -- 5. REQUESTS
 CREATE TABLE IF NOT EXISTS public.requests (
@@ -506,7 +518,13 @@ END $publication_update$;
 -- FINAL RELOAD
 SELECT pg_notify('pgrst', 'reload schema');
 NOTIFY pgrst, 'reload schema';
+-- Try to call reload explicitly if function exists
+DO $$ 
+BEGIN 
+  PERFORM pg_notify('pgrst', 'reload schema');
+END $$;
 DO $final_comment$ BEGIN EXECUTE 'COMMENT ON TABLE public.profiles IS ''Putman Infrastructure repaired at ' || NOW() || ''''; END $final_comment$;
+
 `;
   }
 }

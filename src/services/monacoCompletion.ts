@@ -1,7 +1,8 @@
-// Completion provider for Gimay / GMY API
+// Completion provider for Putman API
+
 export const registerPutmanCompletions = (monaco: any) => {
   monaco.languages.registerCompletionItemProvider('javascript', {
-    provideCompletionItems: (model: any, position: any) => {
+    provideCompletionItems: (model, position) => {
       const word = model.getWordUntilPosition(position);
       const range = {
         startLineNumber: position.lineNumber,
@@ -10,165 +11,96 @@ export const registerPutmanCompletions = (monaco: any) => {
         endColumn: word.endColumn,
       };
 
-      const suggestions: any[] = [];
-
-      // Global variable suggestion objects
-      ['gmy', 'gimay', 'pm'].forEach((globalVar) => {
-        suggestions.push(
-          {
-            label: globalVar,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            documentation: `The global ${globalVar.toUpperCase()} script utility engine`,
-            insertText: globalVar,
-            range,
-          },
-          {
-            label: `${globalVar}.sendRequest`,
-            kind: monaco.languages.CompletionItemKind.Function,
-            documentation: 'Asynchronously execute an HTTP request with callback.',
-            insertText: `${globalVar}.sendRequest({\n  url: "\${1:url}",\n  method: "\${2:POST}",\n  header: {\n    'Content-Type': 'application/json'\n  },\n  body: {\n    mode: 'raw',\n    raw: JSON.stringify({\n      \${3:key}: "\${4:value}"\n    })\n  }\n}, function (err, res) {\n  if (err) {\n    console.error(err);\n  } else {\n    console.log(res.json());\n  }\n});`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.environment.get`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Retrieve a key from the active Environment variables.',
-            insertText: `${globalVar}.environment.get("\${1:key}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.environment.set`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Store a key/value pair in the active Environment variables.',
-            insertText: `${globalVar}.environment.set("\${1:key}", "\${2:value}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.globals.get`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Retrieve a key from Global variables.',
-            insertText: `${globalVar}.globals.get("\${1:key}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.globals.set`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Store a key/value pair in Global variables.',
-            insertText: `${globalVar}.globals.set("\${1:key}", "\${2:value}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.variables.get`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Retrieve a variable from the resolved scope hierarchy.',
-            insertText: `${globalVar}.variables.get("\${1:key}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.variables.set`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Set a variable in the local execution scope.',
-            insertText: `${globalVar}.variables.set("\${1:key}", "\${2:value}")`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.test`,
-            kind: monaco.languages.CompletionItemKind.Function,
-            documentation: 'Write test specifications for validating responses.',
-            insertText: `${globalVar}.test("\${1:Status code is 200}", function () {\n  ${globalVar}.expect(${globalVar}.response.code).to.equal(200);\n});`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          },
-          {
-            label: `${globalVar}.expect`,
-            kind: monaco.languages.CompletionItemKind.Method,
-            documentation: 'Assert response values and body content.',
-            insertText: `${globalVar}.expect(\${1:value}).to.equal(\${2:expected});`,
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            range,
-          }
-        );
-      });
-
-      // CryptoJS Snippets
-      suggestions.push(
+      const suggestions: any[] = [
         {
-          label: 'CryptoJS.HmacSHA256',
+          label: 'putman',
+          kind: monaco.languages.CompletionItemKind.Variable,
+          documentation: 'The global Putman API object',
+          insertText: 'putman',
+          range,
+        },
+        {
+          label: 'putman.request',
           kind: monaco.languages.CompletionItemKind.Function,
-          documentation: 'Generate HmacSHA256 hash using CryptoJS library.',
-          insertText: 'CryptoJS.HmacSHA256(${1:message}, ${2:secretKey})',
+          documentation: 'Execute a network request',
+          insertText: 'putman.request({\n  url: "${1:https://api.example.com}",\n  method: "${2:GET}",\n  headers: ${3:{}},\n  body: ${4:{}}\n})',
           insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
           range,
         },
         {
-          label: 'CryptoJS.enc.Base64.stringify',
+          label: 'putman.import',
+          kind: monaco.languages.CompletionItemKind.Method,
+          documentation: 'Import and execute another script from the Laboratory',
+          insertText: 'const ${1:script} = await putman.import("${2:script_name}");\nawait ${1:script}();',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.get',
           kind: monaco.languages.CompletionItemKind.Function,
-          documentation: 'Stringify an object into Base64 format.',
-          insertText: 'CryptoJS.enc.Base64.stringify(${1:hash})',
+          documentation: 'Execute a GET request',
+          insertText: 'putman.get("${1:url}")',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.post',
+          kind: monaco.languages.CompletionItemKind.Function,
+          documentation: 'Execute a POST request',
+          insertText: 'putman.post("${1:url}", ${2:body})',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.env.get',
+          kind: monaco.languages.CompletionItemKind.Method,
+          documentation: 'Retrieve an environment variable',
+          insertText: 'putman.env.get("${1:key}")',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.env.set',
+          kind: monaco.languages.CompletionItemKind.Method,
+          documentation: 'Set an environment variable',
+          insertText: 'putman.env.set("${1:key}", "${2:value}")',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.test.expect',
+          kind: monaco.languages.CompletionItemKind.Method,
+          documentation: 'Perform a test assertion',
+          insertText: 'putman.test.expect(${1:value}).toBe(${2:expected})',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          range,
+        },
+        {
+          label: 'putman.console.log',
+          kind: monaco.languages.CompletionItemKind.Method,
+          documentation: 'Log a message to the Putman console',
+          insertText: 'putman.console.log(${1:message})',
           insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
           range,
         }
-      );
+      ];
 
       return { suggestions };
     },
   });
 
-  // Hover Provider for documentation lookup
+  // Register hover provider for documentation
   monaco.languages.registerHoverProvider('javascript', {
-    provideHover: (model: any, position: any) => {
+    provideHover: (model, position) => {
       const line = model.getLineContent(position.lineNumber);
-      
-      const matched = line.match(/(gmy|gimay|pm)\.(sendRequest|environment\.set|environment\.get|test|expect)/);
-      if (matched) {
-        const prefix = matched[1];
-        const method = matched[2];
-        
-        switch (method) {
-          case 'sendRequest':
-            return {
-              contents: [
-                { value: `**${prefix}.sendRequest(options, callback)**` },
-                { value: 'Executes an asynchronous network call within scripts.' },
-                { value: '```javascript\n' + prefix + '.sendRequest({\n  url: "https://api.example.com",\n  method: "POST",\n  header: { "Content-Type": "application/json" },\n  body: { mode: "raw", raw: "{}" }\n}, (err, res) => {\n  console.log(res.code);\n});\n```' }
-              ]
-            };
-          case 'environment.set':
-            return {
-              contents: [
-                { value: `**${prefix}.environment.set(key, value)**` },
-                { value: 'Persists an environment variable in the active environment.' }
-              ]
-            };
-          case 'environment.get':
-            return {
-              contents: [
-                { value: `**${prefix}.environment.get(key)**` },
-                { value: 'Gets an environment variable value from the active environment.' }
-              ]
-            };
-          case 'test':
-            return {
-              contents: [
-                { value: `**${prefix}.test(name, fn)**` },
-                { value: 'Creates a named validation test for execution evaluation.' }
-              ]
-            };
-          case 'expect':
-            return {
-              contents: [
-                { value: `**${prefix}.expect(val)**` },
-                { value: 'Starts a chainable BDD assertions list.' }
-              ]
-            };
-        }
+      if (line.includes('putman.request')) {
+        return {
+          contents: [
+            { value: '**putman.request(options)**' },
+            { value: 'Executes an asynchronous network request. Returns a promise that resolves with the response object.' },
+            { value: '```javascript\n{\n  url: string,\n  method: string,\n  headers: object,\n  body: any\n}\n```' }
+          ]
+        };
       }
       return null;
     }

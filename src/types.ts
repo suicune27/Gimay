@@ -197,8 +197,17 @@ export interface AppSettings {
     useNewEditor: boolean;
     debugLogs: boolean;
   };
+  github: {
+    token: string;
+    repo: string;
+    branch: string;
+    path: string;
+    autoSync: boolean;
+    lastPulledAt?: string;
+    lastPushedAt?: string;
+  };
 }
-export type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
+export type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'GitHub Sync' | 'Experimental' | 'Diagnostics' | 'About';
 
 export interface SyncMetadata {
   lastSaved: number | null;

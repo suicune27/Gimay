@@ -85,8 +85,6 @@ interface AppState {
   setScriptFavorites: (favorites: string[]) => void;
   isScriptLibraryOpen: boolean;
   setIsScriptLibraryOpen: (isOpen: boolean) => void;
-  isScriptLabOpen: boolean;
-  setIsScriptLabOpen: (isOpen: boolean) => void;
   duplicateRequest: (id: string, overrides?: Partial<RequestData>) => Promise<void>;
   addRequest: (request: RequestData) => void;
   deleteRequestState: (id: string) => void;
@@ -111,6 +109,9 @@ interface AppState {
   setLayoutOrientation: (orientation: 'vertical' | 'horizontal') => void;
   consoleCollapsed: boolean;
   setConsoleCollapsed: (collapsed: boolean) => void;
+  // Landing/Intro
+  landingSkipped: boolean;
+  setLandingSkipped: (skipped: boolean) => void;
   // Tab Sync
   setUserTabs: (tabs: (RequestData | Collection | EnvironmentTab)[]) => void;
 
@@ -120,6 +121,9 @@ interface AppState {
   pendingSyncIds: Set<string>;
   setPendingSyncIds: (ids: Set<string>) => void;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
+  
+  // Reset
+  reset: () => void;
   
   // Permissions helper
   canPerformAction: (collection: Collection, action: 'view' | 'edit' | 'execute') => boolean;
@@ -132,7 +136,7 @@ interface AppState {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
-    autoSave: false,
+    autoSave: true,
     httpVersion: 'auto',
     requestTimeout: 0,
     maxResponseSize: 100 * 1024 * 1024,
@@ -185,6 +189,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
     enabled: false,
     useNewEditor: false,
     debugLogs: false,
+  },
+  github: {
+    token: '',
+    repo: '',
+    branch: 'main',
+    path: 'collections',
+    autoSync: false,
   },
 };
 
@@ -397,8 +408,6 @@ export const useStore = create<AppState>()(
       setScriptFavorites: (scriptFavorites) => set({ scriptFavorites }),
       isScriptLibraryOpen: false,
       setIsScriptLibraryOpen: (isScriptLibraryOpen) => set({ isScriptLibraryOpen }),
-      isScriptLabOpen: false,
-      setIsScriptLabOpen: (isScriptLabOpen) => set({ isScriptLabOpen }),
       
       duplicateRequest: async (id, overrides = {}) => {
         const state = useStore.getState();
@@ -487,6 +496,9 @@ export const useStore = create<AppState>()(
       consoleCollapsed: true,
       setConsoleCollapsed: (consoleCollapsed) => set({ consoleCollapsed }),
       
+      landingSkipped: false,
+      setLandingSkipped: (landingSkipped) => set({ landingSkipped }),
+      
       syncStatus: 'idle',
       setSyncStatus: (syncStatus) => set({ syncStatus }),
       pendingSyncIds: new Set(),
@@ -501,6 +513,22 @@ export const useStore = create<AppState>()(
         // Sync to DB
         syncManager.enqueue('profile', profile.id, data.preferences || data);
       },
+      
+      reset: () => set({
+        profile: null,
+        activeWorkspaceId: null,
+        workspaces: [],
+        collections: [],
+        environments: [],
+        history: [],
+        teams: [],
+        openTabs: [],
+        activeTabId: null,
+        activeEnvId: null,
+        globalVariables: [],
+        lastResponse: null,
+        pendingSyncIds: new Set()
+      }),
 
       canPerformAction: (collection: Collection, action) => {
         const state = useStore.getState();
@@ -672,6 +700,7 @@ export const useStore = create<AppState>()(
         sidebarMode: state.sidebarMode,
         layoutOrientation: state.layoutOrientation,
         consoleCollapsed: state.consoleCollapsed,
+        landingSkipped: state.landingSkipped,
         settings: state.settings
       }),
     }

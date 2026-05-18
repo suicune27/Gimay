@@ -30,23 +30,23 @@ export const PresenceIndicator: React.FC<{ requestId?: string; className?: strin
             className="relative group"
           >
             <div 
-              className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-elevated flex items-center justify-center text-[8px] font-black uppercase ring-2 ring-[var(--brand)]/20"
+              className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-[var(--bg-elevated)] flex items-center justify-center text-[8px] font-black uppercase ring-2 ring-[var(--brand)]/20"
               style={{ borderColor: 'var(--bg-surface)' }}
             >
               {person.name?.[0] || '?'}
             </div>
             
             {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-deep border border-subtle rounded text-[8px] font-black uppercase tracking-widest text-main whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded text-[8px] font-black uppercase tracking-widest text-[var(--text-main)] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
               {person.name}
-              {requestId && <span className="ml-1 text-brand">Editing</span>}
+              {requestId && <span className="ml-1 text-[var(--brand)]">Editing</span>}
             </div>
           </motion.div>
         ))}
       </AnimatePresence>
       
       {activeHere.length > 5 && (
-        <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-elevated flex items-center justify-center text-[8px] font-black text-dim">
+        <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-surface)] bg-[var(--bg-elevated)] flex items-center justify-center text-[8px] font-black text-[var(--text-dim)]">
           +{activeHere.length - 5}
         </div>
       )}

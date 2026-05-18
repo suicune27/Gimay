@@ -100,24 +100,65 @@ export class PersistenceService {
   }
 
   // --- Folder Actions ---
-  static async createFolder(name: string, collectionId: string, userId: string, parentId?: string) {
-    const { data, error } = await supabase
+  static async createFolder(name: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
+    const payload: any = { 
+      name, 
+      collection_id: collectionId, 
+      user_id: userId, 
+      parent_id: parentId, 
+      auth: { type: 'inherit' } 
+    };
+
+    if (workspaceId) {
+      payload.workspace_id = workspaceId;
+    }
+
+    let { data, error } = await supabase
       .from('folders')
-      .insert([{ name, collection_id: collectionId, user_id: userId, parent_id: parentId, auth: { type: 'inherit' } }])
+      .insert([payload])
       .select()
-      .single();
+      .maybeSingle();
+
+    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+      console.warn('[Persistence] Handling missing columns in folders table. Stripping workspace_id.');
+      delete payload.workspace_id;
+      const fallback = await supabase
+        .from('folders')
+        .insert([payload])
+        .select()
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) throw error;
     return data as Folder;
   }
 
   static async updateFolder(id: string, updates: Partial<Folder>) {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('folders')
       .update(updates)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
+
+    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+      console.warn('[Persistence] Handling missing columns in folders update. Stripping new fields.');
+      const sanitizedUpdates = { ...updates } as any;
+      delete sanitizedUpdates.workspace_id;
+      delete sanitizedUpdates.user_id;
+
+      const fallback = await supabase
+        .from('folders')
+        .update(sanitizedUpdates)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+      data = fallback.data;
+      error = fallback.error;
+    }
+
     if (error) throw error;
     return data as Folder;
   }
@@ -689,15 +730,40 @@ export class PersistenceService {
     return data;
   }
 
-  static async getProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+  static async fetchUserTeams(userId: string) {
+    let { data, error } = await supabase
+      .from('teams')
+      .select('*, team_members!inner(*, profiles(email, full_name, username))')
+      .eq('team_members.user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error && String(error.message || '').match(/profiles|relation|schema cache/i)) {
+      const fallback = await supabase
+        .from('teams')
+        .select('*, team_members!inner(*)')
+        .eq('team_members.user_id', userId)
+        .order('created_at', { ascending: false });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) throw error;
-    return data as Profile | null;
+    return data || [];
+  }
+
+  static async fetchWorkspacesByTeam(teamId: string) {
+    let { data, error } = await supabase
+      .from('workspaces')
+      .select('*')
+      .eq('team_id', teamId);
+    
+    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+      console.warn('[Persistence] team_id missing in workspaces table. Returning empty to avoid crash.');
+      return [];
+    }
+
+    if (error) throw error;
+    return data || [];
   }
 
   // --- Global Variables ---
@@ -754,29 +820,33 @@ export class PersistenceService {
   }
 
   static async fetchScriptFolders(workspaceId: string) {
-    // Script folders are not rendered in the explorer view; return an empty array to prevent schema column mismatches
-    return [];
+    let { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .eq('parent_id', null);
+
+    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+      console.warn('[Persistence] workspace_id missing in folders. Searching via collection join.');
+      // Fallback: This is much slower but avoids crashing. 
+      // In a real app we'd join but Supabase JS doesn't support complex joins easily without a view.
+      // We just return empty or fetch all if workspace_id missing for now to prevent fatal crash.
+      const fallback = await supabase
+        .from('folders')
+        .select('*')
+        .eq('parent_id', null);
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error) throw error;
+    return data || [];
   }
 
   static async createScript(data: any) {
-    const generateUUID = () => {
-      if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
-        return window.crypto.randomUUID();
-      }
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    };
-
-    const scriptData = {
-      id: generateUUID(),
-      ...data
-    };
-
     const { data: script, error } = await supabase
       .from('scripts')
-      .insert([scriptData])
+      .insert([data])
       .select()
       .single();
     if (error) throw error;

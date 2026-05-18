@@ -26,41 +26,41 @@ export const AuthUI: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-deep p-4 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-4 font-sans">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md p-8 rounded-xl border border-subtle bg-surface shadow-2xl"
+        className="w-full max-w-md p-8 rounded-xl border border-[#222222] bg-[#0F0F0F] shadow-2xl"
       >
         <div className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 bg-brand rounded-xl shadow-[0_0_30px_rgba(62,207,142,0.1)] flex items-center justify-center">
-            <Terminal size={28} className="text-[var(--bg-deep)]" />
+          <div className="w-12 h-12 bg-[#3ECF8E] rounded-xl shadow-[0_0_30px_rgba(62,207,142,0.1)] flex items-center justify-center">
+            <Terminal size={28} className="text-[#0A0A0A]" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-main tracking-tighter uppercase leading-none">Gimay</h1>
-            <p className="text-[10px] text-brand font-mono uppercase tracking-[0.3em] font-bold mt-1">v9.0.0 // PRODUCTION CORE</p>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Putman</h1>
+            <p className="text-[10px] text-[#3ECF8E] font-mono uppercase tracking-[0.3em] font-bold mt-1">v9.0.0 // PRODUCTION CORE</p>
           </div>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-dim mb-2">Access Portal</label>
+            <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#555555] mb-2">Access Portal</label>
             <input 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-deep border border-subtle rounded-lg px-4 py-3 text-sm text-muted focus:border-brand focus:text-main outline-none transition-all placeholder:text-[var(--border-strong)]"
-              placeholder="operator@gimay.io"
+              className="w-full bg-[#0A0A0A] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#AAAAAA] focus:border-[#3ECF8E] focus:text-[#E0E0E0] outline-none transition-all placeholder:text-[#333333]"
+              placeholder="operator@putment.io"
               required
             />
           </div>
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-dim mb-2">Security Hash</label>
+            <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#555555] mb-2">Security Hash</label>
             <input 
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-deep border border-subtle rounded-lg px-4 py-3 text-sm text-muted focus:border-brand focus:text-main outline-none transition-all placeholder:text-[var(--border-strong)]"
+              className="w-full bg-[#0A0A0A] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#AAAAAA] focus:border-[#3ECF8E] focus:text-[#E0E0E0] outline-none transition-all placeholder:text-[#333333]"
               placeholder="••••••••"
               required
             />
@@ -74,10 +74,10 @@ export const AuthUI: React.FC = () => {
 
           <button 
             disabled={loading}
-            className="w-full bg-brand hover:bg-[#34B37A] text-[var(--bg-deep)] font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-[#3ECF8E1A]"
+            className="w-full bg-[#3ECF8E] hover:bg-[#34B37A] text-[#0A0A0A] font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-[#3ECF8E1A]"
           >
             {loading ? (
-              <span className="w-5 h-5 border-2 border-[var(--bg-deep)]/30 border-t-[var(--bg-deep)] rounded-full animate-spin" />
+              <span className="w-5 h-5 border-2 border-[#0A0A0A]/30 border-t-[#0A0A0A] rounded-full animate-spin" />
             ) : (
               <>
                 {isLogin ? <LogIn size={18} /> : <UserPlus size={18} />}
@@ -87,12 +87,12 @@ export const AuthUI: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-subtle text-center">
-          <p className="text-[10px] text-dim tracking-widest uppercase">
+        <div className="mt-8 pt-8 border-t border-[#222222] text-center">
+          <p className="text-[10px] text-[#555555] tracking-widest uppercase">
             {isLogin ? "No active credentials?" : "Credential set found?"}
             <button 
               onClick={() => setIsLogin(!isLogin)}
-              className="ml-2 text-brand hover:text-main transition-colors"
+              className="ml-2 text-[#3ECF8E] hover:text-white transition-colors"
             >
               {isLogin ? 'Request Access' : 'Authenticate'}
             </button>
