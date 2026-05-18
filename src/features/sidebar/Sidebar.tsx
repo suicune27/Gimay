@@ -24,7 +24,12 @@ import {
   Lock,
   Unlock,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Copy,
+  Edit3,
+  FileDown,
+  FileUp,
+  Download
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -157,16 +162,13 @@ export const Sidebar: React.FC = () => {
       ref={sidebarRef}
       initial={false}
       animate={{ 
-        width: isExpanded ? 320 : 68,
+        width: isExpanded ? 320 : 0,
+        opacity: isExpanded ? 1 : 0,
         transition: { type: 'spring', stiffness: 350, damping: 35 }
       }}
       className={cn(
-        "h-full bg-[#0F0F0F] border-r border-[#222222] flex relative z-40 group/sidebar overflow-hidden shrink-0 shadow-[10px_0_40px_rgba(0,0,0,0.6)] transition-colors duration-300",
-        !isExpanded && "cursor-pointer hover:bg-white/[0.01]"
+        "h-full bg-[#0F0F0F] border-r border-[#222222] flex flex-col relative z-40 overflow-hidden shrink-0 shadow-[10px_0_40px_rgba(0,0,0,0.6)]",
       )}
-      onClick={() => {
-        if (!isExpanded) setIsSidebarPinned(true);
-      }}
     >
       <NameModal 
         isOpen={isCollectionModalOpen}
@@ -209,6 +211,7 @@ export const Sidebar: React.FC = () => {
           if (activeWorkspaceId) await fetchCollections(activeWorkspaceId);
         }}
       />
+      
       <ConfirmModal
         isOpen={!!confirmEnvDelete}
         onClose={() => setConfirmEnvDelete(null)}
@@ -229,168 +232,107 @@ export const Sidebar: React.FC = () => {
         variant="danger"
       />
 
-      {/* Left Navigation Rail (Always 68px) */}
-      <div className="w-[68px] flex flex-col border-r border-[#222222] bg-[#0A0A0A]/40 shrink-0">
-        {/* Rail Top Branding/Toggle */}
-        <div 
-          className="h-14 flex items-center justify-center border-b border-[#222222] bg-[#0A0A0A] cursor-pointer hover:bg-white/[0.03] transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsSidebarPinned(!isSidebarPinned);
-          }}
+      {/* Header Info */}
+      <div className="h-14 border-b border-[#222222] flex items-center px-5 bg-[#0A0A0A]/50 shrink-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-[#3ECF8E] animate-pulse" />
+            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] truncate">
+              {activeWorkspace?.name || 'Workspace'}
+            </h2>
+          </div>
+          <p className="text-[8px] text-[#444444] font-mono tracking-tighter uppercase font-bold mt-0.5">
+            NODE_ACTIVE // {activeWorkspace?.visibility || 'Private'}
+          </p>
+        </div>
+        
+        <button 
+          onClick={() => setIsSidebarPinned(false)}
+          className="p-1.5 text-[#333333] hover:text-[#3ECF8E] transition-colors"
+          title="Collapse Sidebar"
         >
-          <motion.div 
-            layoutId="workspace-icon"
-            className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3ECF8E] to-[#2EAF7E] flex items-center justify-center text-black font-black text-xs shadow-[0_0_20px_rgba(62,207,142,0.2)] shrink-0"
+          <ChevronsLeft size={16} />
+        </button>
+      </div>
+
+      {/* 5-Tab Navigation Bar */}
+      <div className="flex border-b border-[#222222] bg-[#0A0A0A]/30 shrink-0 overflow-x-auto no-scrollbar">
+        {[
+          { id: 'collections', icon: LayoutGrid, label: 'EXPLORER' },
+          { id: 'environments', icon: Globe, label: 'REGISTRY' },
+          { id: 'scripts', icon: Zap, label: 'SCRIPTS' },
+          { id: 'history', icon: Activity, label: 'LOGS' },
+          { id: 'teams', icon: Users, label: 'TEAMS' }
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveNav(item.id)}
+            className={cn(
+              "flex-1 min-w-[70px] py-3 flex flex-col items-center gap-1 transition-all relative border-r border-[#222222]/50 last:border-r-0",
+              activeNav === item.id 
+                ? "bg-white/[0.03]" 
+                : "hover:bg-white/[0.01]"
+            )}
           >
-            {activeWorkspace?.name?.[0].toUpperCase() || 'W'}
-          </motion.div>
-        </div>
+            <item.icon 
+              size={13} 
+              className={cn(
+                "transition-all duration-300",
+                activeNav === item.id ? "text-[#3ECF8E] scale-110" : "text-[#444444]"
+              )} 
+            />
+            <span className={cn(
+              "text-[8px] font-black tracking-widest",
+              activeNav === item.id ? "text-white" : "text-[#444444]"
+            )}>
+              {item.label}
+            </span>
+            {activeNav === item.id && (
+              <motion.div 
+                layoutId="nav-underline"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.4)]"
+              />
+            )}
+          </button>
+        ))}
+      </div>
 
-        {/* Rail Nav Buttons */}
-        <div className="flex-1 py-4 space-y-2">
-          {[
-            { id: 'collections', icon: LayoutGrid, label: 'Explorer' },
-            { id: 'environments', icon: Globe, label: 'Registry' },
-            { id: 'scripts', icon: Zap, label: 'Scripts' },
-            { id: 'history', icon: Activity, label: 'Logs' },
-            { id: 'teams', icon: Users, label: 'Teams' }
-          ].map((item) => (
-            <SidebarTooltip key={item.id} text={item.label} enabled={true}>
+      {/* Search & Main Actions */}
+      {activeNav === 'collections' && (
+        <div className="px-5 py-4 border-b border-[#222222] bg-[#0A0A0A]/20">
+          <div className="space-y-3">
+            <div className="relative group">
+              <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#333333] group-focus-within:text-[#3ECF8E] transition-colors" />
+              <input 
+                type="text" 
+                placeholder="SCAN_OBJECTS..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#050505] border border-[#222222] rounded-lg py-2 pl-8 pr-3 text-[10px] font-mono text-[#AAAAAA] placeholder-[#333333] focus:border-[#3ECF8E]/40 outline-none transition-all"
+              />
+            </div>
+            
+            <div className="grid grid-cols-5 gap-2">
               <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveNav(item.id);
-                  if (!isExpanded) setIsSidebarPinned(true);
-                }}
-                className={cn(
-                  "relative w-full h-[50px] flex items-center justify-center transition-all group/nav",
-                  activeNav === item.id 
-                    ? "text-[#3ECF8E]" 
-                    : "text-[#444444] hover:text-[#AAAAAA]"
-                )}
+                onClick={() => setIsCollectionModalOpen(true)}
+                className="col-span-4 py-1.5 bg-[#111111] border border-[#222222] rounded-md text-[9px] font-black text-[#555555] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
               >
-                {activeNav === item.id && (
-                  <motion.div 
-                    layoutId="nav-pill"
-                    className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#3ECF8E] shadow-[0_0_15px_rgba(62,207,142,0.4)]"
-                  />
-                )}
-                <item.icon 
-                  size={18} 
-                  className={cn(
-                    "relative z-10 transition-all duration-300",
-                    activeNav === item.id ? "scale-110 drop-shadow-[0_0_8px_rgba(62,207,142,0.6)]" : "group-hover/nav:scale-110"
-                  )} 
-                />
+                <Plus size={12} strokeWidth={3} /> NEW COLLECTION
               </button>
-            </SidebarTooltip>
-          ))}
-        </div>
-
-        {/* Rail Footer */}
-        <div className="border-t border-[#222222] bg-[#0A0A0A]">
-          <SidebarTooltip text="Global Settings" enabled={true}>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isExpanded) setIsSidebarPinned(true);
-                setIsSettingsModalOpen(true);
-              }}
-              className="w-full h-[50px] flex items-center justify-center text-[#555555] hover:text-[#3ECF8E] transition-all group/settings"
-            >
-              <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
-            </button>
-          </SidebarTooltip>
-          
-          <div className="h-[60px] flex items-center justify-center border-t border-[#222222]/50">
-            <div className="relative group/user cursor-pointer">
-              <div className="w-9 h-9 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-[11px] font-black text-[#555555] group-hover/user:border-[#3ECF8E]/50 group-hover/user:text-[#888888] transition-all overflow-hidden">
-                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A] shadow-[0_0_8px_rgba(62,207,142,0.6)]" />
+              <button 
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center justify-center bg-[#111111] border border-[#222222] rounded-md text-[#555555] hover:text-[#3ECF8E] transition-all flex-1"
+                title="Import Collection"
+              >
+                <FileUp size={12} />
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Right Content Area (Explorer / Content) */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A]/10"
-          >
-            {/* Workspace Header Info */}
-            <div className="h-14 border-b border-[#222222] flex items-center px-5 bg-[#0A0A0A]/30">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-[10px] font-black text-white uppercase tracking-[0.15em] truncate">
-                    {activeWorkspace?.name || 'Workspace'}
-                  </h2>
-                  <div className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
-                </div>
-                <p className="text-[8px] text-[#444444] font-mono tracking-tighter uppercase font-bold mt-0.5">
-                  {activeWorkspace?.visibility || 'Private'} NODE // P-01
-                </p>
-              </div>
-              
-              <button 
-                onClick={() => setIsSidebarPinned(false)}
-                className="p-1.5 text-[#333333] hover:text-[#3ECF8E] transition-colors"
-                title="Collapse Sidebar"
-              >
-                <ChevronsLeft size={16} />
-              </button>
-            </div>
-
-            {/* Content Specific Actions & Title */}
-            <div className="px-5 py-4 border-b border-[#222222] bg-[#0A0A0A]/20">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-[9px] font-black text-[#555555] uppercase tracking-[0.3em]">
-                  {activeNav === 'collections' && 'Protocol Explorer'}
-                  {activeNav === 'environments' && 'Variable Registry'}
-                  {activeNav === 'scripts' && 'Logic Engine'}
-                  {activeNav === 'history' && 'Event Logs'}
-                  {activeNav === 'teams' && 'Consensus Nodes'}
-                </h3>
-              </div>
-
-              {activeNav === 'collections' && (
-                <div className="space-y-3">
-                  <div className="relative group">
-                    <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#333333] group-focus-within:text-[#3ECF8E] transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder="SCAN_OBJECTS..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-[#050505] border border-[#222222] rounded-lg py-2 pl-8 pr-3 text-[10px] font-mono text-[#AAAAAA] placeholder-[#333333] focus:border-[#3ECF8E]/40 outline-none transition-all"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-5 gap-2">
-                    <button 
-                      onClick={() => setIsCollectionModalOpen(true)}
-                      className="col-span-4 py-1.5 bg-[#111111] border border-[#222222] rounded-md text-[9px] font-black text-[#555555] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
-                    >
-                      <Plus size={12} strokeWidth={3} /> NEW_NODE
-                    </button>
-                    <button 
-                      onClick={() => setIsImportModalOpen(true)}
-                      className="flex items-center justify-center bg-[#111111] border border-[#222222] rounded-md text-[#555555] hover:text-white transition-all flex-1"
-                    >
-                      <Upload size={12} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Scrollable Tree / List Content */}
-            <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto no-scrollbar py-2">
               {activeNav === 'collections' && (
                 <DragDropContext onDragEnd={onDragEnd}>
                   <Droppable droppableId="collections-root" type="collection">
@@ -579,9 +521,6 @@ export const Sidebar: React.FC = () => {
                 </button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };
@@ -675,6 +614,20 @@ const CollectionNode: React.FC<{
       addToast({ type: 'info', message: 'Collection identity update scheduled.' });
     } catch (error) {
       addToast({ type: 'error', message: 'Identity update failed.' });
+    }
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMenuOpen(false);
+    if (!profile?.id || !activeWorkspaceId) return;
+    try {
+      addToast({ type: 'info', message: 'Duplicating collection archetype...' });
+      await PersistenceService.duplicateCollection(collection.id, profile.id, activeWorkspaceId);
+      await fetchCollections(activeWorkspaceId);
+      addToast({ type: 'success', message: `Collection "${collection.name}" duplicated.` });
+    } catch (error) {
+      addToast({ type: 'error', message: 'Duplication failed.' });
     }
   };
 
@@ -800,65 +753,96 @@ const CollectionNode: React.FC<{
                 </button>
                 <AnimatePresence>
                   {isMenuOpen && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.95, y: 5 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 5 }}
-                      className="absolute right-0 top-full mt-2 w-48 bg-[#111111] border border-[#222222] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] py-1.5 z-[100] backdrop-blur-md overflow-hidden"
-                    >
-                      {canEdit && (
-                        <button
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
-                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white flex items-center justify-between"
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                          className="absolute right-0 top-full mt-2 w-52 bg-[#111111]/95 border border-[#222222] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,1)] py-2 z-30 backdrop-blur-xl overflow-hidden scale-95"
                         >
-                          Rename <span className="text-[8px] opacity-30">ATTR</span>
-                        </button>
-                      )}
-                      {collection.user_id === profile?.id && (
-                        <button
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsShareModalOpen(true); }}
-                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5 border-y border-white/[0.02]"
-                        >
-                          Protocol Share
-                        </button>
-                      )}
-                      <button
-                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); onOpenImport(); }}
-                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white"
-                      >
-                        Import Node
-                      </button>
-                      <button
-                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); CollectionExportService.exportCollection(collection); addToast({ type: 'success', message: 'Exporting collection...' }); }}
-                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5"
-                      >
-                        Export Sync
-                      </button>
-                      <button
-                        onMouseDown={async (e) => { 
-                          e.preventDefault(); 
-                          e.stopPropagation(); 
-                          setIsMenuOpen(false); 
-                          try {
-                            await GitHubService.pushUpdates(collection);
-                            addToast({ type: 'success', message: 'Collection pushed to GitHub.' });
-                          } catch (err: any) {
-                            addToast({ type: 'error', message: `Push failed: ${err.message}` });
-                          }
-                        }}
-                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5"
-                      >
-                        GitHub Push
-                      </button>
-                      {canEdit && (
-                        <button
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
-                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400 mt-1 border-t border-white/[0.02]"
-                        >
-                          Decommission
-                        </button>
-                      )}
-                    </motion.div>
+                          <div className="px-4 py-1.5 mb-1 border-b border-white/[0.03]">
+                            <span className="text-[8px] font-black text-[#444444] uppercase tracking-[0.2em]">Actions // Node</span>
+                          </div>
+
+                          {canEdit && (
+                            <button
+                              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
+                              className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.05] hover:text-white flex items-center justify-between group/opt transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Edit3 size={12} className="text-[#444444] group-hover/opt:text-[#3ECF8E]" />
+                                Rename
+                              </div>
+                              <span className="text-[7px] text-[#333333] font-mono group-hover/opt:text-[#555555]">F2</span>
+                            </button>
+                          )}
+
+                          <button
+                            onMouseDown={handleDuplicate}
+                            className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.05] hover:text-white flex items-center gap-3 group/opt transition-colors"
+                          >
+                            <Copy size={12} className="text-[#444444] group-hover/opt:text-[#3ECF8E]" />
+                            Duplicate
+                          </button>
+
+                          <div className="h-px bg-white/[0.03] my-1" />
+
+                          {collection.user_id === profile?.id && (
+                            <button
+                              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsShareModalOpen(true); }}
+                              className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5 flex items-center gap-3 group/opt transition-colors"
+                            >
+                              <Users size={12} className="text-[#3ECF8E]/60 group-hover/opt:text-[#3ECF8E]" />
+                              Protocol Share
+                            </button>
+                          )}
+
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); onOpenImport(); }}
+                            className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.05] hover:text-white flex items-center gap-3 group/opt transition-colors"
+                          >
+                            <FileUp size={12} className="text-[#444444] group-hover/opt:text-[#3ECF8E]" />
+                            Import Collection
+                          </button>
+
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); CollectionExportService.exportCollection(collection); addToast({ type: 'success', message: 'Exporting collection binary...' }); }}
+                            className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.05] hover:text-white flex items-center gap-3 group/opt transition-colors"
+                          >
+                            <FileDown size={12} className="text-[#444444] group-hover/opt:text-[#3ECF8E]" />
+                            Export Collection
+                          </button>
+
+                          <button
+                            onMouseDown={async (e) => { 
+                              e.preventDefault(); 
+                              e.stopPropagation(); 
+                              setIsMenuOpen(false); 
+                              try {
+                                await GitHubService.pushUpdates(collection);
+                                addToast({ type: 'success', message: 'Collection pushed to GitHub.' });
+                              } catch (err: any) {
+                                addToast({ type: 'error', message: `Push failed: ${err.message}` });
+                              }
+                            }}
+                            className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5 flex items-center gap-3 group/opt transition-colors"
+                          >
+                            <Activity size={12} className="text-[#3ECF8E]/60 group-hover/opt:text-[#3ECF8E]" />
+                            GitHub Sync
+                          </button>
+
+                          {canEdit && (
+                            <>
+                              <div className="h-px bg-white/[0.03] my-1" />
+                              <button
+                                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
+                                className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400 flex items-center gap-3 group/opt transition-colors"
+                              >
+                                <Trash2 size={12} className="text-red-900 group-hover/opt:text-red-500" />
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </motion.div>
                   )}
                 </AnimatePresence>
               </div>

@@ -124,6 +124,68 @@ export class PersistenceService {
     if (error) throw error;
   }
 
+  static async duplicateCollection(collectionId: string, userId: string, workspaceId: string) {
+    // 1. Fetch original collection
+    const { data: collection, error: colError } = await supabase
+      .from('collections')
+      .select('*, folders(*), requests(*)')
+      .eq('id', collectionId)
+      .single();
+
+    if (colError || !collection) throw colError || new Error('Collection lookup failed.');
+
+    // 2. Create new collection record
+    const newCol = await this.createCollection(workspaceId, userId, `${collection.name} (Copy)`);
+
+    // 3. Mapping for nested folders
+    const folderMap: Record<string, string> = {};
+
+    // 4. Duplicate Folders
+    const folders = collection.folders || [];
+    // Sort by depth if needed, but since we use recursion it is fine
+    const duplicateFolder = async (oldFolder: any, parentId?: string) => {
+      const { id: oldId, created_at, updated_at, ...folderData } = oldFolder;
+      const nf = await this.createFolder(
+        folderData.name,
+        newCol.id,
+        userId,
+        parentId,
+        workspaceId
+      );
+      folderMap[oldId] = nf.id;
+
+      // Find children
+      const children = folders.filter((f: any) => f.parent_id === oldId);
+      for (const child of children) {
+        await duplicateFolder(child, nf.id);
+      }
+    };
+
+    // Root folders
+    for (const f of folders.filter((f: any) => !f.parent_id)) {
+      await duplicateFolder(f);
+    }
+
+    // 5. Duplicate Requests
+    const requests = collection.requests || [];
+    for (const r of requests) {
+      const { id, created_at, updated_at, ...requestData } = r;
+      const newFolderId = requestData.folder_id ? folderMap[requestData.folder_id] : undefined;
+      
+      await this.createRequest({
+        ...requestData,
+        name: requestData.name,
+        collection_id: newCol.id,
+        folder_id: newFolderId,
+        workspace_id: workspaceId,
+        user_id: userId,
+        bodyType: requestData.body_type
+      });
+    }
+
+    return newCol;
+  }
+
   // --- Folder Actions ---
   static async createFolder(name: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
     const payload: any = { 

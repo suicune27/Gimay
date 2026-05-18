@@ -51,7 +51,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[500] flex items-center justify-center p-4"
       onKeyDown={handleKeyDown}
       tabIndex={-1}
     >
