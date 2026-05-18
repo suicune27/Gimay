@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { useDataSync } from '../../hooks/useDataSync';
 import { PersistenceService } from '../../services/PersistenceService';
+import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 import { KVEditor } from '../../components/KVEditor';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { cn } from '../../lib/utils';
@@ -40,7 +41,8 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
     openTabs,
     settings,
     pendingSyncIds,
-    syncResource
+    syncResource,
+    setIsScriptLibraryOpen
   } = useStore();
   const { fetchEnvironments } = useDataSync();
 
@@ -49,6 +51,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
     | undefined;
 
   const [activeSection, setActiveSection] = useState<'Variables' | 'Scripts' | 'Documentation'>('Variables');
+  const [activeScriptTarget, setActiveScriptTarget] = useState<'pre_request_script' | 'test_script'>('pre_request_script');
   const [docMode, setDocMode] = useState<'edit' | 'preview'>('preview');
   const [isCreatingEnvironment, setIsCreatingEnvironment] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
@@ -338,9 +341,18 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-8"
                 >
-                  <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Scripts</h3>
-                    <p className="text-[11px] text-[#555555]">Scripts run before request execution and after response tests for every request while this environment is active.</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Scripts</h3>
+                      <p className="text-[11px] text-[#555555]">Scripts run before request execution and after response tests for every request while this environment is active.</p>
+                    </div>
+                    <button
+                      onClick={() => setIsScriptLibraryOpen(true)}
+                      className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                    >
+                      <Code2 size={12} />
+                      Open Script Library
+                    </button>
                   </div>
 
                   <div className="space-y-4">
@@ -351,6 +363,9 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         language="javascript"
                         theme="vs-dark"
                         value={selectedEnvironment.pre_request_script || ''}
+                        onMount={(editor) => {
+                          editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                        }}
                         onChange={(val) => updateEnvironment(selectedEnvironment.id, { pre_request_script: val || '' })}
                         options={{
                           minimap: { enabled: false },
@@ -372,6 +387,9 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         language="javascript"
                         theme="vs-dark"
                         value={selectedEnvironment.test_script || ''}
+                        onMount={(editor) => {
+                          editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                        }}
                         onChange={(val) => updateEnvironment(selectedEnvironment.id, { test_script: val || '' })}
                         options={{
                           minimap: { enabled: false },
@@ -455,6 +473,17 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
           </div>
         )}
       </div>
+      {selectedEnvironment && (
+        <ScriptLibraryModal
+          onInsertScript={(script) => {
+            const current = selectedEnvironment[activeScriptTarget] || '';
+            updateEnvironment(selectedEnvironment.id, {
+              [activeScriptTarget]: current + (current ? '\n\n' : '') + script
+            });
+            addToast({ type: 'success', message: 'Script integrated into environment' });
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -9,7 +9,8 @@ import {
   Trash2, 
   Copy, 
   Edit3,
-  Star
+  Star,
+  Upload
 } from 'lucide-react';
 import { useScriptStore } from '../../store/scriptStore';
 import { useStore } from '../../store/useStore';
@@ -46,6 +47,36 @@ export const ScriptSidebar: React.FC = () => {
     }
   };
 
+  const handleImportScript = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.js,.txt,.json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file || !profile?.id || !activeWorkspaceId) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const content = event.target?.result as string;
+        try {
+          const newScript = await PersistenceService.createScript({
+            name: file.name.replace(/\.[^/.]+$/, ""),
+            content: content || '// Imported script\n',
+            workspace_id: activeWorkspaceId,
+            user_id: profile.id,
+          });
+          addScript(newScript);
+          addTab(newScript.id);
+          addToast({ type: 'success', message: 'Script imported successfully.' });
+        } catch (e) {
+          addToast({ type: 'error', message: 'Import failed.' });
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -75,13 +106,22 @@ export const ScriptSidebar: React.FC = () => {
       <div className="p-4 border-b border-[var(--border-subtle)] space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest">Script Explorer</h2>
-          <button 
-            onClick={handleCreateScript}
-            className="p-1.5 hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] text-[var(--text-muted)] rounded-md transition-all border border-[var(--border-subtle)] hover:border-[var(--brand)]/30"
-            title="New Script"
-          >
-            <Plus size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleImportScript}
+              className="p-1.5 hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] text-[var(--text-muted)] rounded-md transition-all border border-[var(--border-subtle)] hover:border-[var(--brand)]/30"
+              title="Import Script"
+            >
+              <Upload size={14} />
+            </button>
+            <button 
+              onClick={handleCreateScript}
+              className="p-1.5 hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] text-[var(--text-muted)] rounded-md transition-all border border-[var(--border-subtle)] hover:border-[var(--brand)]/30"
+              title="New Script"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="relative group">

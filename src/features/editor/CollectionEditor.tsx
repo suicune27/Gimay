@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
+import { useDataSync } from '../../hooks/useDataSync';
 import { KeyValue, Collection } from '../../types';
 import { KVEditor } from '../../components/KVEditor';
 import { PersistenceService } from '../../services/PersistenceService';
@@ -23,6 +24,7 @@ import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../../lib/utils';
 import { AuthEditor } from '../../components/AuthEditor';
+import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 
 interface CollectionEditorProps {
   collectionId: string;
@@ -37,13 +39,16 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
     syncStatus,
     settings,
     pendingSyncIds,
-    syncResource
+    syncResource,
+    setIsScriptLibraryOpen,
+    addToast
   } = useStore();
 
   const collection = collections.find(c => c.id === collectionId);
   const [activeSection, setActiveSection] = useState<'Variables' | 'Authorization' | 'Documentation' | 'Scripts'>('Variables');
   const [docMode, setDocMode] = useState<'edit' | 'preview'>('preview');
   const [isSavingManual, setIsSavingManual] = useState(false);
+  const [activeScriptTarget, setActiveScriptTarget] = useState<'pre_request_script' | 'test_script'>('pre_request_script');
 
   const isPending = !!collection && pendingSyncIds.has(collection.id);
   const showSaveButton = !settings.general.autoSave && isPending;
@@ -297,9 +302,18 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                <div>
-                  <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Global Interceptors</h3>
-                  <p className="text-[11px] text-[#555555]">Scripts defined here run before every request or after every execution in this collection.</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Global Interceptors</h3>
+                    <p className="text-[11px] text-[#555555]">Scripts defined here run before every request or after every execution in this collection.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsScriptLibraryOpen(true)}
+                    className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                  >
+                    <Code2 size={12} />
+                    Open Script Library
+                  </button>
                 </div>
 
                 <div className="space-y-4">
@@ -312,6 +326,9 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                       language="javascript"
                       theme="vs-dark"
                       value={collection.pre_request_script || ''}
+                      onMount={(editor) => {
+                        editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                      }}
                       onChange={(val) => handleUpdate({ pre_request_script: val || '' })}
                       options={{
                         minimap: { enabled: false },
@@ -335,6 +352,9 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                       language="javascript"
                       theme="vs-dark"
                       value={collection.test_script || ''}
+                      onMount={(editor) => {
+                        editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                      }}
                       onChange={(val) => handleUpdate({ test_script: val || '' })}
                       options={{
                         minimap: { enabled: false },
@@ -352,6 +372,15 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
           </AnimatePresence>
         </div>
       </div>
+      <ScriptLibraryModal
+        onInsertScript={(script) => {
+          const current = collection[activeScriptTarget] || '';
+          handleUpdate({
+            [activeScriptTarget]: current + (current ? '\n\n' : '') + script
+          });
+          addToast({ type: 'success', message: 'Script integrated into protocol' });
+        }}
+      />
     </div>
   );
 };

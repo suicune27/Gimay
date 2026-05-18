@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { 
   Folder, 
   ChevronRight, 
@@ -48,8 +49,6 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { SettingsModal } from '../../components/SettingsModal';
 import { useDataSync } from '../../hooks/useDataSync';
 
-import { useAuth } from '../../hooks/useAuth';
-
 const SidebarTooltip: React.FC<{ children: React.ReactNode; text: string; enabled: boolean }> = ({ children, text, enabled }) => {
   if (!enabled) return <>{children}</>;
   return (
@@ -86,6 +85,8 @@ export const Sidebar: React.FC = () => {
     isSettingsModalOpen,
     setIsSettingsModalOpen
   } = useStore();
+  
+  const { logout } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNav, setActiveNav] = useState('collections');
