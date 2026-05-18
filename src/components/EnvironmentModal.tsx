@@ -7,6 +7,7 @@ import { PersistenceService } from '../services/PersistenceService';
 import { KeyValue, Environment } from '../types';
 import { KVEditor } from './KVEditor';
 import { cn } from '../lib/utils';
+import { EnvironmentBulkModal } from './EnvironmentBulkModal';
 
 interface EnvironmentModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ interface EnvironmentModalProps {
 }
 
 export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onClose, environment, isGlobal = false }) => {
-  const { profile, activeWorkspaceId, addToast, updateEnvironment, globalVariables, setGlobalVariables } = useStore();
+  const { profile, activeWorkspaceId, addToast, updateEnvironment, setEnvironments, globalVariables, setGlobalVariables } = useStore();
   const { fetchEnvironments } = useDataSync();
   
   const [activeTab, setActiveTab] = useState<'variables' | 'scripts' | 'docs'>('variables');
@@ -27,6 +28,8 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
   const [documentation, setDocumentation] = useState(environment?.documentation || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkModalInitialMode, setBulkModalInitialMode] = useState<'edit' | 'import'>('edit');
 
   const filteredVariables = useMemo(() => {
     if (!variables) return [];
@@ -39,7 +42,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
   }, [variables, searchQuery]);
 
   const handleSave = async () => {
-    if (!profile?.id) return;
+    const userId = profile?.id || 'offline-user-id';
     if (!isGlobal && (!name.trim() || !activeWorkspaceId)) return;
     
     setIsLoading(true);
@@ -58,7 +61,11 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
         updateEnvironment(environment.id, { name, variables });
         addToast({ type: 'success', message: 'Environment updated.' });
       } else {
-        await PersistenceService.createEnvironment(activeWorkspaceId!, profile.id, name, variables);
+        const created = await PersistenceService.createEnvironment(activeWorkspaceId!, userId, name, variables);
+        const currentEnvs = useStore.getState().environments || [];
+        if (!currentEnvs.some(e => e.id === created.id)) {
+          setEnvironments([...currentEnvs, created]);
+        }
         if (activeWorkspaceId) fetchEnvironments?.(activeWorkspaceId);
         addToast({ type: 'success', message: `Environment "${name}" created.` });
       }
@@ -207,7 +214,29 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Variable Stack</label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Variable Stack</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkModalInitialMode('import');
+                        setIsBulkModalOpen(true);
+                      }}
+                      className="px-2 py-0.5 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[8px] font-black text-[#3ECF8E] uppercase tracking-wider hover:bg-[#3ECF8E]/20 transition-all cursor-pointer"
+                    >
+                      Import Apidog Environment
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkModalInitialMode('edit');
+                        setIsBulkModalOpen(true);
+                      }}
+                      className="px-2 py-0.5 rounded bg-[#222222] border border-[#333333] text-[8px] font-black text-[#888888] uppercase tracking-wider hover:bg-[#333333] transition-all cursor-pointer"
+                    >
+                      Bulk CSV Import
+                    </button>
+                  </div>
                   <div className="relative">
                     <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333333]" />
                     <input 
@@ -309,6 +338,12 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
           </div>
         </div>
       </motion.div>
+      <EnvironmentBulkModal
+        isOpen={isBulkModalOpen}
+        onClose={() => setIsBulkModalOpen(false)}
+        variables={variables}
+        onApply={(updated) => setVariables(updated)}
+      />
     </div>
   );
 };

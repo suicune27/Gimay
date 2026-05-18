@@ -18,7 +18,7 @@ export const ScriptLibrary: React.FC<ScriptLibraryProps> = ({ isOpen, onClose })
   const { setScripts, setFolders } = useScriptStore();
 
   useEffect(() => {
-    if (isOpen && activeWorkspaceId) {
+    if (isOpen && activeWorkspaceId && activeWorkspaceId !== 'null' && activeWorkspaceId !== 'undefined') {
       const loadData = async () => {
         try {
           const [scripts, folders] = await Promise.all([

@@ -162,6 +162,8 @@ export interface AppSettings {
     keyLogFile: boolean;
   };
   proxy: {
+    mode: 'auto' | 'manual' | 'pac' | 'disabled';
+    pacUrl: string;
     enabled: boolean;
     useSystemProxy: boolean;
     httpProxy: string;

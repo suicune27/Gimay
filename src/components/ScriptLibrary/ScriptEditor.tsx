@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import Editor, { OnMount } from '@monaco-editor/react';
-import { Play, Save, Trash2, X, ChevronRight, FileCode, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useRef, Suspense } from 'react';
+import type { OnMount } from '@monaco-editor/react';
+import { Play, Save, X, FileCode } from 'lucide-react';
 import { useScriptStore } from '../../store/scriptStore';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -8,11 +8,14 @@ import { registerPutmanCompletions } from '../../services/monacoCompletion';
 import { ScriptEngine } from '../../services/scriptEngine';
 import { PersistenceService } from '../../services/PersistenceService';
 
+const Editor = React.lazy(() => import('@monaco-editor/react'));
+
 export const ScriptEditor: React.FC = () => {
   const { openTabs, activeTabId, closeTab, scripts, updateScript, setTabDirty } = useScriptStore();
   const { addToast, settings } = useStore();
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
+  const disposablesRef = useRef<any[]>([]);
 
   const activeTab = openTabs.find(t => t.id === activeTabId);
   const activeScript = scripts.find(s => s.id === activeTab?.scriptId);
@@ -24,7 +27,12 @@ export const ScriptEditor: React.FC = () => {
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-    registerPutmanCompletions(monaco);
+    
+    // Clear old registrations
+    disposablesRef.current.forEach(d => d.dispose());
+    // Register optimized completions
+    disposablesRef.current = registerPutmanCompletions(monaco);
+    
     updateEditorTheme();
   };
 
@@ -33,7 +41,6 @@ export const ScriptEditor: React.FC = () => {
     
     const monaco = monacoRef.current;
     
-    // Define custom theme
     monaco.editor.defineTheme('putman-custom', {
       base: theme === 'light' ? 'vs' : 'vs-dark',
       inherit: true,
@@ -59,12 +66,18 @@ export const ScriptEditor: React.FC = () => {
     updateEditorTheme();
   }, [theme]);
 
+  // Clean up completions on unmount
+  useEffect(() => {
+    return () => {
+      disposablesRef.current.forEach(d => d.dispose());
+    };
+  }, []);
+
   const [isSaving, setIsSaving] = React.useState(false);
 
   const handleSave = async () => {
     if (isSaving) return;
     setIsSaving(true);
-    console.log('[ScriptEditor] Save triggered', { activeScript, activeTab });
     
     if (!activeScript || !activeTab) {
       setIsSaving(false);
@@ -113,12 +126,12 @@ export const ScriptEditor: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeScript, activeTab, isSaving]); // Added isSaving to deps
+  }, [activeScript, activeTab, isSaving]);
 
   if (!activeTab || !activeScript) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[var(--bg-surface)] text-[var(--border-subtle)]">
-        <FileCode size={64} className="mb-4 opacity-50" />
+        <FileCode size={64} className="mb-4 opacity-50 text-[var(--brand)] shadow-[0_0_30px_var(--brand-muted)]" />
         <h3 className="text-sm font-black uppercase tracking-[0.3em] opacity-50 text-[var(--text-dim)]">Select a script to edit</h3>
         <p className="text-[10px] mt-2 font-mono opacity-30 text-[var(--text-dim)]">Ctrl+N to create new</p>
       </div>
@@ -137,18 +150,18 @@ export const ScriptEditor: React.FC = () => {
               key={tab.id}
               onClick={() => useScriptStore.getState().setActiveTabId(tab.id)}
               className={cn(
-                "h-full px-4 flex items-center gap-2 cursor-pointer transition-all border-t-2 text-[10px] font-bold min-w-[120px] max-w-[200px] shrink-0",
+                "h-full px-4 flex items-center gap-2 cursor-pointer transition-all border-t-2 text-[10px] font-bold min-w-[120px] max-w-[200px] shrink-0 group relative",
                 activeTabId === tab.id 
                   ? "bg-[var(--bg-surface)] border-[var(--brand)] text-[var(--text-main)]" 
                   : "bg-[var(--bg-deep)] border-transparent text-[var(--text-dim)] hover:bg-[var(--bg-elevated)]"
               )}
             >
               <FileCode size={12} className={activeTabId === tab.id ? "text-[var(--brand)]" : ""} />
-              <span className="truncate flex-1">{script.name}</span>
-              {tab.isDirty && <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shrink-0" />}
+              <span className="truncate flex-1 pr-4">{script.name}</span>
+              {tab.isDirty && <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shrink-0 mr-1" />}
               <button 
                 onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                className="p-1 hover:bg-[var(--bg-elevated)] rounded transition-all opacity-0 group-hover:opacity-100"
+                className="p-1 hover:bg-[var(--bg-elevated)] rounded transition-all opacity-0 group-hover:opacity-100 absolute right-2 top-1/2 -translate-y-1/2"
               >
                 <X size={10} />
               </button>
@@ -179,7 +192,7 @@ export const ScriptEditor: React.FC = () => {
               isSaving ? "opacity-50 cursor-not-allowed" : "text-[var(--text-muted)] hover:text-[var(--brand)] hover:border-[var(--brand)]/30"
             )}
           >
-            <Save size={14} className={isSaving ? "animate-spin" : ""} /> {isSaving ? 'Saving...' : 'Save'}
+            <Save size={14} className={isSaving ? "animate-spin text-[var(--brand)]" : ""} /> {isSaving ? 'Saving...' : 'Save'}
           </button>
           <button 
             onClick={handleRun}
@@ -190,31 +203,44 @@ export const ScriptEditor: React.FC = () => {
         </div>
       </div>
 
-      {/* Editor */}
+      {/* Editor with Lazy Monaco */}
       <div className="flex-1 relative">
-        <Editor
-          height="100%"
-          defaultLanguage="javascript"
-          value={activeScript.content}
-          onMount={handleEditorMount}
-          onChange={(val) => {
-            if (!activeTab.isDirty) setTabDirty(activeTab.id, true);
-          }}
-          options={{
-            minimap: { enabled: true },
-            fontSize: 13,
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            lineHeight: 22,
-            scrollbar: {
-              vertical: 'hidden',
-              horizontal: 'hidden'
-            },
-            padding: { top: 20 },
-            smoothScrolling: true,
-            cursorBlinking: 'smooth',
-            bracketPairColorization: { enabled: true }
-          }}
-        />
+        <Suspense fallback={
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-surface)]">
+            <div className="animate-spin text-[var(--brand)] mb-3">
+              <FileCode size={36} className="shadow-[0_0_30px_var(--brand-muted)]" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-dim)]">Initializing Code Space...</span>
+          </div>
+        }>
+          <Editor
+            height="100%"
+            defaultLanguage="javascript"
+            value={activeScript.content}
+            onMount={handleEditorMount}
+            onChange={(val) => {
+              if (!activeTab.isDirty) setTabDirty(activeTab.id, true);
+            }}
+            options={{
+              minimap: { enabled: false },
+              quickSuggestions: { other: true, comments: false, strings: false },
+              parameterHints: { enabled: true },
+              folding: false,
+              fontSize: 13,
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              lineHeight: 22,
+              scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto'
+              },
+              padding: { top: 20 },
+              smoothScrolling: true,
+              cursorBlinking: 'smooth',
+              bracketPairColorization: { enabled: true },
+              automaticLayout: true
+            }}
+          />
+        </Suspense>
       </div>
     </div>
   );

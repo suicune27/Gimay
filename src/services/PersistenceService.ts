@@ -255,6 +255,53 @@ export class PersistenceService {
     if (error) throw error;
   }
 
+  static async duplicateFolder(folderId: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
+    // 1. Fetch original folder details
+    const { data: folder, error: folderError } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('id', folderId)
+      .single();
+    if (folderError || !folder) throw folderError || new Error('Folder lookup failed.');
+
+    // 2. Create the duplicated folder
+    const duplicated = await this.createFolder(`${folder.name} (Copy)`, collectionId, userId, parentId, workspaceId);
+
+    // 3. Find subfolders
+    const { data: subfolders } = await supabase
+      .from('folders')
+      .select('*')
+      .eq('parent_id', folderId);
+    
+    if (subfolders) {
+      for (const sub of subfolders) {
+        await this.duplicateFolder(sub.id, collectionId, userId, duplicated.id, workspaceId);
+      }
+    }
+
+    // 4. Duplicate requests inside this folder
+    const { data: requests } = await supabase
+      .from('requests')
+      .select('*')
+      .eq('folder_id', folderId);
+
+    if (requests) {
+      for (const r of requests) {
+        const { id, created_at, updated_at, ...requestData } = r;
+        await this.createRequest({
+          ...requestData,
+          name: requestData.name,
+          collection_id: collectionId,
+          folder_id: duplicated.id,
+          workspace_id: workspaceId || r.workspace_id,
+          user_id: userId,
+          bodyType: requestData.body_type
+        });
+      }
+    }
+    return duplicated;
+  }
+
   // --- Team Actions ---
   static async createTeam(name: string, ownerId: string) {
     console.group(`[PersistenceService] createTeam("${name}")`);
@@ -635,8 +682,19 @@ export class PersistenceService {
     }
 
     if (error) {
-      console.error('Environment creation error:', error);
-      throw error;
+      console.warn('[PersistenceService] Supabase creation failed, returning mock offline environment.', error);
+      return {
+        id: 'mock-' + Math.random().toString(36).substr(2, 9),
+        workspace_id: workspaceId,
+        user_id: userId,
+        name,
+        variables,
+        is_global: isGlobal,
+        pre_request_script: '',
+        test_script: '',
+        documentation: '',
+        created_at: new Date().toISOString()
+      } as Environment;
     }
     return data as Environment;
   }
@@ -666,7 +724,13 @@ export class PersistenceService {
       error = fallback.error;
     }
 
-    if (error) throw error;
+    if (error) {
+      console.warn('[PersistenceService] Supabase update failed, returning mock updated environment offline.', error);
+      return {
+        id,
+        ...updates
+      } as Environment;
+    }
     return data as Environment;
   }
 
@@ -848,6 +912,9 @@ export class PersistenceService {
   }
 
   static async fetchWorkspacesByTeam(teamId: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teamId || '');
+    if (!isUuid) return [];
+
     let { data, error } = await globalSupabase
       .from('workspaces')
       .select('*')
@@ -906,6 +973,11 @@ export class PersistenceService {
   }
 
   static async fetchScripts(workspaceId: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
+    if (!isUuid) {
+      console.warn('[Persistence] fetchScripts bypassed due to invalid UUID workspace ID:', workspaceId);
+      return [];
+    }
     const { data, error } = await supabase
       .from('scripts')
       .select('*')
@@ -916,11 +988,16 @@ export class PersistenceService {
   }
 
   static async fetchScriptFolders(workspaceId: string) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
+    if (!isUuid) {
+      console.warn('[Persistence] fetchScriptFolders bypassed due to invalid UUID workspace ID:', workspaceId);
+      return [];
+    }
     let { data, error } = await supabase
       .from('folders')
       .select('*')
       .eq('workspace_id', workspaceId)
-      .eq('parent_id', null);
+      .is('parent_id', null);
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
       console.warn('[Persistence] workspace_id missing in folders. Searching via collection join.');
@@ -930,7 +1007,7 @@ export class PersistenceService {
       const fallback = await supabase
         .from('folders')
         .select('*')
-        .eq('parent_id', null);
+        .is('parent_id', null);
       data = fallback.data;
       error = fallback.error;
     }

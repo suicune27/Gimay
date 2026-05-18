@@ -55,7 +55,7 @@ export const useDataSync = () => {
   };
 
   const fetchCollections = async (workspaceId: string) => {
-    if (!workspaceId) return;
+    if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     try {
       const teamIds = (store.teams || []).map(t => t.id);
       
@@ -145,6 +145,7 @@ export const useDataSync = () => {
   };
 
   const fetchEnvironments = async (workspaceId: string) => {
+    if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     const { data, error } = await supabase
       .from('environments')
       .select('*')
@@ -177,6 +178,7 @@ export const useDataSync = () => {
   };
 
   const fetchHistory = async (workspaceId: string) => {
+    if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     const { data, error } = await supabase
       .from('history')
       .select('*')
@@ -214,7 +216,7 @@ export const useDataSync = () => {
 
   // Setup Realtime subscriptions
   useEffect(() => {
-    if (!store.activeWorkspaceId) return;
+    if (!store.activeWorkspaceId || store.activeWorkspaceId === 'null' || store.activeWorkspaceId === 'undefined') return;
 
     const channelId = `sync-${store.activeWorkspaceId}-${Math.random().toString(36).substring(7)}`;
     const channel = supabase.channel(channelId);

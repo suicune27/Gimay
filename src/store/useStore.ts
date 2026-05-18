@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { PersistenceService } from '../services/PersistenceService';
 import { syncManager } from '../services/SyncService';
 import { RequestUtils } from '../utils/RequestUtils';
+import { ProxyService } from '../services/ProxyService';
 import { 
   RequestData, 
   Workspace, 
@@ -85,6 +86,8 @@ interface AppState {
   setScriptFavorites: (favorites: string[]) => void;
   isScriptLibraryOpen: boolean;
   setIsScriptLibraryOpen: (isOpen: boolean) => void;
+  isScriptLabOpen: boolean;
+  setIsScriptLabOpen: (isOpen: boolean) => void;
   duplicateRequest: (id: string, overrides?: Partial<RequestData>) => Promise<void>;
   addRequest: (request: RequestData) => void;
   deleteRequestState: (id: string) => void;
@@ -157,6 +160,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     keyLogFile: false,
   },
   proxy: {
+    mode: 'auto',
+    pacUrl: '',
     enabled: false,
     useSystemProxy: true,
     httpProxy: '',
@@ -216,10 +221,17 @@ export const useStore = create<AppState>()(
       setProfile: (profile) => set({ profile }),
       
       settings: DEFAULT_SETTINGS,
-      updateSettings: (newSettings) => set((state) => ({
-        settings: { ...state.settings, ...newSettings }
-      })),
-      resetSettings: () => set({ settings: DEFAULT_SETTINGS }),
+      updateSettings: (newSettings) => set((state) => {
+        const merged = { ...state.settings, ...newSettings };
+        if (newSettings.proxy) {
+          ProxyService.syncSettings(merged.proxy);
+        }
+        return { settings: merged };
+      }),
+      resetSettings: () => set((state) => {
+        ProxyService.syncSettings(DEFAULT_SETTINGS.proxy);
+        return { settings: DEFAULT_SETTINGS };
+      }),
 
       syncMetadata: DEFAULT_SYNC_METADATA,
       updateSyncMetadata: (newMetadata) => set((state) => ({
@@ -410,6 +422,8 @@ export const useStore = create<AppState>()(
       setScriptFavorites: (scriptFavorites) => set({ scriptFavorites }),
       isScriptLibraryOpen: false,
       setIsScriptLibraryOpen: (isScriptLibraryOpen) => set({ isScriptLibraryOpen }),
+      isScriptLabOpen: false,
+      setIsScriptLabOpen: (isScriptLabOpen) => set({ isScriptLabOpen }),
       
       duplicateRequest: async (id, overrides = {}) => {
         const state = useStore.getState();

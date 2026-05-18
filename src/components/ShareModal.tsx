@@ -9,17 +9,26 @@ import { Collection } from '../types';
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
-  collection: Collection;
+  collection: Collection | null;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, collection }) => {
   const { teams, addToast, profile } = useStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [visibility, setVisibility] = useState<'private' | 'team'>(collection.visibility || 'private');
-  const [teamId, setTeamId] = useState<string | null>(collection.team_id || null);
-  const [permission, setPermission] = useState<'view' | 'edit' | 'execute'>(collection.permission || 'edit');
+  const [visibility, setVisibility] = useState<'private' | 'team'>('private');
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [permission, setPermission] = useState<'view' | 'edit' | 'execute'>('edit');
+
+  React.useEffect(() => {
+    if (collection) {
+      setVisibility(collection.visibility || 'private');
+      setTeamId(collection.team_id || null);
+      setPermission(collection.permission || 'edit');
+    }
+  }, [collection]);
 
   const handleUpdate = async () => {
+    if (!collection) return;
     setIsLoading(true);
     try {
       await PersistenceService.updateCollection(collection.id, {
@@ -36,7 +45,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, collect
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !collection) return null;
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">

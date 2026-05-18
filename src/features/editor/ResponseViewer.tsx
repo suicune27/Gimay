@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, Database, Globe, Save, Terminal } from 'lucide-react';
 import { PersistenceService } from '../../services/PersistenceService';
-import Editor from '@monaco-editor/react';
+
+const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 export const ResponseViewer: React.FC = () => {
   const { lastResponse } = useStore();
@@ -128,22 +129,28 @@ export const ResponseViewer: React.FC = () => {
       <div className="flex-1 overflow-auto custom-scrollbar p-3">
         <div className="h-full w-full rounded-lg border border-[#1A1A1A] bg-[#0F0F0F] overflow-hidden shadow-2xl">
           {activeTab === 'Body' && (
-            <Editor
-              height="100%"
-              language={(lastResponse.contentType || '').includes('json') ? 'json' : (lastResponse.contentType || '').includes('html') ? 'html' : 'text'}
-              value={content}
-              theme="vs-dark"
-              options={{
-                readOnly: true,
-                minimap: { enabled: true },
-                fontSize: 12,
-                fontFamily: 'JetBrains Mono',
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 20 }
-              }}
-            />
+            <Suspense fallback={
+              <div className="absolute inset-0 flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                Drawing response body...
+              </div>
+            }>
+              <Editor
+                height="100%"
+                language={(lastResponse.contentType || '').includes('json') ? 'json' : (lastResponse.contentType || '').includes('html') ? 'html' : 'text'}
+                value={content}
+                theme="vs-dark"
+                options={{
+                  readOnly: true,
+                  minimap: { enabled: true },
+                  fontSize: 12,
+                  fontFamily: 'JetBrains Mono',
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  padding: { top: 20 }
+                }}
+              />
+            </Suspense>
           )}
 
           {activeTab === 'Headers' && (

@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
 import { useDataSync } from '../../hooks/useDataSync';
 import { PersistenceService } from '../../services/PersistenceService';
 import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 import { KVEditor } from '../../components/KVEditor';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { EnvironmentBulkModal } from '../../components/EnvironmentBulkModal';
 import { cn } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -20,10 +21,12 @@ import {
   PenLine,
   ChevronDown,
   Save,
-  Clock
+  Clock,
+  UploadCloud,
+  Settings
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import Editor from '@monaco-editor/react';
+const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 interface EnvironmentEditorProps {
   tabId: string;
@@ -32,6 +35,7 @@ interface EnvironmentEditorProps {
 export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) => {
   const {
     environments,
+    setEnvironments,
     activeWorkspaceId,
     profile,
     updateEnvironment,
@@ -57,6 +61,9 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isSavingManual, setIsSavingManual] = useState(false);
   const creatingRef = useRef(false);
+
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkModalInitialMode, setBulkModalInitialMode] = useState<'edit' | 'import'>('edit');
 
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string | null>(tab?.environmentId || null);
   const [nameDraft, setNameDraft] = useState('');
@@ -102,7 +109,8 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
   }, [nameDraft, selectedEnvironment?.id, selectedEnvironment?.name, updateEnvironment]);
 
   const handleCreateEnvironment = async () => {
-    if (!activeWorkspaceId || !profile?.id) return;
+    if (!activeWorkspaceId) return;
+    const userId = profile?.id || 'offline-user-id';
     if (creatingRef.current) return;
 
     creatingRef.current = true;
@@ -118,7 +126,11 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
     }
 
     try {
-      const created = await PersistenceService.createEnvironment(activeWorkspaceId, profile.id, name, []);
+      const created = await PersistenceService.createEnvironment(activeWorkspaceId, userId, name, []);
+      const currentEnvs = useStore.getState().environments || [];
+      if (!currentEnvs.some(e => e.id === created.id)) {
+        setEnvironments([...currentEnvs, created]);
+      }
       await fetchEnvironments(activeWorkspaceId);
       setSelectedEnvironmentId(created.id);
       addToast({ type: 'success', message: `Environment "${name}" created.` });
@@ -316,9 +328,33 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-6"
                 >
-                  <div>
-                    <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Variables</h3>
-                    <p className="text-[11px] text-[#555555]">Supports add/edit/delete, bulk edit, initial/current values, and masking for sensitive values.</p>
+                  <div className="flex justify-between items-center gap-4">
+                    <div>
+                      <h3 className="text-sm font-black text-[#E0E0E0] uppercase tracking-widest mb-1">Environment Variables</h3>
+                      <p className="text-[11px] text-[#555555]">Supports add/edit/delete, bulk edit, initial/current values, and masking for sensitive values.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setBulkModalInitialMode('import');
+                          setIsBulkModalOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                      >
+                        <UploadCloud size={12} />
+                        Bulk Import / APIdog
+                      </button>
+                      <button
+                        onClick={() => {
+                          setBulkModalInitialMode('edit');
+                          setIsBulkModalOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg border border-[#222222] hover:bg-[#1A1A1A] text-[9px] font-black text-[#AAAAAA] uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                      >
+                        <Settings size={12} />
+                        Bulk Edit Parameters
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-[#111111] rounded-xl border border-[#222222] p-4">
                     <KVEditor
@@ -351,55 +387,67 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                       className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
                     >
                       <Code2 size={12} />
-                      Open Script Library
+                      Load from Script Laboratory
                     </button>
                   </div>
 
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Environment Pre-request Script</label>
                     <div className="border border-[#222222] rounded-xl overflow-hidden bg-[#111111]">
-                      <Editor
-                        height="240px"
-                        language="javascript"
-                        theme="vs-dark"
-                        value={selectedEnvironment.pre_request_script || ''}
-                        onMount={(editor) => {
-                          editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
-                        }}
-                        onChange={(val) => updateEnvironment(selectedEnvironment.id, { pre_request_script: val || '' })}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 13,
-                          fontFamily: 'JetBrains Mono',
-                          lineNumbers: 'on',
-                          automaticLayout: true,
-                          padding: { top: 16 },
-                        }}
-                      />
+                      <Suspense fallback={
+                        <div className="h-[240px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                          Loading pre-request editor...
+                        </div>
+                      }>
+                        <Editor
+                          height="240px"
+                          language="javascript"
+                          theme="vs-dark"
+                          value={selectedEnvironment.pre_request_script || ''}
+                          onMount={(editor) => {
+                            editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                          }}
+                          onChange={(val) => updateEnvironment(selectedEnvironment.id, { pre_request_script: val || '' })}
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 13,
+                            fontFamily: 'JetBrains Mono',
+                            lineNumbers: 'on',
+                            automaticLayout: true,
+                            padding: { top: 16 },
+                          }}
+                        />
+                      </Suspense>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Environment Test Script</label>
                     <div className="border border-[#222222] rounded-xl overflow-hidden bg-[#111111]">
-                      <Editor
-                        height="240px"
-                        language="javascript"
-                        theme="vs-dark"
-                        value={selectedEnvironment.test_script || ''}
-                        onMount={(editor) => {
-                          editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
-                        }}
-                        onChange={(val) => updateEnvironment(selectedEnvironment.id, { test_script: val || '' })}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 13,
-                          fontFamily: 'JetBrains Mono',
-                          lineNumbers: 'on',
-                          automaticLayout: true,
-                          padding: { top: 16 },
-                        }}
-                      />
+                      <Suspense fallback={
+                        <div className="h-[240px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                          Loading test editor...
+                        </div>
+                      }>
+                        <Editor
+                          height="240px"
+                          language="javascript"
+                          theme="vs-dark"
+                          value={selectedEnvironment.test_script || ''}
+                          onMount={(editor) => {
+                            editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                          }}
+                          onChange={(val) => updateEnvironment(selectedEnvironment.id, { test_script: val || '' })}
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 13,
+                            fontFamily: 'JetBrains Mono',
+                            lineNumbers: 'on',
+                            automaticLayout: true,
+                            padding: { top: 16 },
+                          }}
+                        />
+                      </Suspense>
                     </div>
                   </div>
                 </motion.div>
@@ -445,22 +493,28 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
 
                   <div className="bg-[#111111] rounded-xl border border-[#222222] overflow-hidden min-h-[400px]">
                     {docMode === 'edit' ? (
-                      <Editor
-                        height="500px"
-                        language="markdown"
-                        theme="vs-dark"
-                        value={selectedEnvironment.documentation || ''}
-                        onChange={(val) => updateEnvironment(selectedEnvironment.id, { documentation: val || '' })}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 13,
-                          fontFamily: 'JetBrains Mono',
-                          lineNumbers: 'on',
-                          automaticLayout: true,
-                          wordWrap: 'on',
-                          padding: { top: 16 },
-                        }}
-                      />
+                      <Suspense fallback={
+                        <div className="absolute inset-0 flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                          Drawing documentation editor...
+                        </div>
+                      }>
+                        <Editor
+                          height="500px"
+                          language="markdown"
+                          theme="vs-dark"
+                          value={selectedEnvironment.documentation || ''}
+                          onChange={(val) => updateEnvironment(selectedEnvironment.id, { documentation: val || '' })}
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 13,
+                            fontFamily: 'JetBrains Mono',
+                            lineNumbers: 'on',
+                            automaticLayout: true,
+                            wordWrap: 'on',
+                            padding: { top: 16 },
+                          }}
+                        />
+                      </Suspense>
                     ) : (
                       <div className="p-8 prose prose-invert prose-emerald max-w-none prose-sm">
                         <ReactMarkdown>{selectedEnvironment.documentation || '*No environment documentation yet.*'}</ReactMarkdown>
@@ -474,15 +528,23 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
         )}
       </div>
       {selectedEnvironment && (
-        <ScriptLibraryModal
-          onInsertScript={(script) => {
-            const current = selectedEnvironment[activeScriptTarget] || '';
-            updateEnvironment(selectedEnvironment.id, {
-              [activeScriptTarget]: current + (current ? '\n\n' : '') + script
-            });
-            addToast({ type: 'success', message: 'Script integrated into environment' });
-          }}
-        />
+        <>
+          <ScriptLibraryModal
+            onInsertScript={(script) => {
+              const current = selectedEnvironment[activeScriptTarget] || '';
+              updateEnvironment(selectedEnvironment.id, {
+                [activeScriptTarget]: current + (current ? '\n\n' : '') + script
+              });
+              addToast({ type: 'success', message: 'Script integrated into environment' });
+            }}
+          />
+          <EnvironmentBulkModal
+            isOpen={isBulkModalOpen}
+            onClose={() => setIsBulkModalOpen(false)}
+            variables={selectedEnvironment.variables || []}
+            onApply={(variables) => updateEnvironment(selectedEnvironment.id, { variables })}
+          />
+        </>
       )}
     </div>
   );

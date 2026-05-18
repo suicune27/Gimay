@@ -37,6 +37,8 @@ import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 import { AppSettings } from '../types';
 import { GitHubService } from '../services/GitHubService';
+import { isElectron } from '../lib/platform';
+import { ProxyService } from '../services/ProxyService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -361,59 +363,146 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               )}
 
               {activeSection === 'Proxy' && (
-                 <motion.div
+                <motion.div
                   key="proxy"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   className="space-y-8"
                 >
-                  <Section title="Routing Proxy">
-                     <SettingToggle 
-                      label="Enable Proxy Systems" 
-                      description="Reroute all requests through a secure proxy bridge." 
-                      enabled={settings.proxy.enabled}
-                      onChange={(v) => handleUpdate('proxy.enabled', v)}
-                    />
-                    {settings.proxy.enabled && (
-                      <div className="mt-6 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                         <SettingToggle 
-                          label="Use System Proxy" 
-                          description="Override local settings with environment-defined proxies." 
-                          enabled={settings.proxy.useSystemProxy}
-                          onChange={(v) => handleUpdate('proxy.useSystemProxy', v)}
-                        />
-                        {!settings.proxy.useSystemProxy && (
-                          <>
+                  <Section title="Routing Proxy Settings">
+                    <div className="space-y-6">
+                      <SettingSelect 
+                        label="Proxy Mode"
+                        description="Select how the application handles outbound network routing."
+                        value={settings.proxy.mode || (settings.proxy.enabled ? (settings.proxy.useSystemProxy ? 'auto' : 'manual') : 'disabled')}
+                        options={[
+                          { value: 'auto', label: 'Auto-Detect OS Proxy (Default)' },
+                          { value: 'manual', label: 'Manual Configuration' },
+                          { value: 'pac', label: 'PAC Script URL' },
+                          { value: 'disabled', label: 'Disable Proxy' }
+                        ]}
+                        onChange={(v) => {
+                          const mode = v as 'auto' | 'manual' | 'pac' | 'disabled';
+                          handleUpdate('proxy.mode', mode);
+                          handleUpdate('proxy.enabled', mode !== 'disabled');
+                          handleUpdate('proxy.useSystemProxy', mode === 'auto');
+                          
+                          // Propagate to Electron if active
+                          ProxyService.syncSettings({
+                            ...settings.proxy,
+                            mode,
+                            enabled: mode !== 'disabled',
+                            useSystemProxy: mode === 'auto'
+                          });
+                        }}
+                      />
+
+                      {settings.proxy.mode === 'pac' && (
+                        <div className="space-y-4 p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg animate-in slide-in-from-top-2">
+                          <SettingInput 
+                            label="PAC Script URL" 
+                            description="Automatic proxy configuration script path or URL."
+                            placeholder="http://example.com/proxy.pac"
+                            value={settings.proxy.pacUrl || ''}
+                            onChange={(v) => {
+                              handleUpdate('proxy.pacUrl', v);
+                              ProxyService.syncSettings({ ...settings.proxy, pacUrl: v });
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {settings.proxy.mode === 'manual' && (
+                        <div className="space-y-4 p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg animate-in slide-in-from-top-2">
+                          <div className="grid grid-cols-2 gap-4">
                             <SettingInput 
-                              label="HTTP Proxy" 
-                              placeholder="e.g. http://10.0.0.1:8080"
-                              value={settings.proxy.httpProxy}
-                              onChange={(v) => handleUpdate('proxy.httpProxy', v)}
+                              label="HTTP Proxy Server" 
+                              placeholder="e.g. 10.0.0.1:8080"
+                              value={settings.proxy.httpProxy || ''}
+                              onChange={(v) => {
+                                handleUpdate('proxy.httpProxy', v);
+                                ProxyService.syncSettings({ ...settings.proxy, httpProxy: v });
+                              }}
                             />
                             <SettingInput 
-                              label="HTTPS Proxy" 
-                              placeholder="e.g. https://10.0.0.1:8080"
-                              value={settings.proxy.httpsProxy}
-                              onChange={(v) => handleUpdate('proxy.httpsProxy', v)}
+                              label="HTTPS Proxy Server" 
+                              placeholder="e.g. 10.0.0.1:8080"
+                              value={settings.proxy.httpsProxy || ''}
+                              onChange={(v) => {
+                                handleUpdate('proxy.httpsProxy', v);
+                                ProxyService.syncSettings({ ...settings.proxy, httpsProxy: v });
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <SettingInput 
+                              label="SOCKS Proxy Server" 
+                              placeholder="socks5://127.0.0.1:1080"
+                              value={settings.proxy.socksProxy || ''}
+                              onChange={(v) => {
+                                handleUpdate('proxy.socksProxy', v);
+                                ProxyService.syncSettings({ ...settings.proxy, socksProxy: v });
+                              }}
                             />
                             <SettingInput 
-                              label="SOCKS Proxy" 
-                              placeholder="e.g. socks5://10.0.0.1:1080"
-                              value={settings.proxy.socksProxy}
-                              onChange={(v) => handleUpdate('proxy.socksProxy', v)}
+                              label="Bypass Proxy List" 
+                              description="Domains to route directly (comma separated)."
+                              placeholder="localhost, 127.0.0.1"
+                              value={settings.proxy.bypassList || ''}
+                              onChange={(v) => {
+                                handleUpdate('proxy.bypassList', v);
+                                ProxyService.syncSettings({ ...settings.proxy, bypassList: v });
+                              }}
                             />
-                            <SettingInput 
-                              label="Bypass List" 
-                              description="Comma-separated hosts to reach directly."
-                              placeholder="localhost, 127.0.0.1, internal.host"
-                              value={settings.proxy.bypassList}
-                              onChange={(v) => handleUpdate('proxy.bypassList', v)}
+                          </div>
+
+                          <div className="border-t border-[var(--border-subtle)] pt-4 mt-4 space-y-4">
+                            <SettingToggle 
+                              label="Proxy Authentication" 
+                              description="Specify credentials if your proxy requires authentication."
+                              enabled={settings.proxy.auth?.enabled || false}
+                              onChange={(v) => {
+                                handleUpdate('proxy.auth.enabled', v);
+                                ProxyService.syncSettings({
+                                  ...settings.proxy,
+                                  auth: { ...(settings.proxy.auth || {}), enabled: v }
+                                });
+                              }}
                             />
-                          </>
-                        )}
-                      </div>
-                    )}
+                            
+                            {settings.proxy.auth?.enabled && (
+                              <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-1">
+                                <SettingInput 
+                                  label="Username" 
+                                  value={settings.proxy.auth?.username || ''}
+                                  onChange={(v) => {
+                                    handleUpdate('proxy.auth.username', v);
+                                    ProxyService.syncSettings({
+                                      ...settings.proxy,
+                                      auth: { ...(settings.proxy.auth || {}), username: v }
+                                    });
+                                  }}
+                                />
+                                <SettingInput 
+                                  label="Password" 
+                                  type="password"
+                                  value={settings.proxy.auth?.password || ''}
+                                  onChange={(v) => {
+                                    handleUpdate('proxy.auth.password', v);
+                                    ProxyService.syncSettings({
+                                      ...settings.proxy,
+                                      auth: { ...(settings.proxy.auth || {}), password: v }
+                                    });
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </Section>
                 </motion.div>
               )}
@@ -684,6 +773,86 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                             Import
                             <input type="file" className="hidden" accept=".json" onChange={handleImportSettings} />
                           </label>
+                        </div>
+                      </div>
+                    </div>
+                  </Section>
+
+                  <Section title="Connection Diagnostics">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg">
+                          <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">Runtime Environment</div>
+                          <div className="text-xs font-bold text-[var(--text-main)] mt-1 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)]" />
+                            {isElectron() ? 'Electron Desktop Client' : 'Web Browser Session'}
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg">
+                          <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">Network Stack Mode</div>
+                          <div className="text-xs font-bold text-[var(--text-main)] mt-1">
+                            {isElectron() ? 'OS Native (Chromium + Node)' : 'Sandbox Browser Agent'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg">
+                          <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">Configured Proxy Mode</div>
+                          <div className="text-xs font-bold text-[var(--text-main)] mt-1 uppercase">
+                            {settings.proxy.mode || 'auto'}
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg">
+                          <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">SSL Security Mode</div>
+                          <div className="text-xs font-bold mt-1 flex items-center gap-2">
+                            <span className={cn("w-1.5 h-1.5 rounded-full", settings.ssl.verifySSL ? "bg-emerald-500" : "bg-yellow-500")} />
+                            <span className={settings.ssl.verifySSL ? "text-emerald-500" : "text-yellow-500"}>
+                              {settings.ssl.verifySSL ? 'STRICT (Verified)' : 'INSECURE (Permissive)'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg">
+                          <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">Offline Protection</div>
+                          <div className="text-xs font-bold text-[var(--text-main)] mt-1">
+                            {typeof navigator !== 'undefined' && navigator.onLine ? 'ONLINE' : 'OFFLINE'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg space-y-2">
+                        <div className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-wider">Real-Time Proxy Resolution Probe</div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            id="proxy-probe-url"
+                            placeholder="https://api.github.com" 
+                            defaultValue="https://api.github.com"
+                            className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-xs text-[var(--text-main)] outline-none"
+                          />
+                          <button
+                            onClick={async () => {
+                              const input = document.getElementById('proxy-probe-url') as HTMLInputElement;
+                              const url = input?.value || 'https://api.github.com';
+                              const resLabel = document.getElementById('proxy-probe-result');
+                              if (resLabel) resLabel.innerText = 'Resolving...';
+                              try {
+                                const resolved = await ProxyService.resolveProxy(url);
+                                if (resLabel) resLabel.innerText = `Result: ${resolved}`;
+                              } catch (e: any) {
+                                if (resLabel) resLabel.innerText = `Error: ${e.message}`;
+                              }
+                            }}
+                            className="px-4 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-white rounded text-[10px] font-black uppercase tracking-widest transition-all"
+                          >
+                            Resolve Probe
+                          </button>
+                        </div>
+                        <div id="proxy-probe-result" className="text-[10px] font-mono text-[var(--text-muted)] mt-1">
+                          Enter target URL and click probe to test native proxy resolution.
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import {
   Send,
   Save,
@@ -40,7 +40,7 @@ import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { VariableService } from '../../services/VariableService';
 import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 import { parseCurl } from '../../lib/curlParser';
-import Editor from '@monaco-editor/react';
+const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 const parseUrlParams = (url: string): Array<{ key: string; value: string }> => {
   const hashIndex = url.indexOf('#');
@@ -807,33 +807,35 @@ export const RequestEditor: React.FC = () => {
 
                       {(activeRequest!.bodyType === 'json' || activeRequest!.bodyType === 'raw' || activeRequest!.bodyType === 'xml') && (
                         <div className="border border-[#222222] rounded-xl bg-[#0F0F0F] overflow-hidden focus-within:border-[#3ECF8E]/30 transition-all">
-                          <Editor
-                            height="300px"
-                            language={
-                              activeRequest!.bodyType === 'json' ? 'json' : 
-                              activeRequest!.bodyType === 'xml' ? 'xml' : 'text'
-                            }
-                            theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                            value={typeof activeRequest!.body === 'string' ? activeRequest!.body : (activeRequest!.body as RequestBody).content}
-                            onChange={(val) => {
-                              const body = typeof activeRequest!.body === 'string' 
-                                ? RequestUtils.normalizeRequestBody(activeRequest!.body, activeRequest!.bodyType)
-                                : activeRequest!.body as RequestBody;
-                              
-                              updateRequest(activeRequest!.id, { 
-                                body: { ...body, content: val || '' } 
-                              });
-                            }}
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 13,
-                              fontFamily: 'JetBrains Mono',
-                              lineNumbers: 'on',
-                              scrollBeyondLastLine: false,
-                              automaticLayout: true,
-                              padding: { top: 16 }
-                            }}
-                          />
+                          <Suspense fallback={<div className="h-[300px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">Loading body editor...</div>}>
+                            <Editor
+                              height="300px"
+                              language={
+                                activeRequest!.bodyType === 'json' ? 'json' : 
+                                activeRequest!.bodyType === 'xml' ? 'xml' : 'text'
+                              }
+                              theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                              value={typeof activeRequest!.body === 'string' ? activeRequest!.body : (activeRequest!.body as RequestBody).content}
+                              onChange={(val) => {
+                                const body = typeof activeRequest!.body === 'string' 
+                                  ? RequestUtils.normalizeRequestBody(activeRequest!.body, activeRequest!.bodyType)
+                                  : activeRequest!.body as RequestBody;
+                                
+                                updateRequest(activeRequest!.id, { 
+                                  body: { ...body, content: val || '' } 
+                                });
+                              }}
+                              options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                fontFamily: 'JetBrains Mono',
+                                lineNumbers: 'on',
+                                scrollBeyondLastLine: false,
+                                automaticLayout: true,
+                                padding: { top: 16 }
+                              }}
+                            />
+                          </Suspense>
                         </div>
                       )}
 
@@ -876,49 +878,61 @@ export const RequestEditor: React.FC = () => {
                             <div className="px-4 py-2 border-b border-[#222222] bg-[#141414] text-[9px] font-black uppercase tracking-widest text-[#555555]">
                               GraphQL Query
                             </div>
-                            <Editor
-                              height="100%"
-                              language="graphql"
-                              theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                              value={(activeRequest!.body as RequestBody).graphql?.query || ''}
-                              onChange={(val) => {
-                                const body = activeRequest!.body as RequestBody;
-                                updateRequest(activeRequest!.id, {
-                                  body: { ...body, graphql: { ...body.graphql, query: val || '' } }
-                                });
-                              }}
-                              options={{
-                                minimap: { enabled: false },
-                                fontSize: 13,
-                                fontFamily: 'JetBrains Mono',
-                                lineNumbers: 'on',
-                                automaticLayout: true,
-                              }}
-                            />
+                            <Suspense fallback={
+                              <div className="flex-1 flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                                Loading query...
+                              </div>
+                            }>
+                              <Editor
+                                height="100%"
+                                language="graphql"
+                                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                                value={(activeRequest!.body as RequestBody).graphql?.query || ''}
+                                onChange={(val) => {
+                                  const body = activeRequest!.body as RequestBody;
+                                  updateRequest(activeRequest!.id, {
+                                    body: { ...body, graphql: { ...body.graphql, query: val || '' } }
+                                  });
+                                }}
+                                options={{
+                                  minimap: { enabled: false },
+                                  fontSize: 13,
+                                  fontFamily: 'JetBrains Mono',
+                                  lineNumbers: 'on',
+                                  automaticLayout: true,
+                                }}
+                              />
+                            </Suspense>
                           </div>
                           <div className="flex flex-col border border-[#222222] rounded-xl bg-[#0F0F0F] overflow-hidden">
                             <div className="px-4 py-2 border-b border-[#222222] bg-[#141414] text-[9px] font-black uppercase tracking-widest text-[#555555]">
                               JSON Variables
                             </div>
-                            <Editor
-                              height="100%"
-                              language="json"
-                              theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                              value={(activeRequest!.body as RequestBody).graphql?.variables || ''}
-                              onChange={(val) => {
-                                const body = activeRequest!.body as RequestBody;
-                                updateRequest(activeRequest!.id, {
-                                  body: { ...body, graphql: { ...body.graphql, variables: val || '' } }
-                                });
-                              }}
-                              options={{
-                                minimap: { enabled: false },
-                                fontSize: 13,
-                                fontFamily: 'JetBrains Mono',
-                                lineNumbers: 'on',
-                                automaticLayout: true,
-                              }}
-                            />
+                            <Suspense fallback={
+                              <div className="flex-1 flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                                Loading variables...
+                              </div>
+                            }>
+                              <Editor
+                                height="100%"
+                                language="json"
+                                theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                                value={(activeRequest!.body as RequestBody).graphql?.variables || ''}
+                                onChange={(val) => {
+                                  const body = activeRequest!.body as RequestBody;
+                                  updateRequest(activeRequest!.id, {
+                                    body: { ...body, graphql: { ...body.graphql, variables: val || '' } }
+                                  });
+                                }}
+                                options={{
+                                  minimap: { enabled: false },
+                                  fontSize: 13,
+                                  fontFamily: 'JetBrains Mono',
+                                  lineNumbers: 'on',
+                                  automaticLayout: true,
+                                }}
+                              />
+                            </Suspense>
                           </div>
                         </div>
                       )}
@@ -967,7 +981,7 @@ export const RequestEditor: React.FC = () => {
                         className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
                       >
                         <TerminalSquare size={12} />
-                        Open Script Library
+                        Load from Script Laboratory
                       </button>
                     </div>
 
@@ -980,21 +994,27 @@ export const RequestEditor: React.FC = () => {
                         className="border border-[#222222] rounded-xl overflow-hidden focus-within:border-[#3ECF8E]/30 transition-colors"
                         onFocus={() => setActiveScriptTarget('pre_request_script')}
                       >
-                        <Editor
-                          height="200px"
-                          language="javascript"
-                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                          value={activeRequest!.pre_request_script || ''}
-                          onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 12,
-                            fontFamily: 'JetBrains Mono',
-                            lineNumbers: 'on',
-                            automaticLayout: true,
-                            padding: { top: 10 }
-                          }}
-                        />
+                        <Suspense fallback={
+                          <div className="h-[200px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                            Loading pre-request editor...
+                          </div>
+                        }>
+                          <Editor
+                            height="200px"
+                            language="javascript"
+                            theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                            value={activeRequest!.pre_request_script || ''}
+                            onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 12,
+                              fontFamily: 'JetBrains Mono',
+                              lineNumbers: 'on',
+                              automaticLayout: true,
+                              padding: { top: 10 }
+                            }}
+                          />
+                        </Suspense>
                       </div>
                     </div>
 
@@ -1007,21 +1027,27 @@ export const RequestEditor: React.FC = () => {
                         className="border border-[#222222] rounded-xl overflow-hidden focus-within:border-[#3ECF8E]/30 transition-colors"
                         onFocus={() => setActiveScriptTarget('test_script')}
                       >
-                        <Editor
-                          height="200px"
-                          language="javascript"
-                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
-                          value={activeRequest!.test_script || ''}
-                          onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 12,
-                            fontFamily: 'JetBrains Mono',
-                            lineNumbers: 'on',
-                            automaticLayout: true,
-                            padding: { top: 10 }
-                          }}
-                        />
+                        <Suspense fallback={
+                          <div className="h-[200px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                            Loading test editor...
+                          </div>
+                        }>
+                          <Editor
+                            height="200px"
+                            language="javascript"
+                            theme={theme === 'light' ? 'vs' : 'vs-dark'}
+                            value={activeRequest!.test_script || ''}
+                            onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 12,
+                              fontFamily: 'JetBrains Mono',
+                              lineNumbers: 'on',
+                              automaticLayout: true,
+                              padding: { top: 10 }
+                            }}
+                          />
+                        </Suspense>
                       </div>
                     </div>
                   </div>
@@ -1034,7 +1060,7 @@ export const RequestEditor: React.FC = () => {
           <div
             onMouseDown={startResizing}
             className={cn(
-              "bg-[#1A1A1A] transition-all relative z-[60] flex items-center justify-center group/handle",
+              "bg-[#1A1A1A] transition-all relative z-10 flex items-center justify-center group/handle",
               layoutOrientation === 'vertical' ? "h-1.5 cursor-ns-resize" : "w-1.5 cursor-ew-resize",
               isResizing ? "bg-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.3)]" : "hover:bg-[#3ECF8E]/50"
             )}

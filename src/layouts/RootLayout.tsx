@@ -6,6 +6,7 @@ import { Sidebar } from '../features/sidebar/Sidebar';
 import { RequestEditor } from '../features/editor/RequestEditor';
 import { ResponseViewer } from '../features/editor/ResponseViewer';
 import { ScriptLibraryModal } from '../features/scripts/ScriptLibraryModal';
+import { ScriptLibrary as ScriptLab } from '../components/ScriptLibrary/ScriptLibrary';
 import { PersistenceService } from '../services/PersistenceService';
 import { NameModal } from '../components/NameModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -24,7 +25,10 @@ import {
   Plus,
   Globe,
   PanelLeftOpen,
-  PanelLeftClose
+  PanelLeftClose,
+  Laptop,
+  Palette,
+  Pin
 } from 'lucide-react';
 import { Workspace } from '../types';
 import { cn } from '../lib/utils';
@@ -54,9 +58,51 @@ export const RootLayout: React.FC = () => {
     isSettingsModalOpen,
     setIsSettingsModalOpen,
     isSidebarPinned,
-    setIsSidebarPinned
+    setIsSidebarPinned,
+    isScriptLabOpen,
+    setIsScriptLabOpen
   } = useStore();
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
+
+  const [activeAccent, setActiveAccent] = useState<'emerald' | 'sapphire' | 'ruby' | 'amber' | 'amethyst'>(() => {
+    return (localStorage.getItem('gmy_theme_accent') as any) || 'emerald';
+  });
+
+  useEffect(() => {
+    const applyTheme = (base: string, accent: string) => {
+      const root = document.documentElement;
+      
+      // 1. Base Theme
+      let resolvedBase = base;
+      if (base === 'system') {
+        resolvedBase = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      
+      if (resolvedBase === 'light') {
+        root.classList.add('light');
+        useStore.setState({ theme: 'light' });
+      } else {
+        root.classList.remove('light');
+        useStore.setState({ theme: 'dark' });
+      }
+      
+      // 2. Accent color variables
+      const accents = {
+        emerald: { brand: '#3ECF8E', brandMuted: 'rgba(62, 207, 142, 0.1)', brandBorder: 'rgba(62, 207, 142, 0.2)' },
+        sapphire: { brand: '#3B82F6', brandMuted: 'rgba(59, 130, 246, 0.1)', brandBorder: 'rgba(59, 130, 246, 0.2)' },
+        ruby: { brand: '#EF4444', brandMuted: 'rgba(239, 68, 68, 0.1)', brandBorder: 'rgba(239, 68, 68, 0.2)' },
+        amber: { brand: '#F59E0B', brandMuted: 'rgba(245, 158, 11, 0.1)', brandBorder: 'rgba(245, 158, 11, 0.2)' },
+        amethyst: { brand: '#8B5CF6', brandMuted: 'rgba(139, 92, 246, 0.1)', brandBorder: 'rgba(139, 92, 246, 0.2)' }
+      };
+      
+      const selectedAccent = (accents as any)[accent] || accents.emerald;
+      root.style.setProperty('--brand', selectedAccent.brand);
+      root.style.setProperty('--brand-muted', selectedAccent.brandMuted);
+      root.style.setProperty('--brand-border', selectedAccent.brandBorder);
+    };
+
+    applyTheme(settings.appearance.theme, activeAccent);
+  }, [settings.appearance.theme, activeAccent]);
 
   useEffect(() => {
     const initSession = async () => {
@@ -96,11 +142,12 @@ export const RootLayout: React.FC = () => {
   const [envFilterQuery, setEnvFilterQuery] = useState('');
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isEnvironmentMenuOpen, setIsEnvironmentMenuOpen] = useState(false);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [wsToDelete, setWsToDelete] = useState<{ id: string; name: string } | null>(null);
+  
   const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const environmentMenuRef = useRef<HTMLDivElement | null>(null);
-  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
 
   const filteredEnvironments = useMemo(() => {
     const query = envFilterQuery.trim().toLowerCase();
@@ -170,9 +217,8 @@ export const RootLayout: React.FC = () => {
       if (environmentMenuRef.current && !environmentMenuRef.current.contains(event.target as Node)) {
         setIsEnvironmentMenuOpen(false);
       }
-      if (!profileMenuRef.current) return;
-      if (!profileMenuRef.current.contains(event.target as Node)) {
-        setIsProfileMenuOpen(false);
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
+        setIsThemeMenuOpen(false);
       }
     };
 
@@ -180,23 +226,8 @@ export const RootLayout: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleDocumentClick);
   }, []);
 
-  const handleToggleTheme = async () => {
-    const nextTheme = settings.appearance.theme === 'dark' ? 'light' : 'dark';
-    updateSettings({ appearance: { ...settings.appearance, theme: nextTheme } });
-
-    if (!profile) return;
-    try {
-      const preferences: typeof profile.preferences = { ...profile.preferences, theme: nextTheme };
-      setProfile({ ...profile, preferences });
-      await PersistenceService.updateProfilePreferences(profile.id, preferences);
-      setIsProfileMenuOpen(false);
-      addToast({ type: 'success', message: `${nextTheme === 'light' ? 'Light' : 'Dark'} theme activated.` });
-    } catch {
-      addToast({ type: 'error', message: 'Failed to persist theme preference.' });
-    }
-  };
-
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+  const activeEnvironment = environments.find(e => e.id === activeEnvId);
 
   const { logout } = useAuth();
 
@@ -239,21 +270,22 @@ export const RootLayout: React.FC = () => {
         )}
       </AnimatePresence>
       <ScriptLibraryModal />
+      <ScriptLab isOpen={isScriptLabOpen} onClose={() => setIsScriptLabOpen(false)} />
       {/* Top Universal Rail */}
-      <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-50">
+      <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-[100]">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsSidebarPinned(!isSidebarPinned)}
               className={cn(
-                "p-1.5 rounded-md transition-all",
-                isSidebarPinned ? "text-[#3ECF8E] bg-[#3ECF8E]/10" : "text-[#555555] hover:text-[#3ECF8E] hover:bg-white/[0.03]"
+                "p-1.5 rounded-md transition-all text-[#555555] hover:text-[var(--brand)] hover:bg-white/[0.03]",
+                isSidebarPinned && "text-[var(--brand)] bg-[var(--brand)]/10"
               )}
-              title={isSidebarPinned ? "Collapse Sidebar" : "Expand Sidebar"}
+              title={isSidebarPinned ? "Unlock Sidebar" : "Lock Sidebar"}
             >
-              {isSidebarPinned ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+              <Pin size={15} className={cn("transition-transform duration-300", !isSidebarPinned && "rotate-45")} />
             </button>
-            <div className="w-5 h-5 bg-[#3ECF8E] rounded flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
+            <div className="w-5 h-5 bg-[var(--brand)] rounded flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
               <Terminal size={12} className="text-black" />
             </div>
             <span className="text-[10px] font-black tracking-widest uppercase">Putman</span>
@@ -261,12 +293,13 @@ export const RootLayout: React.FC = () => {
           
           <div className="h-4 w-px bg-[#222222]" />
 
+          {/* Workspace selector dropdown */}
           <div ref={workspaceMenuRef} className="relative">
             <button
               onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
-              className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#1A1A1A] transition-all group"
+              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
             >
-              <LayoutGrid size={12} className="text-[#555555] group-hover:text-[#3ECF8E]" />
+              <LayoutGrid size={12} className="text-[#555555] group-hover:text-[var(--brand)]" />
               <span className="text-[9px] font-bold uppercase tracking-widest text-[#888888]">
                 {activeWorkspace?.name || 'Local'}
               </span>
@@ -346,10 +379,101 @@ export const RootLayout: React.FC = () => {
               </div>
             </div>
           </div>
+
+          <div className="h-4 w-px bg-[#222222]" />
+
+          {/* Environment Selector Dropdown */}
+          <div ref={environmentMenuRef} className="relative">
+            <button
+              onClick={() => setIsEnvironmentMenuOpen((open) => !open)}
+              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
+            >
+              <Globe size={12} className={cn("transition-colors", activeEnvironment ? "text-[var(--brand)]" : "text-[#555555]")} />
+              <span className={cn("text-[9px] font-bold uppercase tracking-widest", activeEnvironment ? "text-white" : "text-[#888888]")}>
+                {activeEnvironment?.name || 'No Environment'}
+              </span>
+              {activeEnvironment && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />
+              )}
+              <ChevronDown size={8} className="text-[#555555]" />
+            </button>
+
+            <div className={cn(
+              "absolute top-full left-0 mt-1 w-64 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-50",
+              isEnvironmentMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
+            )}>
+              <div className="px-4 py-2 border-b border-[var(--border-subtle)] space-y-2">
+                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Select Environment</h3>
+                <div className="relative">
+                  <Search size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#444444]" />
+                  <input
+                    type="text"
+                    placeholder="Search environments..."
+                    value={envFilterQuery}
+                    onChange={(e) => setEnvFilterQuery(e.target.value)}
+                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg py-1 pl-7 pr-3 text-[9px] font-mono text-white outline-none focus:border-[var(--brand)]/35 placeholder:text-[#333333]"
+                  />
+                </div>
+              </div>
+
+              <div className="max-h-48 overflow-y-auto no-scrollbar py-1">
+                <div
+                  onClick={() => {
+                    setActiveEnvId(null);
+                    setIsEnvironmentMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--bg-deep)] cursor-pointer transition-colors text-[9px] font-black uppercase tracking-widest",
+                    activeEnvId === null ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-[var(--text-muted)] hover:text-white"
+                  )}
+                >
+                  <span>No Environment</span>
+                  {activeEnvId === null && <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />}
+                </div>
+
+                {filteredEnvironments.map(env => (
+                  <div
+                    key={env.id}
+                    onClick={() => {
+                      setActiveEnvId(env.id);
+                      setIsEnvironmentMenuOpen(false);
+                    }}
+                    className={cn(
+                      "w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--bg-deep)] cursor-pointer transition-colors text-[9px] font-black uppercase tracking-widest",
+                      activeEnvId === env.id ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-[var(--text-muted)] hover:text-white"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-4">
+                      <span className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        activeEnvId === env.id ? "bg-[var(--brand)]" : "bg-[#55555C]"
+                      )} />
+                      <span className="truncate">{env.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[7px] text-[#444444] font-mono">
+                        {env.is_global ? 'Cloud' : 'Local'}
+                      </span>
+                      {activeEnvId === env.id && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {filteredEnvironments.length === 0 && envFilterQuery && (
+                  <div className="px-4 py-3 text-center text-[9px] text-[#55555C] uppercase tracking-widest">
+                    No matching modules
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
+        {/* Right side options */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full">
             {syncStatus === 'saving' ? (
               <>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -362,14 +486,104 @@ export const RootLayout: React.FC = () => {
               </>
             ) : (
               <>
-                <Cloud size={9} className="text-[#3ECF8E]" />
-                <span className="text-[8px] font-bold text-[#3ECF8E] uppercase tracking-tighter">
+                <Cloud size={9} className="text-[var(--brand)]" />
+                <span className="text-[8px] font-bold text-[var(--brand)] uppercase tracking-tighter">
                   {syncStatus === 'saved' ? 'Saved' : 'Synced'}
                 </span>
               </>
             )}
           </div>
-          
+
+          {/* Theme & Accent Custom Popover */}
+          <div ref={themeMenuRef} className="relative">
+            <button
+              onClick={() => setIsThemeMenuOpen((open) => !open)}
+              className="p-1.5 rounded-lg text-[#555555] hover:text-white hover:bg-[#1A1A1A] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+              title="Aesthetic Config"
+            >
+              <Palette size={14} className="text-[#888888] hover:text-[var(--brand)] transition-colors" />
+            </button>
+
+            <div className={cn(
+              "absolute top-full right-0 mt-1 w-56 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl p-4 transition-all z-50 space-y-4",
+              isThemeMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
+            )}>
+              <div className="border-b border-[var(--border-subtle)] pb-2">
+                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Base Theme</h3>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-1">
+                {[
+                  { id: 'dark', label: 'Dark', icon: Moon },
+                  { id: 'light', label: 'Light', icon: Sun },
+                  { id: 'system', label: 'System', icon: Laptop }
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const isActive = settings.appearance.theme === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        updateSettings({ appearance: { ...settings.appearance, theme: t.id as any } });
+                        if (profile) {
+                          PersistenceService.updateProfilePreferences(profile.id, {
+                            ...profile.preferences,
+                            theme: t.id as any
+                          });
+                        }
+                      }}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all text-[8px] font-black uppercase tracking-widest",
+                        isActive 
+                          ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)] shadow-[0_0_10px_var(--brand-muted)]" 
+                          : "bg-[var(--bg-deep)] border-[var(--border-subtle)] text-[#55555C] hover:border-[#333333] hover:text-white"
+                      )}
+                    >
+                      <Icon size={12} />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="border-b border-[var(--border-subtle)] pt-1 pb-2">
+                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Accent Core</h3>
+              </div>
+
+              <div className="flex items-center justify-between px-1">
+                {[
+                  { id: 'emerald', color: '#3ECF8E', label: 'Emerald' },
+                  { id: 'sapphire', color: '#3B82F6', label: 'Sapphire' },
+                  { id: 'ruby', color: '#EF4444', label: 'Ruby' },
+                  { id: 'amber', color: '#F59E0B', label: 'Amber' },
+                  { id: 'amethyst', color: '#8B5CF6', label: 'Amethyst' }
+                ].map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      setActiveAccent(a.id as any);
+                      localStorage.setItem('gmy_theme_accent', a.id);
+                    }}
+                    className={cn(
+                      "w-6 h-6 rounded-full border transition-all flex items-center justify-center relative",
+                      activeAccent === a.id 
+                        ? "border-white scale-110 shadow-lg" 
+                        : "border-transparent hover:scale-105"
+                    )}
+                    style={{ backgroundColor: a.color }}
+                    title={a.label}
+                  >
+                    {activeAccent === a.id && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="h-4 w-px bg-[#222222]" />
+
           <div className="flex items-center gap-1">
              <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
           </div>

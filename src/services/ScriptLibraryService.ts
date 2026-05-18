@@ -8,11 +8,21 @@ export class ScriptLibraryService {
       .from('script_categories')
       .select('*')
       .order('name');
-    if (error) throw error;
+      
+    if (error) {
+      console.warn('Failed to fetch script categories:', error);
+      return [];
+    }
     
     if (!data || data.length === 0) {
-      await this.seedBuiltInScripts();
-      return this.fetchCategories();
+      const seeded = await this.seedBuiltInScripts();
+      if (seeded) {
+        const { data: newData } = await supabase
+          .from('script_categories')
+          .select('*')
+          .order('name');
+        return newData || [];
+      }
     }
     
     return data || [];
@@ -57,32 +67,46 @@ export class ScriptLibraryService {
     if (error) console.error('Error saving execution log:', error);
   }
 
-  static async seedBuiltInScripts() {
-    // Insert categories
-    const { data: cats, error: catError } = await supabase
-      .from('script_categories')
-      .insert(defaultScriptCategories)
-      .select();
-    
-    if (catError || !cats) return;
+  static async seedBuiltInScripts(): Promise<boolean> {
+    try {
+      // Insert categories
+      const { data: cats, error: catError } = await supabase
+        .from('script_categories')
+        .insert(defaultScriptCategories)
+        .select();
+      
+      if (catError) {
+        console.warn('Skipping script seed (likely insufficient permissions):', catError.message);
+        return false;
+      }
+      if (!cats) return false;
 
-    // Map categories to get IDs
-    const catMap = cats.reduce((acc: Record<string, string>, cat) => {
-      acc[cat.name] = cat.id;
-      return acc;
-    }, {});
+      // Map categories to get IDs
+      const catMap = cats.reduce((acc: Record<string, string>, cat) => {
+        acc[cat.name] = cat.id;
+        return acc;
+      }, {});
 
-    const scriptsToInsert = defaultScripts.map(script => ({
-      name: script.name,
-      description: script.description,
-      content: script.content,
-      category_id: catMap[script.categoryName],
-      variables_used: script.variables_used,
-      version: script.version,
-      is_builtin: true,
-      tags: script.tags
-    }));
+      const scriptsToInsert = defaultScripts.map(script => ({
+        name: script.name,
+        description: script.description,
+        content: script.content,
+        category_id: catMap[script.categoryName],
+        variables_used: script.variables_used,
+        version: script.version,
+        is_builtin: true,
+        tags: script.tags
+      }));
 
-    await supabase.from('script_library').insert(scriptsToInsert);
+      const { error: scriptError } = await supabase.from('script_library').insert(scriptsToInsert);
+      if (scriptError) {
+        console.warn('Failed to seed script library:', scriptError.message);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn('Exception during script seeding:', err);
+      return false;
+    }
   }
 }

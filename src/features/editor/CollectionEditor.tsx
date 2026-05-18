@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useStore } from '../../store/useStore';
 import { useDataSync } from '../../hooks/useDataSync';
 import { KeyValue, Collection } from '../../types';
@@ -20,7 +20,7 @@ import {
   Key,
   Clock
 } from 'lucide-react';
-import Editor from '@monaco-editor/react';
+const Editor = React.lazy(() => import('@monaco-editor/react'));
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../../lib/utils';
 import { AuthEditor } from '../../components/AuthEditor';
@@ -267,22 +267,28 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
 
                 <div className="bg-[#111111] rounded-xl border border-[#222222] overflow-hidden min-h-[400px]">
                   {docMode === 'edit' && canEdit ? (
-                    <Editor
-                      height="500px"
-                      language="markdown"
-                      theme="vs-dark"
-                      value={collection.documentation || ''}
-                      onChange={(val) => handleUpdate({ documentation: val || '' })}
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        fontFamily: 'JetBrains Mono',
-                        lineNumbers: 'on',
-                        automaticLayout: true,
-                        wordWrap: 'on',
-                        padding: { top: 16 }
-                      }}
-                    />
+                    <Suspense fallback={
+                      <div className="absolute inset-0 flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                        Drawing documentation editor...
+                      </div>
+                    }>
+                      <Editor
+                        height="500px"
+                        language="markdown"
+                        theme="vs-dark"
+                        value={collection.documentation || ''}
+                        onChange={(val) => handleUpdate({ documentation: val || '' })}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 13,
+                          fontFamily: 'JetBrains Mono',
+                          lineNumbers: 'on',
+                          automaticLayout: true,
+                          wordWrap: 'on',
+                          padding: { top: 16 }
+                        }}
+                      />
+                    </Suspense>
                   ) : (
                     <div className="p-8 prose prose-invert prose-emerald max-w-none prose-sm">
                       <ReactMarkdown>
@@ -312,7 +318,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                     className="px-3 py-1.5 rounded-lg border border-[#3ECF8E]/30 bg-[#3ECF8E]/10 hover:bg-[#3ECF8E]/20 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
                   >
                     <Code2 size={12} />
-                    Open Script Library
+                    Load from Script Laboratory
                   </button>
                 </div>
 
@@ -321,24 +327,30 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                     <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Global Pre-request Sequence</label>
                   </div>
                   <div className={cn("border border-[#222222] rounded-xl overflow-hidden bg-[#111111]", !canEdit && "opacity-50 pointer-events-none")}>
-                    <Editor
-                      height="250px"
-                      language="javascript"
-                      theme="vs-dark"
-                      value={collection.pre_request_script || ''}
-                      onMount={(editor) => {
-                        editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
-                      }}
-                      onChange={(val) => handleUpdate({ pre_request_script: val || '' })}
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        fontFamily: 'JetBrains Mono',
-                        lineNumbers: 'on',
-                        automaticLayout: true,
-                        padding: { top: 16 }
-                      }}
-                    />
+                    <Suspense fallback={
+                      <div className="h-[250px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                        Loading pre-request editor...
+                      </div>
+                    }>
+                      <Editor
+                        height="250px"
+                        language="javascript"
+                        theme="vs-dark"
+                        value={collection.pre_request_script || ''}
+                        onMount={(editor) => {
+                          editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                        }}
+                        onChange={(val) => handleUpdate({ pre_request_script: val || '' })}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 13,
+                          fontFamily: 'JetBrains Mono',
+                          lineNumbers: 'on',
+                          automaticLayout: true,
+                          padding: { top: 16 }
+                        }}
+                      />
+                    </Suspense>
                   </div>
                 </div>
 
@@ -347,24 +359,30 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                     <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Global Post-Execution Tests</label>
                   </div>
                   <div className={cn("border border-[#222222] rounded-xl overflow-hidden bg-[#111111]", !canEdit && "opacity-50 pointer-events-none")}>
-                    <Editor
-                      height="250px"
-                      language="javascript"
-                      theme="vs-dark"
-                      value={collection.test_script || ''}
-                      onMount={(editor) => {
-                        editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
-                      }}
-                      onChange={(val) => handleUpdate({ test_script: val || '' })}
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 13,
-                        fontFamily: 'JetBrains Mono',
-                        lineNumbers: 'on',
-                        automaticLayout: true,
-                        padding: { top: 16 }
-                      }}
-                    />
+                    <Suspense fallback={
+                      <div className="h-[250px] flex items-center justify-center bg-[#0F0F0F] text-[#555555] text-xs font-mono">
+                        Loading test editor...
+                      </div>
+                    }>
+                      <Editor
+                        height="250px"
+                        language="javascript"
+                        theme="vs-dark"
+                        value={collection.test_script || ''}
+                        onMount={(editor) => {
+                          editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                        }}
+                        onChange={(val) => handleUpdate({ test_script: val || '' })}
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 13,
+                          fontFamily: 'JetBrains Mono',
+                          lineNumbers: 'on',
+                          automaticLayout: true,
+                          padding: { top: 16 }
+                        }}
+                      />
+                    </Suspense>
                   </div>
                 </div>
               </motion.div>
