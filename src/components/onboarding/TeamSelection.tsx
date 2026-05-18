@@ -44,9 +44,21 @@ export const TeamSelection: React.FC = () => {
     try {
       // Find workspaces for this team
       console.log('Fetching workspaces for team...');
-      const workspaces = await PersistenceService.fetchWorkspacesByTeam(team.id);
+      let workspaces = await PersistenceService.fetchWorkspacesByTeam(team.id);
       console.log(`Found ${workspaces.length} workspaces:`, workspaces);
       
+      if (workspaces.length === 0 && profile?.id) {
+        console.log('No workspace found for team. Attempting self-healing creation...');
+        try {
+          const newWorkspace = await PersistenceService.createWorkspace('General', profile.id, team.id);
+          console.log('Self-healed workspace created:', newWorkspace);
+          workspaces = [newWorkspace];
+        } catch (wsError) {
+          console.error('Self-healing failed:', wsError);
+          // If creation fails (e.g. permission), we'll fall through to the error state below
+        }
+      }
+
       if (workspaces.length > 0) {
         const targetWorkspace = workspaces[0];
         console.log('Target workspace:', targetWorkspace.name, targetWorkspace.id);

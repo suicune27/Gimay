@@ -3,18 +3,31 @@ import { RequestData, Collection, Environment, Workspace, Folder, Profile, KeyVa
 
 export class PersistenceService {
   // --- Workspace Actions ---
-  static async createWorkspace(name: string, userId: string) {
+  static async createWorkspace(name: string, userId: string, teamId?: string) {
+    const payload: any = { 
+      name, 
+      user_id: userId, 
+      visibility: teamId ? 'team' : 'private' 
+    };
+
+    if (teamId) {
+      payload.team_id = teamId;
+    }
+
     let { data, error } = await supabase
       .from('workspaces')
-      .insert([{ name, user_id: userId, visibility: 'private' }])
+      .insert([payload])
       .select()
       .maybeSingle();
 
     if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in workspaces table. Stripping visibility.');
+      console.warn('[Persistence] Handling missing columns in workspaces table. Stripping visibility/team_id.');
+      delete payload.visibility;
+      delete payload.team_id;
+      
       const fallback = await supabase
         .from('workspaces')
-        .insert([{ name, user_id: userId }])
+        .insert([payload])
         .select()
         .maybeSingle();
       data = fallback.data;
@@ -227,7 +240,15 @@ export class PersistenceService {
       throw memberError;
     }
 
-    console.log('✅ Team and member successfully created.');
+    // 3. Create a default workspace for the team
+    console.log('Creating default workspace for team...');
+    try {
+      await this.createWorkspace('General', ownerId, team.id);
+    } catch (wsError) {
+      console.error('Default workspace creation failed (non-blocking for team):', wsError);
+    }
+
+    console.log('✅ Team successfully created.');
     console.groupEnd();
     return team;
   }
