@@ -67,8 +67,16 @@ export const AuthUI: React.FC = () => {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg text-red-500 text-[10px] font-mono leading-relaxed">
-              &gt; FATAL ERROR: {error.toUpperCase()}
+            <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg space-y-2">
+              <div className="text-red-500 text-[10px] font-mono leading-relaxed">
+                &gt; FATAL ERROR: {error.toUpperCase()}
+              </div>
+              {error.toLowerCase().includes('api key') && (
+                <div className="text-[9px] text-[#888888] font-mono border-t border-red-500/10 pt-2">
+                  <p>Check your <code className="text-[#3ECF8E]">VITE_SUPABASE_URL</code> and <code className="text-[#3ECF8E]">VITE_SUPABASE_ANON_KEY</code> in the environment settings.</p>
+                  <p className="mt-1">The global infrastructure must be configured before authenticating.</p>
+                </div>
+              )}
             </div>
           )}
 

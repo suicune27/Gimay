@@ -25,6 +25,8 @@ export class PersistenceService {
 
     if (error && String(error.message || '').toLowerCase().includes('column')) {
       console.warn('[Persistence] Handling missing columns in workspaces table. Stripping visibility/team_id.');
+      const oldVisibility = payload.visibility;
+      const oldTeamId = payload.team_id;
       delete payload.visibility;
       delete payload.team_id;
       
@@ -33,8 +35,15 @@ export class PersistenceService {
         .insert([payload])
         .select()
         .maybeSingle();
+        
       data = fallback.data;
       error = fallback.error;
+
+      if (!error && data) {
+        console.warn(`[Persistence] Workspace created, but RELATIONAL LINK FAILED. 
+          Visibility "${oldVisibility}" and Team ID "${oldTeamId}" were ignored because the columns do not exist in the target database.
+          This workspace will appear as "Private" and will not be correctly grouped under the team.`);
+      }
     }
 
     if (error) {

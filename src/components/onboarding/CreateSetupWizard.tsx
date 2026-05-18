@@ -645,7 +645,17 @@ export const CreateSetupWizard: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-xl font-black text-white tracking-tight">Supabase Access Token</h3>
-                <p className="text-xs text-[#888888]">Enter your management token to auto-discover your projects.</p>
+                <p className="text-xs text-[#888888]">
+                  Enter your management token to auto-discover your projects.
+                  <a 
+                    href="https://supabase.com/dashboard/account/tokens" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[#3ECF8E] hover:underline ml-1 inline-flex items-center gap-1 group/link"
+                  >
+                    How to get this <ExternalLink size={10} className="transition-transform group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5" />
+                  </a>
+                </p>
               </div>
             </div>
 
@@ -758,7 +768,17 @@ export const CreateSetupWizard: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-[#888888] mb-2 tracking-widest">Service Role Key</label>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-[10px] font-black uppercase text-[#888888] tracking-widest">Service Role Key</label>
+                        <a 
+                          href="https://supabase.com/dashboard/project/_/settings/api" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-[9px] text-[#3ECF8E] hover:underline flex items-center gap-1"
+                        >
+                          Find in Settings <ExternalLink size={8} />
+                        </a>
+                      </div>
                       <input
                         type="password"
                         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."

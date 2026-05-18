@@ -43,6 +43,20 @@ import { ConfirmModal } from '../../components/ConfirmModal';
 import { SettingsModal } from '../../components/SettingsModal';
 import { useDataSync } from '../../hooks/useDataSync';
 
+import { useAuth } from '../../hooks/useAuth';
+
+const SidebarTooltip: React.FC<{ children: React.ReactNode; text: string; enabled: boolean }> = ({ children, text, enabled }) => {
+  if (!enabled) return <>{children}</>;
+  return (
+    <div className="group/tooltip relative flex items-center justify-center">
+      {children}
+      <div className="absolute left-full ml-4 px-3 py-1.5 bg-[#111111] border border-[#222222] text-[9px] font-black uppercase tracking-widest text-white rounded-md opacity-0 group-hover/tooltip:opacity-100 translate-x-2 group-hover/tooltip:translate-x-0 transition-all duration-300 pointer-events-none z-[100] whitespace-nowrap shadow-[0_10px_30px_rgba(0,0,0,0.5)] border-l-2 border-l-[#3ECF8E]">
+        {text}
+      </div>
+    </div>
+  );
+};
+
 export const Sidebar: React.FC = () => {
   const { 
     collections, 
@@ -54,6 +68,8 @@ export const Sidebar: React.FC = () => {
     setSidebarWidth,
     sidebarMode,
     setSidebarMode,
+    isSidebarPinned,
+    setIsSidebarPinned,
     activeWorkspaceId,
     workspaces,
     profile,
@@ -70,104 +86,26 @@ export const Sidebar: React.FC = () => {
     setIsSettingsModalOpen
   } = useStore();
   
+  const { logout } = useAuth();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNav, setActiveNav] = useState('collections');
   const [isResizing, setIsResizing] = useState(false);
-  const [isHoveringCompact, setIsHoveringCompact] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
   
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const hoverTimerRef = useRef<number | null>(null);
+  
+  const isExpanded = isSidebarPinned;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault();
-        setSidebarMode((sidebarMode === 'hidden') ? 'expanded' : 'hidden');
+        setIsSidebarPinned(!isSidebarPinned);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarMode, setSidebarMode]);
-
-  // Auto-collapse for smaller screens
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024 && sidebarMode === 'expanded') {
-        setSidebarMode('compact');
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [sidebarMode, setSidebarMode]);
-
-  const startResizing = (e: React.MouseEvent) => {
-    if (isLocked || sidebarMode === 'hidden') return;
-    setIsResizing(true);
-    e.preventDefault();
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      
-      let newWidth = e.clientX;
-      const minWidth = sidebarMode === 'compact' ? 64 : 180;
-      const maxWidth = 600;
-      
-      if (newWidth < 100) {
-        setSidebarMode('compact');
-        newWidth = 64;
-      } else {
-        setSidebarMode('expanded');
-        if (newWidth < minWidth) newWidth = minWidth;
-        if (newWidth > maxWidth) newWidth = maxWidth;
-      }
-      
-      setSidebarWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-    } else {
-      document.body.style.cursor = '';
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, isLocked, sidebarMode, setSidebarWidth, setSidebarMode]);
-
-  const toggleSidebar = () => {
-    if (sidebarMode === 'expanded') {
-      setSidebarMode('compact');
-    } else if (sidebarMode === 'compact') {
-      setSidebarMode('hidden');
-    } else {
-      setSidebarMode('expanded');
-    }
-  };
-
-  const handleMouseEnter = () => {
-    if (sidebarMode === 'compact') {
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = window.setTimeout(() => {
-        setIsHoveringCompact(true);
-      }, 300);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setIsHoveringCompact(false);
-  };
+  }, [isSidebarPinned, setIsSidebarPinned]);
 
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -215,35 +153,21 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div 
+    <motion.div 
       ref={sidebarRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      initial={false}
+      animate={{ 
+        width: isExpanded ? 320 : 68,
+        transition: { type: 'spring', stiffness: 350, damping: 35 }
+      }}
       className={cn(
-        "h-full bg-[#0F0F0F] border-r border-[#222222] flex flex-col transition-all duration-300 relative z-40 group/sidebar overflow-hidden",
-        sidebarMode === 'hidden' ? "w-0 border-none opacity-0 pointer-events-none" : "",
-        isHoveringCompact ? "absolute left-0 shadow-2xl !w-[300px]" : ""
+        "h-full bg-[#0F0F0F] border-r border-[#222222] flex relative z-40 group/sidebar overflow-hidden shrink-0 shadow-[10px_0_40px_rgba(0,0,0,0.6)] transition-colors duration-300",
+        !isExpanded && "cursor-pointer hover:bg-white/[0.01]"
       )}
-      style={{ 
-        width: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' && !isHoveringCompact ? 64 : sidebarWidth),
-        minWidth: sidebarMode === 'hidden' ? 0 : (sidebarMode === 'compact' && !isHoveringCompact ? 64 : 180),
-        zIndex: isHoveringCompact ? 100 : 40
+      onClick={() => {
+        if (!isExpanded) setIsSidebarPinned(true);
       }}
     >
-      {/* Resize Handle */}
-      {sidebarMode !== 'hidden' && (
-        <div 
-          onMouseDown={startResizing}
-          className={cn(
-            "absolute -right-0.5 top-0 bottom-0 w-1 cursor-col-resize z-50 transition-colors",
-            isResizing ? "bg-[var(--brand)]" : "hover:bg-[var(--brand)]/30",
-            isLocked && "cursor-default pointer-events-none"
-          )}
-        >
-          {isResizing && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-8 bg-[var(--brand)] rounded-full shadow-[0_0_15px_var(--brand)]" />}
-        </div>
-      )}
-
       <NameModal 
         isOpen={isCollectionModalOpen}
         onClose={() => setIsCollectionModalOpen(false)}
@@ -304,367 +228,361 @@ export const Sidebar: React.FC = () => {
         confirmText="Purge"
         variant="danger"
       />
-      <div 
-        className={cn(
-          "h-14 border-b border-[var(--border-subtle)] flex items-center px-4 gap-3 bg-[var(--bg-surface)] cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors overflow-hidden",
-          sidebarMode === 'compact' && !isHoveringCompact && "justify-center px-0"
-        )}
-      >
-        <div className="w-8 h-8 rounded-lg bg-[var(--brand)] flex items-center justify-center text-black font-black text-xs shadow-[0_0_15px_var(--brand-muted)] shrink-0">
-          {activeWorkspace?.name?.[0].toUpperCase() || 'W'}
-        </div>
-        {(sidebarMode === 'expanded' || isHoveringCompact) && (
-          <div className="flex-1 min-w-0 animate-in fade-in slide-in-from-left-2 duration-200">
-            <h2 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-widest truncate">
-              {activeWorkspace?.name || 'Workspace'}
-            </h2>
-            <p className="text-[9px] text-[var(--text-dim)] font-mono tracking-tighter uppercase">
-              {activeWorkspace?.visibility || 'Private'} Node
-            </p>
-          </div>
-        )}
-        {(sidebarMode === 'expanded' || isHoveringCompact) && <ChevronDown size={14} className="text-[var(--text-dim)]" />}
-      </div>
 
-      {/* Explorer Controls */}
-      {(sidebarMode === 'expanded' || isHoveringCompact) && activeNav === 'collections' && (
-        <div className="p-3 space-y-3">
-          <div className="relative group">
-            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] group-focus-within:text-[var(--brand)] transition-colors" />
-            <input 
-              type="text" 
-              placeholder="FILTER_COLLECTIONS..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-md py-1.5 pl-8 pr-3 text-[10px] font-mono text-[var(--text-muted)] focus:border-[var(--brand)]/50 outline-none transition-all"
-            />
-          </div>
-          
-          <div className="flex gap-1">
-            <button 
-              onClick={() => setIsCollectionModalOpen(true)}
-              className="flex-1 py-1.5 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-deep)] transition-all flex items-center justify-center gap-1.5 uppercase"
-            >
-              <Plus size={12} className="text-[var(--brand)]" /> Collection
-            </button>
-            <button 
-              onClick={() => setIsImportModalOpen(true)}
-              className="px-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded text-[9px] font-bold text-[var(--text-muted)] hover:text-[var(--brand)] transition-all flex items-center justify-center gap-1.5 uppercase disabled:opacity-50"
-            >
-              <Upload size={12} className="text-[var(--brand)]/80" /> Import
-            </button>
-          </div>
+      {/* Left Navigation Rail (Always 68px) */}
+      <div className="w-[68px] flex flex-col border-r border-[#222222] bg-[#0A0A0A]/40 shrink-0">
+        {/* Rail Top Branding/Toggle */}
+        <div 
+          className="h-14 flex items-center justify-center border-b border-[#222222] bg-[#0A0A0A] cursor-pointer hover:bg-white/[0.03] transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsSidebarPinned(!isSidebarPinned);
+          }}
+        >
+          <motion.div 
+            layoutId="workspace-icon"
+            className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#3ECF8E] to-[#2EAF7E] flex items-center justify-center text-black font-black text-xs shadow-[0_0_20px_rgba(62,207,142,0.2)] shrink-0"
+          >
+            {activeWorkspace?.name?.[0].toUpperCase() || 'W'}
+          </motion.div>
         </div>
-      )}
 
-      {/* Navigation Icons */}
-      <div className="flex flex-col flex-1 min-h-0 bg-[#0F0F0F]">
-        <div className={cn(
-          "flex border-b border-[var(--border-subtle)]",
-          (sidebarMode === 'compact' && !isHoveringCompact) ? "flex-col" : ""
-        )}>
+        {/* Rail Nav Buttons */}
+        <div className="flex-1 py-4 space-y-2">
           {[
-            { id: 'collections', icon: LayoutGrid, label: 'Collections' },
-            { id: 'environments', icon: Globe, label: 'Environments' },
-            { id: 'history', icon: Activity, label: 'History' },
+            { id: 'collections', icon: LayoutGrid, label: 'Explorer' },
+            { id: 'environments', icon: Globe, label: 'Registry' },
+            { id: 'scripts', icon: Zap, label: 'Scripts' },
+            { id: 'history', icon: Activity, label: 'Logs' },
             { id: 'teams', icon: Users, label: 'Teams' }
           ].map((item) => (
-            <button 
-              key={item.id}
-              onClick={() => setActiveNav(item.id)}
-              title={sidebarMode === 'compact' ? item.label : undefined}
-              className={cn(
-                "flex-1 flex items-center justify-center transition-all",
-                (sidebarMode === 'compact' && !isHoveringCompact) ? "py-4 border-r-0 border-l-2" : "py-2 border-b-2",
-                "hover:text-[var(--text-main)]",
-                activeNav === item.id 
-                  ? "text-[var(--brand)] border-[var(--brand)] bg-[var(--brand)]/5" 
-                  : "text-[var(--text-dim)] border-transparent"
-              )}
-            >
-              <item.icon size={16} />
-            </button>
+            <SidebarTooltip key={item.id} text={item.label} enabled={true}>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveNav(item.id);
+                  if (!isExpanded) setIsSidebarPinned(true);
+                }}
+                className={cn(
+                  "relative w-full h-[50px] flex items-center justify-center transition-all group/nav",
+                  activeNav === item.id 
+                    ? "text-[#3ECF8E]" 
+                    : "text-[#444444] hover:text-[#AAAAAA]"
+                )}
+              >
+                {activeNav === item.id && (
+                  <motion.div 
+                    layoutId="nav-pill"
+                    className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#3ECF8E] shadow-[0_0_15px_rgba(62,207,142,0.4)]"
+                  />
+                )}
+                <item.icon 
+                  size={18} 
+                  className={cn(
+                    "relative z-10 transition-all duration-300",
+                    activeNav === item.id ? "scale-110 drop-shadow-[0_0_8px_rgba(62,207,142,0.6)]" : "group-hover/nav:scale-110"
+                  )} 
+                />
+              </button>
+            </SidebarTooltip>
           ))}
         </div>
 
-        {/* Tree View */}
-        <div className={cn(
-          "flex-1 overflow-y-auto no-scrollbar py-2",
-          (sidebarMode === 'compact' && !isHoveringCompact) && "hidden"
-        )}>
-          {activeNav === 'collections' && (
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="collections-root" type="collection">
-                {(provided) => (
-                  <div {...provided.droppableProps} ref={provided.innerRef}>
-                    {(collections || []).map((col, index) => (
-                      <CollectionNode
-                        key={col.id}
-                        collection={col}
-                        index={index}
-                        fetchCollections={fetchCollections}
-                        onOpenImport={() => setIsImportModalOpen(true)}
-                      />
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
-          )}
-
-          {activeNav === 'environments' && (
-            <div className="p-4 space-y-2">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black text-[var(--text-dim)] uppercase tracking-widest">Active Env</span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsGlobalModalOpen(true)}
-                    className="text-amber-500 text-[10px] font-black uppercase hover:text-amber-400 transition-all"
-                  >
-                    Globals
-                  </button>
-                  <button 
-                    onClick={() => setIsEnvModalOpen(true)}
-                    className="text-[var(--brand)] text-[10px] font-black uppercase hover:text-[var(--brand)]/80 transition-all"
-                  >
-                    + New
-                  </button>
-                </div>
+        {/* Rail Footer */}
+        <div className="border-t border-[#222222] bg-[#0A0A0A]">
+          <SidebarTooltip text="Global Settings" enabled={true}>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isExpanded) setIsSidebarPinned(true);
+                setIsSettingsModalOpen(true);
+              }}
+              className="w-full h-[50px] flex items-center justify-center text-[#555555] hover:text-[#3ECF8E] transition-all group/settings"
+            >
+              <Settings size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+            </button>
+          </SidebarTooltip>
+          
+          <div className="h-[60px] flex items-center justify-center border-t border-[#222222]/50">
+            <div className="relative group/user cursor-pointer">
+              <div className="w-9 h-9 rounded-full bg-[#1A1A1A] border border-[#333333] flex items-center justify-center text-[11px] font-black text-[#555555] group-hover/user:border-[#3ECF8E]/50 group-hover/user:text-[#888888] transition-all overflow-hidden">
+                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
               </div>
-              {(environments || []).map(env => (
-                <div 
-                  key={env.id} 
-                  onClick={() => setActiveEnvId(activeEnvId === env.id ? null : env.id)}
-                  className={cn(
-                    "p-3 bg-[var(--bg-elevated)] border rounded-xl hover:bg-[var(--bg-deep)] transition-all cursor-pointer group/env relative",
-                    activeEnvId === env.id ? "border-[var(--brand)] shadow-[0_0_15px_var(--brand-muted)]" : "border-[var(--border-subtle)]"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="text-[11px] font-bold text-[var(--text-main)] mb-1">{env.name}</div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover/env:opacity-100 transition-all">
-                       <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedEnv(env);
-                          setIsEnvModalOpen(true);
-                        }}
-                        className="p-1 hover:text-[var(--brand)] text-[var(--text-dim)]"
-                       >
-                         <Settings size={12} />
-                       </button>
-                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmEnvDelete({ id: env.id, name: env.name });
-                        }}
-                        className="p-1 hover:text-red-500 text-[var(--text-dim)]"
-                       >
-                         <Trash2 size={12} />
-                       </button>
-                    </div>
-                  </div>
-                  <div className="text-[9px] text-[var(--text-dim)] uppercase tracking-tighter">
-                    {env.variables?.length || 0} Variables
-                  </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#3ECF8E] border-2 border-[#0A0A0A] shadow-[0_0_8px_rgba(62,207,142,0.6)]" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Content Area (Explorer / Content) */}
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="flex-1 flex flex-col min-w-0 bg-[#0A0A0A]/10"
+          >
+            {/* Workspace Header Info */}
+            <div className="h-14 border-b border-[#222222] flex items-center px-5 bg-[#0A0A0A]/30">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[10px] font-black text-white uppercase tracking-[0.15em] truncate">
+                    {activeWorkspace?.name || 'Workspace'}
+                  </h2>
+                  <div className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
                 </div>
-              ))}
-              {environments.length === 0 && (
-                <div className="py-8 text-center opacity-20">
-                  <Globe size={32} className="mx-auto mb-2" />
-                  <p className="text-[9px] font-black uppercase tracking-widest">No Environments</p>
+                <p className="text-[8px] text-[#444444] font-mono tracking-tighter uppercase font-bold mt-0.5">
+                  {activeWorkspace?.visibility || 'Private'} NODE // P-01
+                </p>
+              </div>
+              
+              <button 
+                onClick={() => setIsSidebarPinned(false)}
+                className="p-1.5 text-[#333333] hover:text-[#3ECF8E] transition-colors"
+                title="Collapse Sidebar"
+              >
+                <ChevronsLeft size={16} />
+              </button>
+            </div>
+
+            {/* Content Specific Actions & Title */}
+            <div className="px-5 py-4 border-b border-[#222222] bg-[#0A0A0A]/20">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-[9px] font-black text-[#555555] uppercase tracking-[0.3em]">
+                  {activeNav === 'collections' && 'Protocol Explorer'}
+                  {activeNav === 'environments' && 'Variable Registry'}
+                  {activeNav === 'scripts' && 'Logic Engine'}
+                  {activeNav === 'history' && 'Event Logs'}
+                  {activeNav === 'teams' && 'Consensus Nodes'}
+                </h3>
+              </div>
+
+              {activeNav === 'collections' && (
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#333333] group-focus-within:text-[#3ECF8E] transition-colors" />
+                    <input 
+                      type="text" 
+                      placeholder="SCAN_OBJECTS..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-[#050505] border border-[#222222] rounded-lg py-2 pl-8 pr-3 text-[10px] font-mono text-[#AAAAAA] placeholder-[#333333] focus:border-[#3ECF8E]/40 outline-none transition-all"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    <button 
+                      onClick={() => setIsCollectionModalOpen(true)}
+                      className="col-span-4 py-1.5 bg-[#111111] border border-[#222222] rounded-md text-[9px] font-black text-[#555555] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+                    >
+                      <Plus size={12} strokeWidth={3} /> NEW_NODE
+                    </button>
+                    <button 
+                      onClick={() => setIsImportModalOpen(true)}
+                      className="flex items-center justify-center bg-[#111111] border border-[#222222] rounded-md text-[#555555] hover:text-white transition-all flex-1"
+                    >
+                      <Upload size={12} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-          )}
 
-          {activeNav === 'history' && (
-            <div className="space-y-1">
-              {(history || []).map((item, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={async () => {
-                    if (item.request_data) {
-                      addTab({
-                        ...item.request_data,
-                        id: `history-${item.id}`,
-                        name: `Replay: ${item.request_name || 'Untitled'}`
-                      });
-                      addToast({ type: 'info', message: 'History state restored.' });
-                    } else {
-                      // Fallback for old history items
-                      addToast({ type: 'info', message: 'Replaying from legacy logs...' });
-                      addTab({
-                        id: item.request_id,
-                        name: item.request_name || 'History Item',
-                        method: item.method,
-                        url: item.url,
-                        workspace_id: activeWorkspaceId!,
-                        user_id: profile!.id,
-                        headers: [],
-                        params: [],
-                        body: '',
-                        bodyType: 'none',
-                        auth: { type: 'inherit' }
-                      } as any);
-                    }
-                  }}
-                  className="px-4 py-2 hover:bg-[var(--bg-elevated)] cursor-pointer group border-r-2 border-transparent hover:border-[var(--brand)] transition-all"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={cn(
-                      "text-[8px] font-black font-mono px-1.5 py-0.5 rounded bg-black/20",
-                      item.method === 'GET' ? 'text-[var(--brand)]' : 
-                      item.method === 'POST' ? 'text-yellow-500' :
-                      item.method === 'PUT' ? 'text-blue-500' :
-                      item.method === 'DELETE' ? 'text-red-500' : 'text-[var(--text-muted)]'
-                    )}>{item.method}</span>
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] truncate flex-1">{item.url}</span>
-                  </div>
+            {/* Scrollable Tree / List Content */}
+            <div className="flex-1 overflow-y-auto no-scrollbar py-2">
+              {activeNav === 'collections' && (
+                <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="collections-root" type="collection">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef}>
+                        {(collections || []).map((col, index) => (
+                          <CollectionNode
+                            key={col.id}
+                            collection={col}
+                            index={index}
+                            fetchCollections={fetchCollections}
+                            onOpenImport={() => setIsImportModalOpen(true)}
+                          />
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              )}
+
+              {activeNav === 'environments' && (
+                <div className="px-5 space-y-4 animate-in fade-in duration-500">
                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-2">
-                        <span className="text-[8px] text-[var(--text-dim)] font-mono">{new Date(item.created_at).toLocaleTimeString()}</span>
-                        <div className="w-1 h-1 rounded-full bg-[var(--border-subtle)]" />
-                        <span className="text-[8px] text-[var(--text-dim)] font-mono">{item.time}ms</span>
-                        {item.size && (
-                           <>
-                             <div className="w-1 h-1 rounded-full bg-[var(--border-subtle)]" />
-                             <span className="text-[8px] text-[var(--text-dim)] font-mono">{Math.round(item.size / 1024 * 100) / 100}KB</span>
-                           </>
+                    <button 
+                      onClick={() => setIsGlobalModalOpen(true)}
+                      className="text-amber-500/60 text-[9px] font-black uppercase hover:text-amber-400 transition-all tracking-widest"
+                    >
+                      Globals
+                    </button>
+                    <button 
+                      onClick={() => setIsEnvModalOpen(true)}
+                      className="text-[#3ECF8E] text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                    >
+                      + Register Env
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {(environments || []).map(env => (
+                      <div 
+                        key={env.id} 
+                        onClick={() => setActiveEnvId(activeEnvId === env.id ? null : env.id)}
+                        className={cn(
+                          "p-3 bg-[#111111]/40 border rounded-xl hover:bg-[#151515] transition-all cursor-pointer group/env relative",
+                          activeEnvId === env.id ? "border-[#3ECF8E] shadow-[0_0_15px_rgba(62,207,142,0.1)]" : "border-[#222222]"
                         )}
-                     </div>
-                     <span className={cn(
-                       "text-[8px] font-bold px-1.5 py-0.5 rounded",
-                       item.status < 400 ? "bg-[var(--brand)]/5 text-[var(--brand)]" : "bg-red-500/5 text-red-500"
-                     )}>{item.status}</span>
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[10px] font-black text-white uppercase tracking-wider">{env.name}</div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover/env:opacity-100 transition-all">
+                             <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEnv(env);
+                                setIsEnvModalOpen(true);
+                              }}
+                              className="p-1 hover:text-[#3ECF8E] text-[#444444]"
+                             >
+                               <Settings size={12} />
+                             </button>
+                             <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmEnvDelete({ id: env.id, name: env.name });
+                              }}
+                              className="p-1 hover:text-red-500 text-[#444444]"
+                             >
+                               <Trash2 size={12} />
+                             </button>
+                          </div>
+                        </div>
+                        <div className="text-[8px] text-[#444444] font-black uppercase tracking-widest mt-1">
+                          {env.variables?.length || 0} KEYS
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-              {history.length === 0 && (
-                <div className="py-8 text-center opacity-20">
-                  <Activity size={32} className="mx-auto mb-2" />
-                  <p className="text-[9px] font-black uppercase tracking-widest">Protocol Clear</p>
-                </div>
               )}
-            </div>
-          )}
 
-          {activeNav === 'teams' && (
-            <div className="p-4 space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] font-black text-[#555555] uppercase tracking-widest">Deployment Units</span>
-                <button 
-                  onClick={() => setIsTeamModalOpen(true)}
-                  className="text-[#3ECF8E] text-[10px] font-black uppercase shadow-[0_0_10px_rgba(62,207,142,0.2)]"
-                >
-                  + Unit
-                </button>
-              </div>
-              {(teams || []).map(team => (
-                <div 
-                  key={team.id} 
-                  onClick={() => {
-                    setSelectedTeam(team);
-                    setIsTeamModalOpen(true);
-                  }}
-                  className="p-3 bg-[#111111] border border-[#222222] rounded-xl hover:bg-[#151515] hover:border-[#3ECF8E]/30 transition-all cursor-pointer group/team"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[#AAAAAA] group-hover/team:text-[#3ECF8E] group-hover/team:border-[#3ECF8E]/30 font-black text-xs uppercase transition-all">
-                      {team.name?.[0] || 'T'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[11px] font-bold text-white truncate">{team.name || 'Unnamed Unit'}</div>
-                      <div className="text-[9px] text-[#555555] uppercase tracking-tighter">
-                        {team.team_members?.length || 1} Operators
+              {activeNav === 'history' && (
+                <div className="space-y-1 animate-in fade-in duration-500">
+                  {(history || []).map((item, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={async () => {
+                        if (item.request_data) {
+                          addTab({
+                            ...item.request_data,
+                            id: `history-${item.id}`,
+                            name: `${item.method} Request Replay`
+                          });
+                        }
+                      }}
+                      className="px-5 py-3 hover:bg-white/[0.02] cursor-pointer group border-l-2 border-transparent hover:border-[#3ECF8E] transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className={cn(
+                          "text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter",
+                          item.method === 'GET' ? 'bg-[#3ECF8E]/10 text-[#3ECF8E]' : 'bg-[#222222] text-[#AAAAAA]'
+                        )}>{item.method}</span>
+                        <span className="truncate text-[10px] text-[#777777] font-mono group-hover:text-[#AAAAAA] transition-colors">{item.url}</span>
+                      </div>
+                      <div className="text-[8px] text-[#333333] uppercase font-black tracking-widest pl-12">
+                        {new Date(item.created_at || '').toLocaleTimeString()}
                       </div>
                     </div>
-                    <Settings size={12} className="text-[#333333] group-hover/team:text-[#AAAAAA] transition-colors" />
+                  ))}
+                </div>
+              )}
+
+              {activeNav === 'teams' && (
+                <div className="px-5 space-y-4 animate-in fade-in duration-500">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-[#444444] uppercase tracking-widest">Protocol Units</span>
+                    <button onClick={() => setIsTeamModalOpen(true)} className="text-[#3ECF8E] text-[18px] hover:scale-110 transition-transform leading-none">+</button>
+                  </div>
+                  <div className="space-y-2">
+                    {(teams || []).map(team => (
+                      <div key={team.id} className="p-3 border border-[#222222] rounded-xl text-[10px] font-black text-[#AAAAAA] uppercase tracking-widest bg-[#111111]/30 hover:border-[#3ECF8E]/20 transition-all flex items-center justify-between group">
+                         {team.name}
+                         <Users size={12} className="text-[#333333] group-hover:text-[#3ECF8E] transition-colors" />
+                      </div>
+                    ))}
+                    {(!teams || teams.length === 0) && (
+                      <div className="text-center py-12 border-2 border-dashed border-[#222222] rounded-2xl">
+                        <Users size={24} className="mx-auto text-[#222222] mb-3" />
+                        <p className="text-[9px] font-black text-[#444444] uppercase tracking-widest">No nodes active</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
-              {teams.length === 0 && (
-                <div className="py-8 text-center border border-dashed border-[#222222] rounded-xl bg-[#0A0A0A]/50">
-                  <Users size={32} className="mx-auto mb-2 text-[#222222]" />
-                  <p className="text-[9px] font-black text-[#333333] uppercase tracking-widest">No Sector Presence</p>
-                  <p className="text-[8px] text-[#222222] uppercase tracking-tighter mt-2">Initialize a unit to begin collaborative ops.</p>
+              )}
+
+              {activeNav === 'scripts' && (
+                <div className="px-5 space-y-4 animate-in fade-in duration-500">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-[#444444] uppercase tracking-widest">Logic Library</span>
+                    <button 
+                      onClick={() => useStore.getState().setIsScriptLibraryOpen(true)}
+                      className="text-[#3ECF8E] text-[9px] font-black uppercase border border-[#3ECF8E]/30 px-3 py-1 rounded-full hover:bg-[#3ECF8E]/10 transition-all"
+                    >
+                      BROWSE_HUB
+                    </button>
+                  </div>
+                  <p className="text-[9px] text-[#444444] font-medium leading-relaxed uppercase tracking-tight">
+                    Deploy automation scripts to your runtime environment.
+                  </p>
+                  <div className="space-y-2">
+                    <div className="p-3 border border-[#222222] rounded-xl bg-white/[0.02] group cursor-pointer hover:border-[#3ECF8E]/30 transition-all">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Zap size={12} className="text-amber-500" />
+                        <div className="text-[9px] font-black text-[#AAAAAA] uppercase tracking-wider">Pre-request Hooks</div>
+                      </div>
+                      <div className="text-[8px] text-[#444444] uppercase font-bold tracking-tight">Dynamic context & headers</div>
+                    </div>
+                    <div className="p-3 border border-[#222222] rounded-xl bg-white/[0.02] group cursor-pointer hover:border-[#3ECF8E]/30 transition-all">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Activity size={12} className="text-blue-500" />
+                        <div className="text-[9px] font-black text-[#AAAAAA] uppercase tracking-wider">Test Assertions</div>
+                      </div>
+                      <div className="text-[8px] text-[#444444] uppercase font-bold tracking-tight">Object validation & state check</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="p-2 border-t border-[#222222] bg-[#0A0A0A]">
-        <div className="flex flex-col gap-1">
-          <button 
-            onClick={() => setIsSettingsModalOpen(true)}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-              "text-[#555555] hover:text-[#3ECF8E] hover:bg-[#3ECF8E]/5",
-              (sidebarMode === 'compact' && !isHoveringCompact) && "justify-center px-0"
-            )}
-          >
-            <Settings size={14} />
-            {(sidebarMode === 'expanded' || isHoveringCompact) && <span>Settings</span>}
-          </button>
-
-          <div className={cn(
-            "flex items-center gap-1 border-t border-[#222222]/50 mt-1 pt-1",
-            (sidebarMode === 'compact' && !isHoveringCompact) ? "flex-col" : "justify-between px-2"
-          )}>
-            <button
-              onClick={toggleSidebar}
-              title={sidebarMode === 'expanded' ? 'Collapse Sidebar' : 'Expand Sidebar'}
-              className="p-2 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded"
-            >
-              {sidebarMode === 'expanded' ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-            </button>
-
-            {(sidebarMode === 'expanded' || isHoveringCompact) && (
-              <>
-                <button
-                  onClick={() => setIsLocked(!isLocked)}
-                  title={isLocked ? 'Unlock Width' : 'Lock Width'}
-                  className={cn("p-2 transition-all rounded", isLocked ? "text-[var(--brand)]" : "text-[var(--text-dim)] hover:text-[#AAAAAA]")}
+            {/* Profile Detail at Expanded Bottom */}
+            <div className="mt-auto border-t border-[#222222] bg-[#0A0A0A] p-5">
+              <div className="flex items-center gap-4 group/user-detail">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black text-white uppercase tracking-widest truncate">
+                    {profile?.full_name || 'Protocol_User'}
+                  </p>
+                  <p className="text-[9px] text-[#444444] font-mono truncate mt-0.5">
+                    {profile?.email}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => logout()}
+                  className="p-2 rounded-lg hover:bg-red-500/10 text-[#333333] hover:text-red-500 transition-all"
+                  title="Disconnect Node"
                 >
-                  {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                  <Plus size={14} className="rotate-45" />
                 </button>
-                <button
-                  onClick={() => setSidebarMode(sidebarMode === 'expanded' ? 'compact' : 'expanded')}
-                  title={sidebarMode === 'expanded' ? 'Compact Mode' : 'Expanded Mode'}
-                  className="p-2 text-[var(--text-dim)] hover:text-[var(--brand)] transition-all rounded"
-                >
-                  {sidebarMode === 'expanded' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </button>
-              </>
-            )}
-          </div>
-          
-          {(sidebarMode === 'expanded' || isHoveringCompact) && (
-            <div className="flex items-center gap-3 px-3 py-2 mt-1 border-t border-[#222222]/50 pt-3 animate-in fade-in slide-in-from-bottom-1 duration-300">
-              <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[10px] font-black text-[#555555] shrink-0">
-                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-[#AAAAAA] truncate">{profile?.full_name || 'Operator'}</p>
-                <p className="text-[8px] text-[#444444] truncate">{profile?.email}</p>
               </div>
             </div>
-          )}
-          
-          {sidebarMode === 'compact' && !isHoveringCompact && (
-            <div className="flex justify-center py-2">
-              <div className="w-6 h-6 rounded-full bg-[#1A1A1A] border border-[#222222] flex items-center justify-center text-[10px] font-black text-[#555555]">
-                {profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
@@ -766,7 +684,7 @@ const CollectionNode: React.FC<{
         <div 
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={cn("select-none", snapshot.isDragging && "opacity-50")}
+          className={cn("select-none group/col", snapshot.isDragging && "opacity-50")}
         >
           <NameModal 
             isOpen={isRequestModalOpen}
@@ -814,124 +732,138 @@ const CollectionNode: React.FC<{
               setIsOpen(!isOpen);
             }}
             className={cn(
-              "group flex items-center px-4 py-2 hover:bg-[#1A1A1A] cursor-pointer transition-colors border-l-2",
+              "group flex items-center px-4 py-2 hover:bg-white/[0.02] cursor-pointer transition-all border-l-2 relative overflow-hidden",
               activeTabId === collection.id ? "bg-[#3ECF8E]/5 border-[#3ECF8E]" : "border-transparent"
             )}
           >
-            <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover/col:opacity-100 transition-opacity">
               <GripVertical size={10} className="text-[#333333]" />
             </div>
             <div 
               onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-              className="p-1 -ml-1 hover:bg-white/5 rounded transition-colors"
+              className="p-1 -ml-1 hover:bg-white/5 rounded transition-colors relative z-10"
             >
-              <ChevronRight 
-                size={12} 
-                className={cn("text-[#444444] transition-transform", isOpen && "rotate-90 text-[#3ECF8E]")} 
-              />
+              <motion.div
+                animate={{ rotate: isOpen ? 90 : 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              >
+                <ChevronRight 
+                  size={12} 
+                  className={cn("text-[#444444]", isOpen && "text-[#3ECF8E]")} 
+                />
+              </motion.div>
             </div>
-            <Folder size={14} className={cn("ml-2 mr-2", isOpen ? "text-[#3ECF8E]" : "text-[#555555]")} />
-            <div className="flex flex-col flex-1 min-w-0">
-              <div className="flex items-center gap-1">
+            <div className="relative ml-2 mr-2 z-10">
+              <Folder size={14} className={cn("transition-colors duration-300", isOpen ? "text-[#3ECF8E]" : "text-[#555555]")} />
+              {isUnsaved && <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />}
+            </div>
+            <div className="flex flex-col flex-1 min-w-0 relative z-10">
+              <div className="flex items-center gap-1.5">
                 <span className={cn(
-                  "text-[11px] font-bold uppercase tracking-wider truncate",
-                  isOpen ? "text-white" : "text-[#888888]"
+                  "text-[10px] font-black uppercase tracking-[0.05em] truncate transition-colors",
+                  isOpen ? "text-white" : "text-[#777777] group-hover/col:text-[#AAAAAA]"
                 )}>
                   {collection.name}
                 </span>
-                {isUnsaved && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-1 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />}
               </div>
               {collection.visibility === 'team' && (
-                <div className="flex items-center gap-1">
-                  <span className="text-[7px] font-black text-[#3ECF8E] uppercase tracking-tighter">Shared: {collection.permission}</span>
+                <div className="flex items-center gap-1 scale-[0.8] origin-left -mt-0.5 opacity-60">
+                  <span className="text-[7px] font-black text-[#3ECF8E] uppercase tracking-tighter border border-[#3ECF8E]/30 px-1 rounded">TEAM</span>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-          {canEdit && (
-            <>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setIsFolderModalOpen(true); }}
-                className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
-                title="Add Folder"
-              >
-                <Plus size={10} strokeWidth={3} className="text-[#3ECF8E]/50" />
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setIsRequestModalOpen(true); }}
-                className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
-                title="Add Request"
-              >
-                <Plus size={12} />
-              </button>
-            </>
-          )}
-          <div ref={menuRef} className="relative">
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
-              className="p-1 hover:text-white text-[#555555] transition-all"
-            >
-              <MoreVertical size={12} />
-            </button>
-            {isMenuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-36 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
-                {canEdit && (
-                  <button
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
-                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+            <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition-all relative z-10 scale-90">
+              {canEdit && (
+                <>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsFolderModalOpen(true); }}
+                    className="p-1.5 hover:text-[#3ECF8E] text-[#444444] transition-all hover:bg-white/5 rounded"
+                    title="New Folder"
                   >
-                    Rename
+                    <Folder size={11} className="text-[#3ECF8E]/60" />
                   </button>
-                )}
-                {collection.user_id === profile?.id && (
-                  <button
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsShareModalOpen(true); }}
-                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setIsRequestModalOpen(true); }}
+                    className="p-1.5 hover:text-[#3ECF8E] text-[#444444] transition-all hover:bg-white/5 rounded"
+                    title="New Request"
                   >
-                    Share
+                    <Plus size={12} strokeWidth={3} />
                   </button>
-                )}
+                </>
+              )}
+              <div ref={menuRef} className="relative">
                 <button
-                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); onOpenImport(); }}
-                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                  onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
+                  className="p-1.5 hover:text-white text-[#444444] transition-all hover:bg-white/5 rounded"
                 >
-                  Import Collection
+                  <MoreVertical size={12} />
                 </button>
-                <button
-                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); CollectionExportService.exportCollection(collection); addToast({ type: 'success', message: 'Exporting collection...' }); }}
-                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
-                >
-                  Export
-                </button>
-                <button
-                  onMouseDown={async (e) => { 
-                    e.preventDefault(); 
-                    e.stopPropagation(); 
-                    setIsMenuOpen(false); 
-                    try {
-                      await GitHubService.pushUpdates(collection);
-                      addToast({ type: 'success', message: 'Collection pushed to GitHub.' });
-                    } catch (err: any) {
-                      addToast({ type: 'error', message: `Push failed: ${err.message}` });
-                    }
-                  }}
-                  className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
-                >
-                  Sync to GitHub
-                </button>
-                {canEdit && (
-                  <button
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
-                    className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    Delete
-                  </button>
-                )}
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                      className="absolute right-0 top-full mt-2 w-48 bg-[#111111] border border-[#222222] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] py-1.5 z-[100] backdrop-blur-md overflow-hidden"
+                    >
+                      {canEdit && (
+                        <button
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
+                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white flex items-center justify-between"
+                        >
+                          Rename <span className="text-[8px] opacity-30">ATTR</span>
+                        </button>
+                      )}
+                      {collection.user_id === profile?.id && (
+                        <button
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsShareModalOpen(true); }}
+                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5 border-y border-white/[0.02]"
+                        >
+                          Protocol Share
+                        </button>
+                      )}
+                      <button
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); onOpenImport(); }}
+                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white"
+                      >
+                        Import Node
+                      </button>
+                      <button
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); CollectionExportService.exportCollection(collection); addToast({ type: 'success', message: 'Exporting collection...' }); }}
+                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5"
+                      >
+                        Export Sync
+                      </button>
+                      <button
+                        onMouseDown={async (e) => { 
+                          e.preventDefault(); 
+                          e.stopPropagation(); 
+                          setIsMenuOpen(false); 
+                          try {
+                            await GitHubService.pushUpdates(collection);
+                            addToast({ type: 'success', message: 'Collection pushed to GitHub.' });
+                          } catch (err: any) {
+                            addToast({ type: 'error', message: `Push failed: ${err.message}` });
+                          }
+                        }}
+                        className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5"
+                      >
+                        GitHub Push
+                      </button>
+                      {canEdit && (
+                        <button
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
+                          className="w-full text-left px-4 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400 mt-1 border-t border-white/[0.02]"
+                        >
+                          Decommission
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
 
       <AnimatePresence>
         {isOpen && (
@@ -1070,7 +1002,7 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
         <div 
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={cn("select-none", snapshot.isDragging && "opacity-50")}
+          className={cn("select-none group/folder relative", snapshot.isDragging && "opacity-50")}
         >
           <NameModal 
             isOpen={isRequestModalOpen}
@@ -1098,33 +1030,38 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
           />
           <div 
             onClick={() => setIsOpen(!isOpen)}
-            className="group flex items-center px-4 py-1.5 hover:bg-[#1A1A1A] cursor-pointer transition-colors"
+            className="flex items-center px-4 py-1.5 hover:bg-white/[0.02] cursor-pointer transition-all border-l border-transparent hover:border-white/10"
           >
-            <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover/folder:opacity-100 transition-opacity">
               <GripVertical size={10} className="text-[#333333]" />
             </div>
-            <ChevronRight 
-              size={10} 
-              className={cn("text-[#444444] transition-transform", isOpen && "rotate-90 text-[#3ECF8E]")} 
-            />
-            <Folder size={12} className={cn("ml-2 mr-2", isOpen ? "text-[#3ECF8E]" : "text-[#555555]")} />
+            <motion.div
+              animate={{ rotate: isOpen ? 90 : 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+            >
+              <ChevronRight 
+                size={10} 
+                className={cn("text-[#444444]", isOpen && "text-[#3ECF8E]")} 
+              />
+            </motion.div>
+            <Folder size={12} className={cn("ml-2 mr-2 transition-colors duration-300", isOpen ? "text-[#3ECF8E]" : "text-[#444444]")} />
             <div className="flex flex-col flex-1 min-w-0">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className={cn(
-                  "text-[10px] font-bold truncate",
-                  isOpen ? "text-white" : "text-[#777777]"
+                  "text-[9px] font-black uppercase tracking-widest truncate transition-colors",
+                  isOpen ? "text-[#AAAAAA]" : "text-[#666666] group-hover/folder:text-[#888888]"
                 )}>
                   {folder.name}
                 </span>
-                {isUnsaved && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-1 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />}
+                {isUnsaved && <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />}
               </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <div className="flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-all scale-90">
               {canEdit && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); setIsRequestModalOpen(true); }}
-                  className="p-1 hover:text-[#3ECF8E] text-[#555555] transition-all"
-                  title="Add Request"
+                  className="p-1 hover:text-[#3ECF8E] text-[#444444] transition-all hover:bg-white/5 rounded"
+                  title="New Request"
                 >
                   <Plus size={10} strokeWidth={3} />
                 </button>
@@ -1132,30 +1069,37 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
               <div ref={menuRef} className="relative">
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
-                  className="p-1 hover:text-white text-[#555555] transition-all"
+                  className="p-1 hover:text-white text-[#444444] transition-all hover:bg-white/5 rounded"
                 >
-                  <MoreVertical size={12} />
+                  <MoreVertical size={11} />
                 </button>
-                {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
-                    {canEdit && (
-                      <>
-                        <button
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
-                          className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
-                          className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400"
-                        >
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                      className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100] backdrop-blur-md overflow-hidden"
+                    >
+                      {canEdit && (
+                        <>
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
+                            className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
+                            className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -1165,7 +1109,7 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden border-l border-[#222222] ml-4"
+                className="overflow-hidden border-l border-[#222222] ml-[22px]"
               >
                 <Droppable droppableId={`${collectionId}:requests:${folder.id}`} type="request">
                   {(provided) => (
@@ -1176,6 +1120,7 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
                           request={req} 
                           index={idx}
                           fetchCollections={fetchCollections} 
+                          folderId={folder.id}
                         />
                       ))}
                       {provided.placeholder}
@@ -1191,15 +1136,11 @@ const FolderNode: React.FC<{ folder: FolderType; index: number; collectionId: st
   );
 };
 
-const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollections: (wsId: string) => Promise<void> }> = ({ request, index, fetchCollections }) => {
-  const { addTab, activeTabId, addToast, activeWorkspaceId, updateRequest, collections, canPerformAction, pendingSyncIds, deleteRequestState } = useStore();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(request.name);
+const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollections: (wsId: string) => Promise<void>; folderId?: string }> = ({ request, index, fetchCollections, folderId }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  const isUnsaved = pendingSyncIds.has(request.id);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -1211,10 +1152,32 @@ const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollecti
     document.addEventListener('keydown', handleEsc);
     return () => { document.removeEventListener('mousedown', handleOutside); document.removeEventListener('keydown', handleEsc); };
   }, [isMenuOpen]);
-  const isActive = activeTabId === request.id;
 
+  const { addTab, activeTabId, addToast, collections, canPerformAction, activeWorkspaceId, updateRequest, pendingSyncIds, profile } = useStore();
+  const isUnsaved = pendingSyncIds.has(request.id);
+  
   const collection = collections.find(c => c.id === request.collection_id);
   const canEdit = collection ? canPerformAction(collection, 'edit') : false;
+
+  const getMethodColor = (method: string) => {
+    switch (method) {
+      case 'GET': return 'text-[#3ECF8E]';
+      case 'POST': return 'text-amber-500';
+      case 'PUT': return 'text-blue-500';
+      case 'DELETE': return 'text-red-500';
+      case 'PATCH': return 'text-purple-500';
+      default: return 'text-[#AAAAAA]';
+    }
+  };
+
+  const handleRename = async (newName: string) => {
+    try {
+      updateRequest(request.id, { name: newName });
+      addToast({ type: 'info', message: 'Identity update scheduled.' });
+    } catch (error) {
+      addToast({ type: 'error', message: 'Identity update failed.' });
+    }
+  };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1225,132 +1188,129 @@ const RequestNode: React.FC<{ request: RequestData; index: number; fetchCollecti
   const handleConfirmedDelete = async () => {
     try {
       await PersistenceService.deleteRequest(request.id);
-      deleteRequestState(request.id);
-      addToast({ type: 'info', message: 'Request purged.' });
+      await fetchCollections(activeWorkspaceId!);
+      addToast({ type: 'info', message: 'Logical unit dismantled.' });
     } catch (error) {
-      addToast({ type: 'error', message: 'Purge sequence failed.' });
+      addToast({ type: 'error', message: 'Dismantle failed.' });
     }
   };
 
-  const handleRename = async () => {
-    if (editValue === request.name) {
-      setIsEditing(false);
-      return;
-    }
-    try {
-      await PersistenceService.updateRequest(request.id, { name: editValue });
-      updateRequest(request.id, { name: editValue });
-      if (activeWorkspaceId) await fetchCollections(activeWorkspaceId);
-      setIsEditing(false);
-      addToast({ type: 'success', message: 'Request identity updated.' });
-    } catch (error) {
-      addToast({ type: 'error', message: 'Update failed.' });
-      setEditValue(request.name);
-      setIsEditing(false);
-    }
-  };
-
-  const draggableId = request.folder_id ? `${request.collection_id}:${request.id}:${request.folder_id}` : `${request.collection_id}:${request.id}`;
+  const isActive = activeTabId === request.id;
 
   return (
-    <Draggable draggableId={draggableId} index={index}>
+    <Draggable draggableId={`${request.collection_id}:${request.id}${folderId ? ':' + folderId : ''}`} index={index}>
       {(provided, snapshot) => (
         <div 
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={cn("select-none", snapshot.isDragging && "opacity-50")}
+          className={cn("select-none group/req relative", snapshot.isDragging && "opacity-50")}
         >
+          <NameModal 
+            isOpen={isRenameModalOpen}
+            onClose={() => setIsRenameModalOpen(false)}
+            onConfirm={handleRename}
+            title="Update Node Identity"
+            placeholder="REQUEST_NAME..."
+            initialValue={request.name}
+          />
           <ConfirmModal
             isOpen={isConfirmDeleteOpen}
             onClose={() => setIsConfirmDeleteOpen(false)}
             onConfirm={handleConfirmedDelete}
-            title="Delete Request"
-            description={`Permanently delete "${request.name}"? This cannot be undone.`}
-            confirmText="Delete"
+            title="Dismantle Request"
+            description={`Permanently delete "${request.name}"?`}
+            confirmText="Dismantle"
             variant="danger"
           />
           <div 
-            onClick={() => !isEditing && addTab(request)}
+            onClick={() => addTab(request)}
             className={cn(
-              "group flex items-center px-4 py-1.5 hover:bg-[#1A1A1A] cursor-pointer transition-all border-r-2",
-              isActive ? "bg-[#3ECF8E]/5 border-[#3ECF8E] text-white" : "border-transparent text-[#666666]"
+              "flex items-center px-4 py-1.5 hover:bg-white/[0.02] cursor-pointer transition-all border-l-2 relative items-stretch",
+              isActive ? "bg-[#3ECF8E]/5 border-[#3ECF8E]" : "border-transparent"
             )}
           >
-            <div {...provided.dragHandleProps} className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {isActive && (
+              <motion.div 
+                layoutId="active-req-glow"
+                className="absolute inset-0 bg-[#3ECF8E]/[0.02] shadow-[inset_4px_0_15px_rgba(62,207,142,0.05)] pointer-events-none"
+              />
+            )}
+            <div {...provided.dragHandleProps} className="flex items-center mr-1 opacity-0 group-hover/req:opacity-100 transition-opacity">
               <GripVertical size={10} className="text-[#333333]" />
             </div>
             
-            <div className={cn(
-              "text-[8px] font-black w-8 tracking-tighter shrink-0",
-              request.method === 'GET' ? 'text-[#3ECF8E]' : 
-              request.method === 'POST' ? 'text-yellow-500' :
-              request.method === 'PUT' ? 'text-blue-500' :
-              request.method === 'DELETE' ? 'text-red-500' : 'text-[#777777]'
-            )}>
-              {request.method}
-            </div>
-            
-            <div className="flex-1 min-w-0 flex items-center gap-1">
-              {isEditing ? (
-                <input
-                  autoFocus
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={handleRename}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleRename();
-                    if (e.key === 'Escape') {
-                      setEditValue(request.name);
-                      setIsEditing(false);
-                    }
-                  }}
-                  className="text-[10px] font-bold bg-[#0A0A0A] border border-[#3ECF8E]/50 rounded px-1 flex-1 min-w-0 outline-none text-white focus:ring-1 ring-[#3ECF8E]/20"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <>
-                  <span className="text-[10px] font-bold truncate flex-1 tracking-tight">
-                    {request.name}
-                  </span>
-                  {isUnsaved && <div className="w-1 h-1 rounded-full bg-blue-500 shrink-0" />}
-                </>
-              )}
+            <div className="flex items-center gap-2 flex-1 min-w-0 relative z-10">
+              <span className={cn(
+                "text-[7px] font-black font-mono w-8 shrink-0 tracking-tighter uppercase",
+                getMethodColor(request.method)
+              )}>
+                {request.method}
+              </span>
+              <span className={cn(
+                "text-[10px] font-medium truncate uppercase tracking-wider transition-colors",
+                isActive ? "text-white" : "text-[#777777] group-hover/req:text-[#AAAAAA]"
+              )}>
+                {request.name}
+              </span>
+              {isUnsaved && <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.5)]" />}
             </div>
 
-            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-all shrink-0">
+            <div className="flex items-center gap-1 opacity-0 group-hover/req:opacity-100 transition-all scale-90 relative z-10">
               <div ref={menuRef} className="relative">
                 <button
-                  className="p-1 hover:text-white text-[#555555] transition-all"
                   onClick={(e) => { e.stopPropagation(); setIsMenuOpen(v => !v); }}
+                  className="p-1 hover:text-white text-[#444444] transition-all hover:bg-white/5 rounded"
                 >
-                  <MoreVertical size={12} />
+                  <MoreVertical size={11} />
                 </button>
-                {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100]">
-                    {canEdit && (
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                      className="absolute right-0 top-full mt-1 w-32 bg-[#111111] border border-[#222222] rounded-lg shadow-2xl py-1 z-[100] backdrop-blur-md overflow-hidden"
+                    >
                       <button
-                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsEditing(true); }}
-                        className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#AAAAAA] hover:bg-[#1A1A1A] hover:text-white"
+                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); setIsRenameModalOpen(true); }}
+                        className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-[#888888] hover:bg-white/[0.03] hover:text-white"
                       >
                         Rename
                       </button>
-                    )}
-                    <button
-                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); useStore.getState().duplicateRequest(request.id); }}
-                      className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/10"
-                    >
-                      Duplicate
-                    </button>
-                    {canEdit && (
                       <button
-                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
-                        className="w-full text-left px-3 py-2 text-[9px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                        onMouseDown={async (e) => {
+                          e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false);
+                          try {
+                            const duplicate = {
+                              ...request,
+                              id: undefined,
+                              name: `${request.name} Copy`,
+                              user_id: profile?.id
+                            } as any;
+                            delete duplicate.id;
+                            const created = await PersistenceService.createRequest(duplicate);
+                            await fetchCollections(activeWorkspaceId!);
+                            addTab(created);
+                            addToast({ type: 'success', message: 'Protocol duplicated.' });
+                          } catch (err) {
+                            addToast({ type: 'error', message: 'Duplication failed.' });
+                          }
+                        }}
+                        className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-[#3ECF8E] hover:bg-[#3ECF8E]/5"
                       >
-                        Delete
+                        Duplicate
                       </button>
-                    )}
-                  </div>
-                )}
+                      {canEdit && (
+                        <button
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(false); handleDelete(e as any); }}
+                          className="w-full text-left px-3 py-2 text-[8px] font-black uppercase text-red-500 hover:bg-red-500/10 hover:text-red-400 mt-0.5 border-t border-white/[0.02]"
+                        >
+                          Dismantle
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </div>

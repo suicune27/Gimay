@@ -7,9 +7,10 @@ import { PersistenceService } from '../../services/PersistenceService';
 import { Team } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
+import { globalSupabase } from '../../lib/supabase';
 
 export const TeamSelection: React.FC = () => {
-  const { setStep, setSetupMode, setIsConfigured, setWorkspaceId, setTeamId } = useOnboardingStore();
+  const { setStep, setSetupMode, setIsConfigured, setWorkspaceId, setTeamId, setUserId } = useOnboardingStore();
   const { profile, setActiveWorkspaceId, setTeams, addToast } = useStore();
   const [userTeams, setUserTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,8 @@ export const TeamSelection: React.FC = () => {
   const { logout } = useAuth();
 
   const [selectingTeamId, setSelectingTeamId] = useState<string | null>(null);
+
+  const globalUrl = (globalSupabase as any).config?.url || 'unknown';
 
   useEffect(() => {
     const loadTeams = async () => {
@@ -39,7 +42,9 @@ export const TeamSelection: React.FC = () => {
     if (selectingTeamId) return;
     
     setSelectingTeamId(team.id);
-    console.group(`[TeamSelection] Selecting team: ${team.name} (${team.id})`);
+    console.group(`%c[TeamSelection] Selecting team: ${team.name}`, 'color: #3ECF8E; font-weight: bold;');
+    console.log(`[Diagnostic] User Profile ID: ${profile?.id}`);
+    console.log(`[Diagnostic] Global Endpoint: ${globalUrl}`);
     
     try {
       // Find workspaces for this team
@@ -48,14 +53,17 @@ export const TeamSelection: React.FC = () => {
       console.log(`Found ${workspaces.length} workspaces:`, workspaces);
       
       if (workspaces.length === 0 && profile?.id) {
-        console.log('No workspace found for team. Attempting self-healing creation...');
+        console.warn('CRITICAL: No workspaces found for team. Attempting emergency self-healing...');
         try {
           const newWorkspace = await PersistenceService.createWorkspace('General', profile.id, team.id);
-          console.log('Self-healed workspace created:', newWorkspace);
+          console.log('Self-healing successful. Created workspace:', newWorkspace);
           workspaces = [newWorkspace];
-        } catch (wsError) {
-          console.error('Self-healing failed:', wsError);
-          // If creation fails (e.g. permission), we'll fall through to the error state below
+        } catch (wsError: any) {
+          console.error('Self-healing failed. Root cause:', wsError.message);
+          if (wsError.message.includes('column')) {
+            throw new Error(`DATABASE_SCHEMA_ERROR: The 'workspaces' table in your global project (${globalUrl}) is missing the 'team_id' column. Please run the initialization script again.`);
+          }
+          throw wsError;
         }
       }
 
@@ -66,6 +74,7 @@ export const TeamSelection: React.FC = () => {
         // 1. Update onboarding store (persisted metadata)
         console.log('Updating onboarding store...');
         setTeamId(team.id);
+        setUserId(profile.id);
         setWorkspaceId(targetWorkspace.id);
         
         // 2. Update global app store
@@ -192,31 +201,39 @@ export const TeamSelection: React.FC = () => {
         </div>
       )}
 
-      <div className="mt-8 pt-6 border-t border-[#222222] grid grid-cols-2 gap-3">
-        <button
-          onClick={() => {
-            setSetupMode('create');
-            setStep('create-setup');
-          }}
-          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
-        >
-          <Plus size={14} className="text-[#3ECF8E]" /> Setup Team
-        </button>
-        <button
-          onClick={() => {
-            setSetupMode('join');
-            setStep('join-team');
-          }}
-          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
-        >
-          <Key size={14} className="text-[#3ECF8E]" /> Join with Code
-        </button>
-        <button
-          onClick={() => addToast({ type: 'info', message: 'Migration system coming soon.' })}
-          className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
-        >
-          <Database size={14} className="text-[#3ECF8E]" /> Migrate Database
-        </button>
+      <div className="mt-8 pt-6 border-t border-[#222222]">
+        <div className="mb-4 px-2">
+            <h4 className="text-[10px] font-black text-[#444444] uppercase tracking-[0.2em] mb-1">Active Infrastructure Node</h4>
+            <div className="text-[9px] font-mono text-[#3ECF8E]/40 truncate bg-black/40 p-2 rounded-lg border border-[#222222]/50">
+              {globalUrl || 'NOT_CONNECTED_ERROR'}
+            </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => {
+              setSetupMode('create');
+              setStep('create-setup');
+            }}
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
+          >
+            <Plus size={14} className="text-[#3ECF8E]" /> Setup Team
+          </button>
+          <button
+            onClick={() => {
+              setSetupMode('join');
+              setStep('join-team');
+            }}
+            className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
+          >
+            <Key size={14} className="text-[#3ECF8E]" /> Join with Code
+          </button>
+          <button
+            onClick={() => addToast({ type: 'info', message: 'Migration system coming soon.' })}
+            className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
+          >
+            <Database size={14} className="text-[#3ECF8E]" /> Migrate Database
+          </button>
+        </div>
       </div>
     </motion.div>
   );

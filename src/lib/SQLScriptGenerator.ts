@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON public.team_members(team_
   }
 
   static generateInitializationScript(): string {
-    return `-- PUTMAN ULTIMATE SCHEMA V10.2 - PRODUCTION GRADE (Initialization)
+    return `-- PUTMAN ULTIMATE SCHEMA V10.3 - PRODUCTION GRADE (Initialization)
 -- Generated: ${new Date().toISOString()}
 -- Architectural Goal: Scalable, Multi-tenant, Real-time synchronized API Client
 
@@ -264,15 +264,80 @@ CREATE TABLE IF NOT EXISTS public.folders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- REPAIR SECTION: Ensure columns exist in existing tables (for older versions)
+-- REPAIR SECTION: Ensure columns and foreign keys exist in existing tables (for older versions)
+-- This section is designed to run even if tables already exist to ensure schema integrity.
+
+-- Profiles
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS preferences JSONB DEFAULT '{"theme": "dark", "sidebar_width": 300, "last_workspace_id": null}'::jsonb;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Teams
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS team_code TEXT UNIQUE;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS secret_code_hash TEXT;
+
+-- Workspaces
+ALTER TABLE public.workspaces ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
+ALTER TABLE public.workspaces ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private' CHECK (visibility IN ('private', 'team', 'public'));
+
+-- Collections
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private' CHECK (visibility IN ('private', 'team', 'public'));
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS variables JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS auth JSONB DEFAULT '{"type": "inherit"}'::jsonb;
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS pre_request_script TEXT DEFAULT '';
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS test_script TEXT DEFAULT '';
+ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS documentation TEXT DEFAULT '';
+
+-- Folders
 ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE;
 ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
-ALTER TABLE public.collections ADD COLUMN IF NOT EXISTS team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL;
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS variables JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS auth JSONB DEFAULT '{"type": "inherit"}'::jsonb;
+ALTER TABLE public.folders ADD COLUMN IF NOT EXISTS description TEXT;
+
+-- Requests (CRITICAL RELATIONS)
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS collection_id UUID REFERENCES public.collections(id) ON DELETE CASCADE;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES public.folders(id) ON DELETE CASCADE;
 ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+
+-- Ensure constraints (Advanced repair)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requests' AND column_name = 'collection_id') THEN
+    BEGIN ALTER TABLE public.requests ADD CONSTRAINT requests_collection_id_fkey FOREIGN KEY (collection_id) REFERENCES public.collections(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requests' AND column_name = 'folder_id') THEN
+    BEGIN ALTER TABLE public.requests ADD CONSTRAINT requests_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES public.folders(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'requests' AND column_name = 'workspace_id') THEN
+    BEGIN ALTER TABLE public.requests ADD CONSTRAINT requests_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES public.workspaces(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'folders' AND column_name = 'collection_id') THEN
+    BEGIN ALTER TABLE public.folders ADD CONSTRAINT folders_collection_id_fkey FOREIGN KEY (collection_id) REFERENCES public.collections(id) ON DELETE CASCADE; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+END $$;
+
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS body_type TEXT DEFAULT 'none' CHECK (body_type IN ('none', 'json', 'form-data', 'urlencoded', 'raw', 'graphql', 'xml', 'binary'));
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS auth JSONB DEFAULT '{"type": "inherit"}'::jsonb;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS pre_request_script TEXT DEFAULT '';
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS test_script TEXT DEFAULT '';
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{"followRedirects": true, "timeout": 0, "maxRedirects": 10}'::jsonb;
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'rest' CHECK (type IN ('rest', 'graphql', 'websocket', 'grpc', 'socketio'));
+
+-- Environments
 ALTER TABLE public.environments ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
 ALTER TABLE public.environments ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;
+
+-- History
 ALTER TABLE public.history ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS request_name TEXT;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS request_data JSONB;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS response_data JSONB;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS time INTEGER;
+ALTER TABLE public.history ADD COLUMN IF NOT EXISTS size INTEGER;
+
+-- Scripts
 ALTER TABLE public.scripts ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE CASCADE;
+ALTER TABLE public.scripts ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES public.folders(id) ON DELETE SET NULL;
 
 
 -- 5. REQUESTS

@@ -8,7 +8,7 @@ import { useStore } from '../../store/useStore';
 type JoinStep = 'input-code' | 'joining' | 'complete';
 
 export const JoinTeamWizard: React.FC = () => {
-  const { addToast } = useStore();
+  const { addToast, profile } = useStore();
   const {
     setStep: setOnboardingStep,
     setIsConfigured,
@@ -40,8 +40,13 @@ export const JoinTeamWizard: React.FC = () => {
       return;
     }
 
-    // In real app, get userId from Supabase auth
-    const userId = 'temp-user-id';
+    if (!profile?.id) {
+      setError('Active session not detected.');
+      setIsJoining(false);
+      return;
+    }
+
+    const userId = profile.id;
 
     try {
       // 1. Fetch connection details from the temporary code

@@ -59,15 +59,13 @@ export const useDataSync = () => {
     try {
       const teamIds = (store.teams || []).map(t => t.id);
       
-      const tryFetch = async (useCollaborators: boolean, useTeamId: boolean) => {
-        let selectStr = `
-          *,
-          requests(*),
-          folders(*)
-        `;
-        if (useCollaborators) {
-          selectStr += ',\n          collection_collaborators(*)';
-        }
+      const tryFetch = async (useCollaborators: boolean, useTeamId: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
+        let relations = [];
+        if (useRequests) relations.push('requests(*)');
+        if (useFolders) relations.push('folders(*)');
+        if (useCollaborators) relations.push('collection_collaborators(*)');
+
+        const selectStr = relations.length > 0 ? `*, ${relations.join(', ')}` : '*';
 
         let query = supabase.from('collections').select(selectStr);
         
@@ -84,23 +82,30 @@ export const useDataSync = () => {
 
       let result = await tryFetch(true, true);
       
-      // Fallback 1: Missing collaborators relationship or team_id column
+      // Multi-layer fallback for database inconsistencies
       if (result.error) {
         const msg = String(result.error.message || '').toLowerCase();
-        const isCollaboratorError = msg.includes('collection_collaborators') || result.error.code === 'PGRST200';
-        const isTeamIdError = msg.includes('team_id') || result.error.code === 'PGRST204' || result.error.code === '42703';
-
-        if (isCollaboratorError && isTeamIdError) {
-          result = await tryFetch(false, false);
-        } else if (isCollaboratorError) {
+        const code = result.error.code;
+        
+        const isRelError = code === 'PGRST200' || msg.includes('relationship') || msg.includes('foreign key');
+        const isColError = code === 'PGRST204' || code === '42703' || msg.includes('column') || msg.includes('not exist');
+        
+        if (isRelError || isColError) {
+          console.warn('[Sync] Collection fetch failed due to schema mismatch. Attempting recovery...', { code, msg });
+          
+          // Try without collaborators first
           result = await tryFetch(false, true);
-        } else if (isTeamIdError) {
-          result = await tryFetch(true, false);
-        }
-
-        // Final standalone fallback
-        if (result.error) {
-          result = await tryFetch(false, false);
+          
+          if (result.error) {
+            // Try without team_id
+            result = await tryFetch(false, false);
+            
+            if (result.error) {
+              // Extreme fallback: No relations at all
+              console.error('[Sync] Collection fetch critical failure. Stripping all relations.');
+              result = await tryFetch(false, false, false, false);
+            }
+          }
         }
       }
 

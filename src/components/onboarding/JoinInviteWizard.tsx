@@ -6,7 +6,7 @@ import { OnboardingService } from '../../services/OnboardingService';
 import { useStore } from '../../store/useStore';
 
 export const JoinInviteWizard: React.FC = () => {
-  const { addToast } = useStore();
+  const { addToast, profile } = useStore();
   const {
     setStep: setOnboardingStep,
     setIsConfigured,
@@ -36,9 +36,13 @@ export const JoinInviteWizard: React.FC = () => {
       return;
     }
 
-    // In this app, userId should come from the current auth session
-    // We'll rely on OnboardingService to handle session if needed
-    const userId = (await OnboardingService.createAuthenticatedClient('', '', '')).client?.auth?.user?.id || 'temp-user-id';
+    if (!profile?.id) {
+      setError('Active session not detected.');
+      setIsJoining(false);
+      return;
+    }
+
+    const userId = profile.id;
 
     try {
       const result = await OnboardingService.joinByInviteCode(inviteCode, userId);

@@ -22,6 +22,7 @@ interface OnboardingState {
   workspaceId: string | null;
   teamId: string | null;
   userId: string | null;
+  hasHydrated: boolean;
 
   // Actions
   setStep: (step: OnboardingStep) => void;
@@ -35,6 +36,7 @@ interface OnboardingState {
   setWorkspaceId: (id: string) => void;
   setTeamId: (id: string) => void;
   setUserId: (id: string | null) => void;
+  setHasHydrated: (hydrated: boolean) => void;
   resetOnboarding: () => void;
 }
 
@@ -51,6 +53,7 @@ const initialState = {
   workspaceId: null as string | null,
   teamId: null as string | null,
   userId: null as string | null,
+  hasHydrated: false,
 };
 
 export const useOnboardingStore = create<OnboardingState>()(
@@ -69,11 +72,20 @@ export const useOnboardingStore = create<OnboardingState>()(
       setWorkspaceId: (id) => set({ workspaceId: id }),
       setTeamId: (id) => set({ teamId: id }),
       setUserId: (id) => set({ userId: id }),
-      resetOnboarding: () => set({ ...initialState, step: 'welcome' }),
+      setHasHydrated: (hydrated) => set({ hasHydrated: hydrated }),
+      resetOnboarding: () => {
+        console.log('[OnboardingStore] resetOnboarding called');
+        set({ ...initialState, step: 'welcome', hasHydrated: true });
+      },
     }),
     {
       name: 'putman-onboarding-storage',
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
       partialize: (state) => ({
+        step: state.step,
+        setupMode: state.setupMode,
         isConfigured: state.isConfigured,
         workspaceId: state.workspaceId,
         teamId: state.teamId,

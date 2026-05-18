@@ -5,6 +5,7 @@ import { useDataSync } from '../hooks/useDataSync';
 import { Sidebar } from '../features/sidebar/Sidebar';
 import { RequestEditor } from '../features/editor/RequestEditor';
 import { ResponseViewer } from '../features/editor/ResponseViewer';
+import { ScriptLibraryModal } from '../features/scripts/ScriptLibraryModal';
 import { PersistenceService } from '../services/PersistenceService';
 import { NameModal } from '../components/NameModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -233,6 +234,7 @@ export const RootLayout: React.FC = () => {
           />
         )}
       </AnimatePresence>
+      <ScriptLibraryModal />
       {/* Top Universal Rail */}
       <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-50">
         <div className="flex items-center gap-3">
@@ -333,81 +335,6 @@ export const RootLayout: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div ref={environmentMenuRef} className="relative">
-              <button
-                onClick={() => setIsEnvironmentMenuOpen((open) => !open)}
-                className="flex items-center gap-2 px-2 py-1 bg-[#0A0A0A] border border-[#222222] rounded hover:border-[#3ECF8E]/30 transition-all min-w-[110px]"
-              >
-                <Globe size={11} className={cn(activeEnvId ? "text-[#3ECF8E]" : "text-[#555555]")} />
-                <span className="text-[8px] font-black uppercase tracking-widest text-[#AAAAAA] truncate flex-1 text-left">
-                  {environments.find(e => e.id === activeEnvId)?.name || 'Local Env'}
-                </span>
-                <ChevronDown size={8} className="text-[#555555]" />
-              </button>
-
-              <div className={cn(
-                "absolute top-full right-0 mt-1 w-64 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-[60]",
-                isEnvironmentMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
-              )}>
-                <div className="px-2 pb-2 border-b border-[var(--border-subtle)]">
-                  <input
-                    value={envFilterQuery}
-                    onChange={(e) => setEnvFilterQuery(e.target.value)}
-                    placeholder="SEARCH_ENVIRONMENTS..."
-                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-md py-1.5 px-2 text-[10px] font-mono text-[var(--text-muted)] focus:outline-none focus:border-[var(--brand)]/40"
-                  />
-                </div>
-                <div 
-                  onClick={() => {
-                    setActiveEnvId(null);
-                    setIsEnvironmentMenuOpen(false);
-                  }}
-                  className={cn(
-                    "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[var(--bg-deep)] transition-colors",
-                    !activeEnvId ? "text-[var(--brand)]" : "text-[var(--text-dim)]"
-                  )}
-                >
-                  No Environment
-                </div>
-                {filteredEnvironments.map(env => (
-                  <div 
-                    key={env.id}
-                    onClick={() => {
-                      setActiveEnvId(env.id);
-                      setIsEnvironmentMenuOpen(false);
-                    }}
-                    className={cn(
-                      "px-3 py-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer hover:bg-[var(--bg-deep)] transition-colors",
-                      activeEnvId === env.id ? "text-[var(--brand)]" : "text-[var(--text-muted)]"
-                    )}
-                  >
-                    {env.name}
-                  </div>
-                ))}
-                {filteredEnvironments.length === 0 && (
-                  <div className="px-3 py-3 text-[9px] font-bold uppercase tracking-widest text-[var(--text-dim)]">No matches</div>
-                )}
-                <div className="px-2 pt-2 mt-1 border-t border-[var(--border-subtle)]">
-                  <button
-                    onClick={() => {
-                      addTab({
-                        id: 'tab-environments',
-                        type: 'environment-manager',
-                        name: 'Environments',
-                        environmentId: activeEnvId || undefined,
-                      });
-                      setIsEnvironmentMenuOpen(false);
-                    }}
-                    className="w-full py-1.5 rounded-md border border-[var(--border-subtle)] text-[9px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-all"
-                  >
-                    Show All Environments
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full">
             {syncStatus === 'saving' ? (
               <>
@@ -431,57 +358,6 @@ export const RootLayout: React.FC = () => {
           
           <div className="flex items-center gap-1">
              <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
-             <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Bell size={14} /></button>
-             <button 
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="p-1.5 text-[#555555] hover:text-[#3ECF8E] transition-all"
-             >
-               <Settings size={14} />
-             </button>
-          </div>
-
-          <div className="h-6 w-px bg-[var(--border-subtle)]" />
-
-          <div ref={profileMenuRef} className="relative">
-            <button
-              onClick={() => setIsProfileMenuOpen((open) => !open)}
-              className="flex items-center gap-3 pl-2 group"
-            >
-              <div className="text-right">
-                <div className="text-[10px] font-black text-white uppercase tracking-tighter group-hover:text-[var(--brand)] transition-colors">{profile?.full_name}</div>
-                <div className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest leading-none">Pro Node</div>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-subtle)] flex items-center justify-center p-0.5 group-hover:border-[var(--brand)]/50 transition-all shadow-[0_0_10px_var(--brand-muted)]">
-                 <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--brand)] to-[var(--bg-elevated)] flex items-center justify-center">
-                    <User size={14} className="text-black" />
-                 </div>
-              </div>
-            </button>
-
-            <div className={cn(
-              "absolute top-full right-0 mt-2 w-48 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl py-2 transition-all z-50",
-              isProfileMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
-            )}>
-              <div className="px-4 py-2 border-b border-[var(--border-subtle)] mb-1">
-                <p className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Protocol Session</p>
-              </div>
-              <button
-                onClick={handleToggleTheme}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-[var(--text-muted)] hover:bg-[var(--bg-deep)] hover:text-[var(--brand)] transition-colors uppercase tracking-widest flex items-center gap-2"
-              >
-                {settings.appearance.theme === 'dark' ? <Sun size={12} /> : <Moon size={12} />}
-                {settings.appearance.theme === 'dark' ? 'Switch To Light' : 'Switch To Dark'}
-              </button>
-              <button 
-                onClick={() => {
-                  setIsProfileMenuOpen(false);
-                  handleLogout();
-                }}
-                className="w-full px-4 py-2 text-left text-[11px] font-bold text-red-500 hover:bg-red-500/10 transition-colors uppercase tracking-widest flex items-center gap-2 border-t border-[var(--border-subtle)] mt-1"
-              >
-                <Plus size={14} className="rotate-45" /> Logout Session
-              </button>
-            </div>
           </div>
         </div>
       </header>

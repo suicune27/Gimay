@@ -161,12 +161,14 @@ export async function ensureDatabaseSchema(
 
     onProgress?.('Comparing current database structure', 40);
 
+    // Even if upToDate is true (meaning all tables exist), 
+    // we still execute the script to ensure ALL columns and constraints are correct 
+    // (the "Repair" section of the script handles this IDEMPOTENTLY).
     if (compare.upToDate) {
-      onProgress?.('Database structure is up to date', 95);
-      return { success: true, updated: false, missingTables: [] };
+      onProgress?.('Ensuring schema integrity and relationships', 60);
+    } else {
+      onProgress?.(`Applying schema updates (${compare.missingTables.length} missing tables)`, 55);
     }
-
-    onProgress?.(`Applying schema updates (${compare.missingTables.length} missing tables)`, 55);
 
     const client = createClient(supabaseUrl, anonOrServiceKey);
     const statements = splitSqlStatements(compare.script);

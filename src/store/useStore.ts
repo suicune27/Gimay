@@ -105,6 +105,8 @@ interface AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   sidebarMode: 'expanded' | 'compact' | 'hidden';
   setSidebarMode: (mode: 'expanded' | 'compact' | 'hidden') => void;
+  isSidebarPinned: boolean;
+  setIsSidebarPinned: (pinned: boolean) => void;
   layoutOrientation: 'vertical' | 'horizontal';
   setLayoutOrientation: (orientation: 'vertical' | 'horizontal') => void;
   consoleCollapsed: boolean;
@@ -487,10 +489,12 @@ export const useStore = create<AppState>()(
       
       sidebarWidth: 300,
       setSidebarWidth: (width) => set({ sidebarWidth: width }),
-      sidebarCollapsed: false,
+      sidebarCollapsed: true,
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-      sidebarMode: 'expanded',
+      sidebarMode: 'compact',
       setSidebarMode: (mode) => set({ sidebarMode: mode, sidebarCollapsed: mode !== 'expanded' }),
+      isSidebarPinned: false,
+      setIsSidebarPinned: (pinned) => set({ isSidebarPinned: pinned }),
       layoutOrientation: 'vertical',
       setLayoutOrientation: (orientation) => set({ layoutOrientation: orientation }),
       consoleCollapsed: true,
@@ -698,6 +702,7 @@ export const useStore = create<AppState>()(
         sidebarWidth: state.sidebarWidth,
         sidebarCollapsed: state.sidebarCollapsed,
         sidebarMode: state.sidebarMode,
+        isSidebarPinned: state.isSidebarPinned,
         layoutOrientation: state.layoutOrientation,
         consoleCollapsed: state.consoleCollapsed,
         landingSkipped: state.landingSkipped,

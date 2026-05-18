@@ -20,12 +20,23 @@ export function getTenantSupabaseConfig() {
   return SecureConfigStorage.getSupabaseConfig();
 }
 
+const CLIENT_CACHE: Record<string, any> = {};
+
+function getCachedClient(url: string, anonKey: string) {
+  const key = `${url}_${anonKey}`;
+  if (!CLIENT_CACHE[key]) {
+    CLIENT_CACHE[key] = createClient(url, anonKey);
+    (CLIENT_CACHE[key] as any).config = { url, anonKey };
+  }
+  return CLIENT_CACHE[key];
+}
+
 // Global client: Only uses environment variables
 export const globalSupabase = (() => {
-  const { url, anonKey } = getGlobalSupabaseConfig();
-  return createClient(
-    url || 'https://placeholder-project.supabase.co',
-    anonKey || 'placeholder-anon-key'
+  const config = getGlobalSupabaseConfig();
+  return getCachedClient(
+    config.url || 'https://placeholder-project.supabase.co',
+    config.anonKey || 'placeholder-anon-key'
   );
 })();
 
@@ -43,9 +54,10 @@ export function getSupabaseConfig() {
 // Create a client that always uses current config (tenant preferred)
 function createSupabaseClient() {
   const { url, anonKey } = getSupabaseConfig();
-  const supabaseUrl = url || 'https://placeholder-project.supabase.co';
-  const supabaseAnonKey = anonKey || 'placeholder-anon-key';
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return getCachedClient(
+    url || 'https://placeholder-project.supabase.co',
+    anonKey || 'placeholder-anon-key'
+  );
 }
 
 export let supabase = createSupabaseClient();

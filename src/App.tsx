@@ -14,7 +14,7 @@ import { ToastContainer } from './components/Toast';
 
 export default function App() {
   const { setSyncStatus, settings, setProfile, landingSkipped, setLandingSkipped, reset: resetStore } = useStore();
-  const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode } = useOnboardingStore();
+  const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +27,7 @@ export default function App() {
 
   // Check for deep link invite
   useEffect(() => {
-    if (!isConfigured) {
+    if (hasHydrated && !isConfigured) {
       const params = new URLSearchParams(window.location.search);
       const inviteCode = params.get('invite');
       if (inviteCode) {
@@ -39,7 +39,7 @@ export default function App() {
         window.history.replaceState({}, document.title, newUrl);
       }
     }
-  }, [isConfigured, setStep, setSetupMode]);
+  }, [hasHydrated, isConfigured, setStep, setSetupMode]);
   const [schemaBootstrapLoading, setSchemaBootstrapLoading] = useState(false);
   const [schemaBootstrapMessage, setSchemaBootstrapMessage] = useState('Checking database structure...');
   const [schemaBootstrapError, setSchemaBootstrapError] = useState<string | null>(null);
@@ -93,80 +93,77 @@ export default function App() {
   }, [settings.appearance.theme, settings.appearance.accentColor]);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+
     const unsubscribeSync = syncManager.onStatusChange((status) => {
       setSyncStatus(status);
     });
 
-    globalSupabase.auth.getSession().then(({ data: { session } }) => {
+    const handleAuthChange = async (event: string, session: any) => {
+      console.log(`[AUTH] Event: ${event}`, { 
+        sessionId: session?.user?.id, 
+        currentUserId: useOnboardingStore.getState().userId,
+        isConfigured: useOnboardingStore.getState().isConfigured 
+      });
+
       setSession(session);
+      
       if (session?.user?.id) {
         fetchProfile(session.user.id);
         
-        // Check for teams if not configured
-        if (!isConfigured) {
+        const store = useOnboardingStore.getState();
+        const currentIsConfigured = store.isConfigured;
+        const currentStep = store.step;
+        const currentUserId = store.userId;
+
+        // Check for teams if REALLY not configured and at welcome screen
+        if (!currentIsConfigured && currentStep === 'welcome') {
           PersistenceService.fetchUserTeams(session.user.id).then(teams => {
-            if (teams && teams.length > 0) {
-              setStep('team-select');
-            } else {
-              setStep('welcome');
+            const latestStore = useOnboardingStore.getState();
+            if (!latestStore.isConfigured && latestStore.step === 'welcome') {
+              if (teams && teams.length > 0) {
+                setStep('team-select');
+              }
             }
-          }).catch(err => {
-            console.error('Initial team check failed:', err);
-            setStep('welcome');
-          });
+          }).catch(err => console.error('Team check failed:', err));
         }
 
-        // If userId in store is different, reset onboarding
-        if (userId !== session.user.id) {
+        // Only reset onboarding if we DEFINITELY have a user ID mismatch and not currently configuring
+        if (currentUserId && currentUserId !== session.user.id && !currentIsConfigured) {
+          console.warn('[AUTH] User mismatch detected, resetting fallback state');
           resetOnboarding();
           resetStore();
+        }
+
+        // If the session changed but we didn't have a userId, or it's a new session, sync it
+        if (!currentUserId || (event === 'SIGNED_IN')) {
           setUserId(session.user.id);
         }
       } else {
-        resetStore();
-        resetOnboarding();
-        setUserId(null);
+        // If session is lost completely
+        if (event === 'SIGNED_OUT') {
+          resetStore();
+          resetOnboarding();
+          setUserId(null);
+        }
       }
       setLoading(false);
+    };
+
+    // Initial check
+    globalSupabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthChange('INITIAL_SESSION', session);
     });
 
-    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session?.user?.id) {
-        fetchProfile(session.user.id);
-
-        // Check for teams if not configured
-        if (!isConfigured) {
-          PersistenceService.fetchUserTeams(session.user.id).then(teams => {
-            if (teams && teams.length > 0) {
-              setStep('team-select');
-            } else {
-              setStep('welcome');
-            }
-          }).catch(err => {
-            console.error('Auth change team check failed:', err);
-            setStep('welcome');
-          });
-        }
-
-        if (userId !== session.user.id) {
-          resetOnboarding();
-          resetStore();
-          setUserId(session.user.id);
-        }
-      } else {
-        resetStore();
-        resetOnboarding();
-        setUserId(null);
-      }
-      setLoading(false);
+    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((event, session) => {
+      handleAuthChange(event, session);
     });
 
     return () => {
       subscription.unsubscribe();
       unsubscribeSync();
     };
-  }, [setSyncStatus, setProfile, userId, resetOnboarding, setUserId]);
+  }, [hasHydrated, setSyncStatus, setProfile, resetOnboarding, setUserId, resetStore, setStep]);
 
   const runSchemaBootstrap = useCallback(async () => {
     if (!session?.user?.id || !isConfigured) {
@@ -194,18 +191,16 @@ export default function App() {
       return;
     }
 
-    if (!compare.upToDate) {
-      setSchemaBootstrapMessage(`Structure out of date (${compare.missingTables.length} missing tables). Auto-updating...`);
+    setSchemaBootstrapMessage(`Ensuring database integrity...`);
 
-      const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
-        setSchemaBootstrapMessage(label);
-      });
+    const update = await ensureDatabaseSchema(config.url, config.anonKey, (label) => {
+      setSchemaBootstrapMessage(label);
+    });
 
-      if (!update.success) {
-        setSchemaBootstrapLoading(false);
-        setSchemaBootstrapError(update.error || 'Failed to auto-update database structure.');
-        return;
-      }
+    if (!update.success) {
+      setSchemaBootstrapLoading(false);
+      setSchemaBootstrapError(update.error || 'Failed to auto-update database structure.');
+      return;
     }
 
     schemaCheckedUserRef.current = session.user.id;
