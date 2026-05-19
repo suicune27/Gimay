@@ -669,18 +669,19 @@ export const RequestEditor: React.FC = () => {
                     disabled={!canEdit}
                     value={activeRequest!.method}
                     onChange={(e) => updateRequest(activeRequest!.id, { method: e.target.value as any })}
+                    style={{ backgroundColor: '#141414', color: '#3ECF8E', colorScheme: 'dark' }}
                     className={cn(
                       "w-full bg-transparent text-[9px] font-black py-2 px-3 outline-none cursor-pointer text-[#3ECF8E] appearance-none",
                       !canEdit && "opacity-50 cursor-not-allowed"
                     )}
                   >
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="PATCH">PATCH</option>
-                    <option value="DELETE">DELETE</option>
-                    <option value="OPTIONS">OPTIONS</option>
-                    <option value="HEAD">HEAD</option>
+                    <option value="GET" style={{ backgroundColor: '#141414', color: '#3ECF8E' }}>GET</option>
+                    <option value="POST" style={{ backgroundColor: '#141414', color: '#F59E0B' }}>POST</option>
+                    <option value="PUT" style={{ backgroundColor: '#141414', color: '#3B82F6' }}>PUT</option>
+                    <option value="PATCH" style={{ backgroundColor: '#141414', color: '#6366F1' }}>PATCH</option>
+                    <option value="DELETE" style={{ backgroundColor: '#141414', color: '#EF4444' }}>DELETE</option>
+                    <option value="OPTIONS" style={{ backgroundColor: '#141414', color: '#A0A0A0' }}>OPTIONS</option>
+                    <option value="HEAD" style={{ backgroundColor: '#141414', color: '#A0A0A0' }}>HEAD</option>
                   </select>
                   <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40" />
                 </div>
