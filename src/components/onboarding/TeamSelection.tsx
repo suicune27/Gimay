@@ -8,6 +8,7 @@ import { Team } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
 import { globalSupabase } from '../../lib/supabase';
+import { DatabaseMigrationModal } from '../DatabaseMigrationModal';
 
 export const TeamSelection: React.FC = () => {
   const { setStep, setSetupMode, setIsConfigured, setWorkspaceId, setTeamId, setUserId } = useOnboardingStore();
@@ -18,6 +19,7 @@ export const TeamSelection: React.FC = () => {
   const { logout } = useAuth();
 
   const [selectingTeamId, setSelectingTeamId] = useState<string | null>(null);
+  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
 
   const globalUrl = (globalSupabase as any).config?.url || 'unknown';
 
@@ -228,13 +230,20 @@ export const TeamSelection: React.FC = () => {
             <Key size={14} className="text-[#3ECF8E]" /> Join with Code
           </button>
           <button
-            onClick={() => addToast({ type: 'info', message: 'Migration system coming soon.' })}
+            onClick={() => setIsMigrationModalOpen(true)}
             className="col-span-2 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1A1A1A] border border-[#222222] text-[10px] font-black text-[#888888] uppercase tracking-widest hover:text-white hover:border-[#3ECF8E]/30 transition-all"
           >
             <Database size={14} className="text-[#3ECF8E]" /> Migrate Database
           </button>
         </div>
       </div>
+
+      <DatabaseMigrationModal
+        isOpen={isMigrationModalOpen}
+        onClose={() => setIsMigrationModalOpen(false)}
+        userId={profile?.id}
+        addToast={addToast}
+      />
     </motion.div>
   );
 };
