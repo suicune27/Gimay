@@ -8,6 +8,15 @@
   --color-brand: var(--brand);
   --color-brand-muted: var(--brand-muted);
   --color-brand-border: var(--brand-border);
+  
+  --color-deep: var(--bg-deep);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-text-main: var(--text-main);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
 }
 
 :root {
@@ -29,17 +38,22 @@
 }
 
 .light {
-  --bg-deep: #F5F5F5;
+  --bg-deep: #F4F5F6;
   --bg-surface: #FFFFFF;
-  --bg-elevated: #E5E5E5;
-  --border-subtle: #DDDDDD;
-  --border-strong: #CCCCCC;
-  --text-main: #222222;
-  --text-muted: #666666;
-  --text-dim: #888888;
+  --bg-elevated: #EBECEF;
+  --border-subtle: #E2E4E8;
+  --border-strong: #D1D4DB;
+  --text-main: #1A1C20;
+  --text-muted: #626770;
+  --text-dim: #9095A0;
   --brand: #3ECF8E;
-  --brand-muted: rgba(62, 207, 142, 0.1);
-  --brand-border: rgba(62, 207, 142, 0.2);
+  --brand-muted: rgba(62, 207, 142, 0.08);
+  --brand-border: rgba(62, 207, 142, 0.15);
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.01);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
 
 * {
@@ -161,5 +175,274 @@ body {
 
 .token.entity {
   cursor: help;
+}
+
+/* ==========================================
+   Light Mode Overrides for Hardcoded Dark Themes
+   ========================================== */
+.light [class*="bg-[#"] {
+  background-color: var(--bg-surface) !important;
+}
+
+/* Deep background containers (Layout backgrounds, sidebars, main console base) */
+.light [class*="bg-[#0A0A0A]"],
+.light [class*="bg-[#0a0a0a]"],
+.light [class*="bg-[#050505]"],
+.light [class*="bg-[#070708]"],
+.light [class*="bg-[#080808]"],
+.light [class*="bg-[#08080A]"],
+.light [class*="bg-[#090909]"],
+.light [class*="bg-[#09090B]"],
+.light [class*="bg-[#141414]"],
+.light [class*="bg-[#111111]"],
+.light [class*="bg-[#0D0D0D]"],
+.light [class*="bg-[#1E1E1E]"],
+.light [class*="bg-[#161616]"],
+.light [class*="bg-[#242424]"],
+.light [class*="bg-[#2a2a2a]"],
+.light [class*="bg-[#2c2c2c]"],
+.light [class*="bg-[#1e1e1e]"] {
+  background-color: var(--bg-deep) !important;
+}
+
+/* Elevate surfaces and modals cards */
+.light [class*="bg-[#0F0F0F]"],
+.light [class*="bg-[#0f0f0f]"],
+.light [class*="bg-[#0B0B0C]"],
+.light [class*="bg-[#0F0F12]"] {
+  background-color: var(--bg-surface) !important;
+}
+
+/* Interactive components and secondary sections */
+.light [class*="bg-[#1A1A1A]"],
+.light [class*="bg-[#1a1a1a]"],
+.light [class*="bg-[#1A1A1E]"],
+.light [class*="bg-[#1A1A22]"],
+.light [class*="bg-[#121216]"],
+.light [class*="bg-[#1F1F1F]"],
+.light [class*="bg-[#2A2A2A]"] {
+  background-color: var(--bg-elevated) !important;
+}
+
+/* Transform flat dark row bubbles (Header list items, param rows) into premium elevated cards */
+.light [class*="bg-[#0E0E0E]/60"],
+.light [class*="bg-[#0E0E0E]"],
+.light [class*="bg-[#0A0A0A]/40"] {
+  background-color: var(--bg-surface) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border: 1px solid var(--border-subtle) !important;
+  color: var(--text-main) !important;
+}
+
+.light [class*="focus:bg-[#0F0F0F]"],
+.light [class*="focus:bg-[#0f0f0f]"],
+.light [class*="focus:bg-[#070707]"] {
+  background-color: var(--bg-surface) !important;
+}
+
+/* Beautiful hover transitions and elevations */
+.light [class*="hover:bg-[#1A1A1A]"]:hover,
+.light [class*="hover:bg-[#1a1a1a]"]:hover,
+.light [class*="hover:bg-[#121216]"]:hover,
+.light [class*="hover:bg-[#1A1A1E]"]:hover,
+.light [class*="hover:bg-white/[0.02]"]:hover,
+.light [class*="hover:bg-white/[0.05]"]:hover {
+  background-color: var(--bg-elevated) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* HTML Form Dropdowns & Option panels */
+.light select, 
+.light select option {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-main) !important;
+}
+
+/* Tactile inputs focus animations */
+.light input,
+.light textarea {
+  border-color: var(--border-subtle) !important;
+}
+.light input:focus,
+.light textarea:focus {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 2px var(--brand-muted) !important;
+}
+
+/* Translucent Glassmorphic components (Toasts, Popovers, Context Menus) */
+.light [class*="bg-[#0C0C0E]/95"],
+.light [class*="bg-[#0C0C0E]"],
+.light [class*="bg-[#0A0A0C]/95"],
+.light [class*="bg-black/40"],
+.light [class*="bg-black/60"],
+.light [class*="bg-[#000000]/80"] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(16px) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* Intercept harsh box shadows to render ultra-soft multi-layered shadows */
+.light .shadow-sm { box-shadow: var(--shadow-sm) !important; }
+.light .shadow-md { box-shadow: var(--shadow-md) !important; }
+.light .shadow-lg { box-shadow: var(--shadow-lg) !important; }
+.light .shadow-xl { box-shadow: var(--shadow-xl) !important; }
+.light .shadow-2xl { box-shadow: var(--shadow-xl) !important; }
+
+/* Text colors translations */
+.light [class*="text-[#"] {
+  color: var(--text-main) !important;
+}
+
+.light [class*="text-[#777777]"],
+.light [class*="text-[#888888]"],
+.light [class*="text-[#88888F]"],
+.light [class*="text-[#999999]"],
+.light [class*="text-[#666666]"],
+.light [class*="text-[#555555]"],
+.light [class*="text-[#55555C]"],
+.light [class*="text-[#abb2bf]"] {
+  color: var(--text-muted) !important;
+}
+
+.light [class*="text-[#444444]"],
+.light [class*="text-[#333333]"] {
+  color: var(--text-dim) !important;
+}
+
+.light [class*="text-white"],
+.light [class*="text-slate-100"],
+.light [class*="text-zinc-100"] {
+  color: var(--text-main) !important;
+}
+
+/* Keep vibrant accents on status texts */
+.light [class*="text-[#3ECF8E]"],
+.light [class*="text-[var(--brand)]"] {
+  color: var(--brand) !important;
+}
+.light [class*="text-[#EF4444]"],
+.light [class*="text-red-500"],
+.light [class*="text-danger"] {
+  color: var(--danger) !important;
+}
+.light [class*="text-[#10B981]"],
+.light [class*="text-emerald-500"],
+.light [class*="text-success"] {
+  color: var(--success) !important;
+}
+.light [class*="text-[#3B82F6]"],
+.light [class*="text-blue-500"],
+.light [class*="text-info"] {
+  color: var(--info) !important;
+}
+
+.light [class*="bg-[#3ECF8E]"]:not([class*="/"]),
+.light [class*="bg-[var(--brand)]"]:not([class*="/"]) {
+  background-color: var(--brand) !important;
+  color: #0A0A0A !important;
+}
+.light [class*="bg-[#3ECF8E]/"],
+.light [class*="bg-[var(--brand)]/"] {
+  background-color: var(--brand-muted) !important;
+  color: var(--brand) !important;
+  border-color: var(--brand-border) !important;
+}
+.light button[class*="bg-"],
+.light button[class*="bg-[var(--brand)]"],
+.light button[class*="bg-[#3ECF8E]"],
+.light [class*="bg-[#3ECF8E]"] button,
+.light [class*="bg-[var(--brand)]"] button {
+  color: #0A0A0A !important;
+}
+.light [class*="bg-red-500"],
+.light [class*="bg-danger"],
+.light [class*="bg-[#EF4444]"] {
+  background-color: var(--danger) !important;
+  color: #FFFFFF !important;
+}
+.light [class*="bg-red-500"] *,
+.light [class*="bg-danger"] *,
+.light [class*="bg-[#EF4444]"] * {
+  color: #FFFFFF !important;
+}
+.light [class*="bg-red-500/10"],
+.light [class*="bg-[#EF4444]/10"] {
+  background-color: rgba(239, 68, 68, 0.08) !important;
+  color: var(--danger) !important;
+}
+
+/* Translate transparency opacity panels to light theme */
+.light [class*="bg-white/5"] { background-color: rgba(0, 0, 0, 0.03) !important; }
+.light [class*="bg-white/10"] { background-color: rgba(0, 0, 0, 0.06) !important; }
+.light [class*="bg-white/[0.02]"] { background-color: rgba(0, 0, 0, 0.01) !important; }
+.light [class*="bg-white/[0.05]"] { background-color: rgba(0, 0, 0, 0.03) !important; }
+.light [class*="bg-white/[0.1]"] { background-color: rgba(0, 0, 0, 0.06) !important; }
+
+/* Translate opacity white text to high-contrast dark text */
+.light [class*="text-white/10"] { color: rgba(26, 28, 32, 0.08) !important; }
+.light [class*="text-white/20"] { color: rgba(26, 28, 32, 0.16) !important; }
+.light [class*="text-white/30"] { color: rgba(26, 28, 32, 0.25) !important; }
+.light [class*="text-white/40"] { color: var(--text-dim) !important; }
+.light [class*="text-white/50"] { color: var(--text-dim) !important; }
+.light [class*="text-white/60"] { color: var(--text-muted) !important; }
+.light [class*="text-white/70"] { color: var(--text-muted) !important; }
+.light [class*="text-white/80"] { color: var(--text-main) !important; }
+.light [class*="text-white/90"] { color: var(--text-main) !important; }
+
+/* Borders overrides */
+.light [class*="border-[#222222]"],
+.light [class*="border-[#222]"],
+.light [class*="border-[#111111]"],
+.light [class*="border-[#151518]"],
+.light [class*="border-[#1A1A1E]"],
+.light [class*="border-[#1D1D22]"],
+.light [class*="border-[#26262B]"],
+.light [class*="border-[#2A2A2A]"],
+.light [class*="border-[#1A1A22]"],
+.light [class*="border-white/5"],
+.light [class*="border-white/10"] {
+  border-color: var(--border-subtle) !important;
+}
+
+.light [class*="border-[#333333]"],
+.light [class*="border-[#333]"],
+.light [class*="border-[#444444]"] {
+  border-color: var(--border-strong) !important;
+}
+
+/* Placeholders overrides */
+.light input::placeholder,
+.light [class*="placeholder:text-[#333333]"]::placeholder,
+.light [class*="placeholder-[#44444F]"]::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6 !important;
+}
+
+/* Premium Light Mode Prism Syntax tokens */
+.light .token.punctuation {
+  color: var(--text-muted);
+}
+.light .token.property,
+.light .token.tag,
+.light .token.boolean,
+.light .token.number,
+.light .token.constant,
+.light .token.symbol {
+  color: #D97706 !important; /* Beautiful warm amber/orange */
+}
+.light .token.selector,
+.light .token.attr-name,
+.light .token.string,
+.light .token.char,
+.light .token.builtin {
+  color: #059669 !important; /* Soft rich emerald */
+}
+.light .token.keyword {
+  color: #7C3AED !important; /* Premium violet */
+}
+.light .token.function,
+.light .token.class-name {
+  color: #2563EB !important; /* Premium cobalt blue */
 }
 

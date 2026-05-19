@@ -628,7 +628,7 @@ export const Sidebar: React.FC = () => {
             transition={{ type: 'spring', stiffness: 380, damping: 38 }}
             className={cn(
               "h-full flex flex-col relative select-none bg-[#0B0B0C] shrink-0 border-r border-[#151518]",
-              !isSidebarPinned && "shadow-[15px_0_40px_rgba(0,0,0,0.85)] z-50 absolute left-[50px] top-0 bottom-0 backdrop-blur-xl bg-[#0B0B0C]/95"
+              !isSidebarPinned && "z-50 absolute left-[50px] top-0 bottom-0 backdrop-blur-xl bg-[#0B0B0C]/95"
             )}
             style={{ width: `${sidebarWidth}px` }}
           >

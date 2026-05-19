@@ -47,7 +47,8 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
     settings,
     pendingSyncIds,
     syncResource,
-    setIsScriptLibraryOpen
+    setIsScriptLibraryOpen,
+    theme
   } = useStore();
   const { fetchEnvironments } = useDataSync();
 
@@ -403,7 +404,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         <Editor
                           height="240px"
                           language="javascript"
-                          theme="vs-dark"
+                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
                           value={selectedEnvironment.pre_request_script || ''}
                           onMount={(editor, monaco) => {
                             editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
@@ -434,7 +435,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         <Editor
                           height="240px"
                           language="javascript"
-                          theme="vs-dark"
+                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
                           value={selectedEnvironment.test_script || ''}
                           onMount={(editor, monaco) => {
                             editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
@@ -504,7 +505,7 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                         <Editor
                           height="500px"
                           language="markdown"
-                          theme="vs-dark"
+                          theme={theme === 'light' ? 'vs' : 'vs-dark'}
                           value={selectedEnvironment.documentation || ''}
                           onChange={(val) => updateEnvironment(selectedEnvironment.id, { documentation: val || '' })}
                           options={{

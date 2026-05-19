@@ -8,7 +8,7 @@ import { PersistenceService } from '../../services/PersistenceService';
 const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 export const ResponseViewer: React.FC = () => {
-  const { lastResponse } = useStore();
+  const { lastResponse, theme } = useStore();
   const [activeTab, setActiveTab] = React.useState<'Body' | 'Headers' | 'Tests' | 'Console'>('Body');
 
   if (!lastResponse) {
@@ -98,12 +98,12 @@ export const ResponseViewer: React.FC = () => {
             <div className="flex">
               {(['Body', 'Headers', 'Tests', 'Console'] as const).map((tab) => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={cn(
-                    "h-9 px-3 text-[8px] font-black uppercase tracking-[0.2em] border-b-2 transition-all relative",
-                    activeTab === tab ? "border-[#3ECF8E] text-[#3ECF8E]" : "border-transparent text-[#444444] hover:text-[#888888]"
-                  )}
+                   key={tab}
+                   onClick={() => setActiveTab(tab)}
+                   className={cn(
+                     "h-9 px-3 text-[8px] font-black uppercase tracking-[0.2em] border-b-2 transition-all relative",
+                     activeTab === tab ? "border-[#3ECF8E] text-[#3ECF8E]" : "border-transparent text-[#444444] hover:text-[#888888]"
+                   )}
                 >
                   {tab}
                   {tab === 'Tests' && lastResponse.testResults && (
@@ -138,7 +138,7 @@ export const ResponseViewer: React.FC = () => {
                 height="100%"
                 language={(lastResponse.contentType || '').includes('json') ? 'json' : (lastResponse.contentType || '').includes('html') ? 'html' : 'text'}
                 value={content}
-                theme="vs-dark"
+                theme={theme === 'light' ? 'vs' : 'vs-dark'}
                 options={{
                   readOnly: true,
                   minimap: { enabled: true },

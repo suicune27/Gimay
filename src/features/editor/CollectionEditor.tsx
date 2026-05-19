@@ -42,7 +42,8 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
     pendingSyncIds,
     syncResource,
     setIsScriptLibraryOpen,
-    addToast
+    addToast,
+    theme
   } = useStore();
 
   const collection = collections.find(c => c.id === collectionId);
@@ -276,7 +277,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                       <Editor
                         height="500px"
                         language="markdown"
-                        theme="vs-dark"
+                        theme={theme === 'light' ? 'vs' : 'vs-dark'}
                         value={collection.documentation || ''}
                         onChange={(val) => handleUpdate({ documentation: val || '' })}
                         options={{
@@ -336,7 +337,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                       <Editor
                         height="250px"
                         language="javascript"
-                        theme="vs-dark"
+                        theme={theme === 'light' ? 'vs' : 'vs-dark'}
                         value={collection.pre_request_script || ''}
                         onMount={(editor, monaco) => {
                           editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
@@ -369,7 +370,7 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                       <Editor
                         height="250px"
                         language="javascript"
-                        theme="vs-dark"
+                        theme={theme === 'light' ? 'vs' : 'vs-dark'}
                         value={collection.test_script || ''}
                         onMount={(editor, monaco) => {
                           editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));

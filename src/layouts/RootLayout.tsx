@@ -582,11 +582,38 @@ export const RootLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-4 w-px bg-[#222222]" />
-
           <div className="flex items-center gap-1">
              <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
           </div>
+
+          {isElectron() && (
+            <>
+              <div className="h-4 w-px bg-[#222222]" />
+              <div className="flex items-center gap-0.5 ml-1">
+                <button 
+                  onClick={() => (window as any).electron?.minimize()} 
+                  className="p-1.5 rounded hover:bg-white/5 text-[#555555] hover:text-[var(--text-main)] transition-colors flex items-center justify-center"
+                  title="Minimize Window"
+                >
+                  <span className="w-2.5 h-[1.5px] bg-current rounded-full" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electron?.maximize()} 
+                  className="p-1.5 rounded hover:bg-white/5 text-[#555555] hover:text-[var(--text-main)] transition-colors flex items-center justify-center"
+                  title="Maximize Window"
+                >
+                  <span className="w-2 h-2 border border-current rounded-sm" />
+                </button>
+                <button 
+                  onClick={() => (window as any).electron?.close()} 
+                  className="p-1.5 rounded hover:bg-red-500/15 text-[#555555] hover:text-red-500 transition-colors flex items-center justify-center"
+                  title="Close Window"
+                >
+                  <Plus className="rotate-45" size={14} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 

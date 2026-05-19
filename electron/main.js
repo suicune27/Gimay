@@ -1,17 +1,75 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron';
+import { app, BrowserWindow, ipcMain, session, Notification, Tray, Menu } from 'electron';
 import path from 'path';
+import fs from 'fs';
 
 let mainWindow = null;
+let tray = null;
+const stateFilePath = path.join(app.getPath('userData'), 'window-state.json');
+const logsDirPath = path.join(app.getPath('userData'), 'logs');
+
+// Ensure log directories exist
+if (!fs.existsSync(logsDirPath)) {
+  fs.mkdirSync(logsDirPath, { recursive: true });
+}
+
+// Exception Logging helper
+function logException(error) {
+  const logFile = path.join(logsDirPath, 'crash.log');
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${error.stack || error}\n\n`;
+  fs.appendFileSync(logFile, logMessage);
+  console.error('[Electron Runtime Error]', error);
+}
+
+process.on('uncaughtException', logException);
+process.on('unhandledRejection', logException);
+
+// Load previous window dimensions
+function loadWindowState() {
+  try {
+    if (fs.existsSync(stateFilePath)) {
+      const data = fs.readFileSync(stateFilePath, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Failed to load window state:', e);
+  }
+  return { width: 1280, height: 800, x: undefined, y: undefined };
+}
+
+// Save window state
+function saveWindowState() {
+  if (!mainWindow) return;
+  try {
+    const bounds = mainWindow.getBounds();
+    fs.writeFileSync(stateFilePath, JSON.stringify(bounds), 'utf-8');
+  } catch (e) {
+    console.error('Failed to save window state:', e);
+  }
+}
 
 function createWindow() {
+  const windowState = loadWindowState();
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: windowState.width,
+    height: windowState.height,
+    x: windowState.x,
+    y: windowState.y,
+    minWidth: 900,
+    minHeight: 600,
+    frame: true, // Keep standard OS frame (can be set to false for borderless)
+    show: false,
     webPreferences: {
-      preload: path.join(app.getAppPath(), 'electron/preload.js'),
+      preload: path.join(app.getAppPath(), 'electron/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      webSecurity: true,
     },
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
   if (process.env.NODE_ENV === 'development') {
@@ -19,10 +77,89 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
   }
+
+  mainWindow.on('close', () => {
+    saveWindowState();
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+function createTray() {
+  try {
+    // Generate a simple template icon or use product icon if exists
+    const trayIconPath = path.join(app.getAppPath(), 'public/favicon.ico');
+    if (fs.existsSync(trayIconPath)) {
+      tray = new Tray(trayIconPath);
+    } else {
+      tray = new Tray(path.join(app.getAppPath(), 'electron/preload.cjs')); // fallback
+    }
+
+    const contextMenu = Menu.buildFromTemplate([
+      { label: 'Restore Application', click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          } else {
+            createWindow();
+          }
+        }
+      },
+      { label: 'Check for Updates', click: () => checkForUpdates() },
+      { type: 'separator' },
+      { label: 'Quit Putmen', click: () => {
+          saveWindowState();
+          app.quit();
+        }
+      }
+    ]);
+
+    tray.setToolTip('Putmen API Engine');
+    tray.setContextMenu(contextMenu);
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
+  } catch (err) {
+    console.log('[Electron Tray] Failed to initialize tray system menu:', err.message);
+  }
+}
+
+async function checkForUpdates() {
+  console.log('[Electron Auto-Updater] Invoking updates scan...');
+  try {
+    const { autoUpdater } = await import('electron-updater');
+    
+    autoUpdater.on('update-available', (info) => {
+      mainWindow?.webContents.send('update-available', info);
+      new Notification({
+        title: 'Update Available',
+        body: `Version ${info.version} is ready to download.`
+      }).show();
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      mainWindow?.webContents.send('update-downloaded', info);
+    });
+
+    autoUpdater.on('error', (err) => {
+      mainWindow?.webContents.send('update-error', err.message);
+    });
+
+    await autoUpdater.checkForUpdatesAndNotify();
+  } catch (err) {
+    console.log('[Electron Main Update Mock] Dev-mock update verification triggered');
+    mainWindow?.webContents.send('update-error', 'Offline / local server environment');
+  }
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
 
   // IPC channel to resolve OS proxy for a specific URL
   ipcMain.handle('resolve-proxy', async (event, url) => {
@@ -40,6 +177,72 @@ app.whenReady().then(() => {
       await configureSessionProxy(proxySettings);
     } catch (e) {
       console.error('[Electron Main] Proxy update error:', e);
+    }
+  });
+
+  // Safe Store management handlers
+  const storeFilePath = path.join(app.getPath('userData'), 'app-store.json');
+  ipcMain.handle('store-get', (event, key) => {
+    try {
+      if (fs.existsSync(storeFilePath)) {
+        const data = JSON.parse(fs.readFileSync(storeFilePath, 'utf-8'));
+        return data[key];
+      }
+    } catch (e) {
+      console.error('Failed to read from local config store:', e);
+    }
+    return null;
+  });
+
+  ipcMain.on('store-set', (event, key, val) => {
+    try {
+      let data = {};
+      if (fs.existsSync(storeFilePath)) {
+        data = JSON.parse(fs.readFileSync(storeFilePath, 'utf-8'));
+      }
+      data[key] = val;
+      fs.writeFileSync(storeFilePath, JSON.stringify(data), 'utf-8');
+    } catch (e) {
+      console.error('Failed to write to local config store:', e);
+    }
+  });
+
+  // Custom Titlebar IPC events listeners
+  ipcMain.on('window-minimize', () => {
+    mainWindow?.minimize();
+  });
+
+  ipcMain.on('window-maximize', () => {
+    if (mainWindow) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+    }
+  });
+
+  ipcMain.on('window-close', () => {
+    mainWindow?.close();
+  });
+
+  // Native Notification bridge
+  ipcMain.on('show-notification', (event, { title, body }) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show();
+    }
+  });
+
+  ipcMain.on('check-for-updates', () => {
+    checkForUpdates();
+  });
+
+  ipcMain.on('restart-app', () => {
+    try {
+      app.relaunch();
+      app.exit(0);
+    } catch (e) {
+      console.error('Failed to relaunch app:', e);
     }
   });
 });
