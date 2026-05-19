@@ -164,6 +164,11 @@ async function checkForUpdates() {
   try {
     const { autoUpdater } = await import('electron-updater');
 
+    // Prevent memory leaks by removing previously registered listeners from the singleton
+    autoUpdater.removeAllListeners('update-available');
+    autoUpdater.removeAllListeners('update-downloaded');
+    autoUpdater.removeAllListeners('error');
+
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update-available', info);
       new Notification({

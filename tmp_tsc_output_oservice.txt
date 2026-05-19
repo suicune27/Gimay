@@ -1,1 +1,0 @@
-﻿src/lib/SecureConfigStorage.ts(1,8): error TS1259: Module '"C:/Users/gamromay/Downloads/PutmanDesktop/Putman_Desktop/node_modules/@types/crypto-js/index"' can only be default-imported using the 'esModuleInterop' flag
