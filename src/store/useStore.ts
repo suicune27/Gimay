@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { PersistenceService } from '../services/PersistenceService';
 import { syncManager } from '../services/SyncService';
 import { RequestUtils } from '../utils/RequestUtils';
@@ -773,6 +773,62 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'omni-node-storage',
+      storage: createJSONStorage(() => ({
+        getItem: (name) => {
+          try {
+            return localStorage.getItem(name);
+          } catch (e) {
+            console.error("Failed to read from localStorage:", e);
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, value);
+          } catch (e) {
+            console.warn("[Storage Quota Exceeded] Caught write exception safely. Running store in-memory.", e);
+            // Self-healing: clear non-essential bloated localstorage items
+            try {
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key !== name && !key.includes('sb-') && key !== 'gmy_theme_accent') {
+                  localStorage.removeItem(key);
+                }
+              }
+            } catch (err) {
+              console.error("Failed self-healing cleanup:", err);
+            }
+          }
+        },
+        removeItem: (name) => {
+          try {
+            localStorage.removeItem(name);
+          } catch (e) {
+            console.error("Failed to remove from localStorage:", e);
+          }
+        },
+        key: (index) => {
+          try {
+            return localStorage.key(index);
+          } catch (e) {
+            return null;
+          }
+        },
+        clear: () => {
+          try {
+            localStorage.clear();
+          } catch (e) {
+            console.error("Failed to clear localStorage:", e);
+          }
+        },
+        get length() {
+          try {
+            return localStorage.length;
+          } catch (e) {
+            return 0;
+          }
+        }
+      })),
       partialize: (state) => ({ 
         openTabs: (state.openTabs || []).map(tab => {
           if (tab && 'response' in tab) {

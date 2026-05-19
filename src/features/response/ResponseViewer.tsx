@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   CheckCircle2, 
   Copy, 
@@ -8,9 +8,10 @@ import {
   Activity,
   Clock,
   Database,
+  Layout,
+  Sparkles,
   Eye,
-  FileCode,
-  Layout
+  FileCode
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -21,8 +22,9 @@ import 'prismjs/components/prism-json';
 import '../../themes/prism-gimay.css';
 
 export const ResponseViewer: React.FC = () => {
-  const { lastResponse, isSending } = useStore();
+  const { lastResponse, isSending, addToast } = useStore();
   const [activeView, setActiveView] = useState<'pretty' | 'raw' | 'headers' | 'tests'>('pretty');
+  const [shouldBeautify, setShouldBeautify] = useState(true);
 
   if (isSending) {
     return <LoadingState />;
@@ -31,6 +33,24 @@ export const ResponseViewer: React.FC = () => {
   if (!lastResponse) {
     return <EmptyResponseState />;
   }
+
+  const getFormattedBody = () => {
+    if (!lastResponse || !lastResponse.body) return '';
+    const bodyStr = typeof lastResponse.body === 'object' 
+      ? JSON.stringify(lastResponse.body, null, 2)
+      : lastResponse.body;
+      
+    if (!shouldBeautify) {
+      return bodyStr;
+    }
+    
+    try {
+      const parsed = typeof lastResponse.body === 'string' ? JSON.parse(lastResponse.body) : lastResponse.body;
+      return JSON.stringify(parsed, null, 2);
+    } catch (e) {
+      return bodyStr;
+    }
+  };
 
   const isSuccess = lastResponse.status >= 200 && lastResponse.status < 300;
 
@@ -91,13 +111,19 @@ export const ResponseViewer: React.FC = () => {
           {activeView === 'pretty' && (
             <div className="font-mono text-xs text-[#AAAAAA]">
               <Editor
-                value={JSON.stringify(lastResponse.body, null, 2)}
+                value={getFormattedBody()}
                 onValueChange={() => {}}
                 highlight={(code) => highlight(code, languages.json, 'json')}
                 padding={10}
                 className="prism-editor bg-[#0A0A0A]"
                 readOnly
               />
+            </div>
+          )}
+
+          {activeView === 'raw' && (
+            <div className="font-mono text-xs text-[#AAAAAA] whitespace-pre-wrap break-all bg-[#0A0A0A] p-4 rounded-xl border border-white/[0.03]">
+              {typeof lastResponse.body === 'object' ? JSON.stringify(lastResponse.body) : lastResponse.body}
             </div>
           )}
 
@@ -115,8 +141,39 @@ export const ResponseViewer: React.FC = () => {
 
         {/* Action Bar */}
         <div className="h-10 border-t border-[#222222] bg-[#0F0F0F] px-4 flex items-center justify-between">
-           <div className="text-[9px] font-mono text-[#333333] uppercase">
-             {lastResponse.contentType}
+           <div className="text-[9px] font-mono text-[#333333] uppercase flex items-center gap-4">
+             <span>{lastResponse.contentType}</span>
+             {activeView === 'pretty' && (
+               <button 
+                 onClick={() => {
+                   try {
+                     const bodyStr = typeof lastResponse.body === 'object' 
+                       ? JSON.stringify(lastResponse.body) 
+                       : lastResponse.body;
+                     JSON.parse(bodyStr);
+                     setShouldBeautify(!shouldBeautify);
+                     addToast({ 
+                       type: 'success', 
+                       message: shouldBeautify ? 'Beautifier disabled.' : 'Beautifier enabled.' 
+                     });
+                   } catch (e) {
+                     addToast({ 
+                       type: 'error', 
+                       message: 'Response payload is not valid JSON.' 
+                     });
+                   }
+                 }}
+                 className={cn(
+                   "px-2 py-0.5 rounded border text-[8px] font-black uppercase tracking-widest transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm",
+                   shouldBeautify 
+                     ? "bg-[#3ECF8E]/20 text-[#3ECF8E] border-[#3ECF8E]/40" 
+                     : "border-[#222222] text-[#555555] hover:border-[#444444]"
+                 )}
+               >
+                 <Sparkles size={10} />
+                 <span>Beautify</span>
+               </button>
+             )}
            </div>
            <div className="flex gap-4">
              <button className="text-[#444444] hover:text-[#3ECF8E] transition-all flex items-center gap-2">
@@ -132,21 +189,47 @@ export const ResponseViewer: React.FC = () => {
   );
 };
 
-const LoadingState = () => (
-  <div className="h-full flex flex-col items-center justify-center bg-[#0A0A0A]">
-    <div className="relative">
-      <div className="w-16 h-16 border-2 border-[#3ECF8E]/20 rounded-full" />
-      <motion.div 
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="absolute inset-0 w-16 h-16 border-t-2 border-[#3ECF8E] rounded-full"
-      />
+const LoadingState = () => {
+  return (
+    <div className="h-full flex flex-col items-center justify-center bg-[#0A0A0A] overflow-hidden select-none">
+      <div className="relative w-40 h-40 flex items-center justify-center">
+        {/* Outer Ring 1: Glowing Emerald dashed */}
+        <div className="absolute inset-0 rounded-full border border-dashed border-[#3ECF8E]/40 animate-[spin_8s_linear_infinite]" />
+        
+        {/* Outer Ring 2: Electric Blue gradient line */}
+        <div className="absolute inset-4 rounded-full border-2 border-transparent border-t-[#3ECF8E] border-b-blue-500 animate-[spin_3s_linear_infinite]" />
+        
+        {/* Ring 3: Deep blue pulse */}
+        <div className="absolute inset-8 rounded-full border border-blue-400/20 animate-ping opacity-60" />
+        
+        {/* Center Orb: Glassmorphic sphere with glowing radial background */}
+        <div className="absolute inset-12 rounded-full bg-gradient-to-tr from-[#3ECF8E]/20 to-blue-500/20 backdrop-blur-md border border-white/[0.08] shadow-[0_0_24px_rgba(62,207,142,0.3)] flex items-center justify-center">
+          <Activity size={28} className="text-[#3ECF8E] animate-pulse" />
+        </div>
+
+        {/* Orbiting data packets */}
+        <div className="absolute w-2 h-2 bg-[#3ECF8E] rounded-full shadow-[0_0_8px_#3ECF8E] animate-[orbit_2.5s_linear_infinite]" />
+        <div className="absolute w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_6px_#60A5FA] animate-[orbit_2.5s_linear_infinite_1.25s]" />
+      </div>
+
+      <div className="text-center mt-8 space-y-2 z-10">
+        <h3 className="text-xs font-black text-white uppercase tracking-[0.3em] animate-pulse">
+          Transmitting Packet
+        </h3>
+        <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-widest font-mono">
+          Model execution active • payload resolving
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes orbit {
+          0% { transform: rotate(0deg) translateX(70px) rotate(0deg); }
+          100% { transform: rotate(360deg) translateX(70px) rotate(-360deg); }
+        }
+      `}</style>
     </div>
-    <p className="mt-8 text-[11px] font-black text-[#3ECF8E] uppercase tracking-[0.3em] animate-pulse">
-      Intercepting Payload...
-    </p>
-  </div>
-);
+  );
+};
 
 const EmptyResponseState = () => (
   <div className="h-full flex flex-col items-center justify-center bg-[#0A0A0A] p-12 text-center">

@@ -410,12 +410,17 @@ const WORKER_SOURCE = `
   };
 `;
 
+let cachedWorkerUrl: string | null = null;
+
 export class SandboxRunner {
   static run(code: string, context: SandboxContext, timeoutMs = 5000): Promise<SandboxResult> {
     return new Promise((resolve) => {
-      // 1. Create worker blob
-      const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' });
-      const worker = new Worker(URL.createObjectURL(blob));
+      // Cache the worker blob URL to avoid multiple URL allocations and prevent severe memory leaks
+      if (!cachedWorkerUrl) {
+        const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' });
+        cachedWorkerUrl = URL.createObjectURL(blob);
+      }
+      const worker = new Worker(cachedWorkerUrl);
       
       let resolved = false;
       

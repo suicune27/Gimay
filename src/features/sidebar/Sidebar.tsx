@@ -37,7 +37,9 @@ import {
   Database,
   Terminal,
   LogOut,
-  Pin
+  Pin,
+  Play,
+  Square
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -54,14 +56,19 @@ import { ShareModal } from '../../components/ShareModal';
 import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { SettingsModal } from '../../components/SettingsModal';
+import { SmokeSuiteModal } from '../../components/SmokeSuiteModal';
 import { useDataSync } from '../../hooks/useDataSync';
+import { RequestService } from '../../services/RequestService';
+import { ScriptService } from '../../services/ScriptService';
+import { VariableService } from '../../services/VariableService';
 
 // Slim navigation tab configuration
 const NAV_ITEMS = [
   { id: 'collections', icon: LayoutGrid, label: 'Collections', desc: 'Collection Tree' },
   { id: 'environments', icon: Globe, label: 'Environments', desc: 'API Environments' },
   { id: 'scripts', icon: Zap, label: 'Scripts', desc: 'Logic Library' },
-  { id: 'history', icon: Activity, label: 'Logs', desc: 'Realtime Traffic' },
+  { id: 'smoke', icon: Activity, label: 'Smoke Testing', desc: 'Bulk Runner' },
+  { id: 'history', icon: Clock, label: 'Logs', desc: 'Realtime Traffic' },
   { id: 'teams', icon: Users, label: 'Teams', desc: 'Collaborators' }
 ];
 
@@ -144,6 +151,9 @@ export const Sidebar: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCollection, setShareCollection] = useState<Collection | null>(null);
+
+  // Smoke testing modal state
+  const [isSmokeModalOpen, setIsSmokeModalOpen] = useState(false);
 
   // Right Click Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -552,6 +562,10 @@ export const Sidebar: React.FC = () => {
               <div key={item.id} className="relative group/nav-btn w-full flex justify-center">
                 <button
                   onClick={() => {
+                    if (item.id === 'smoke') {
+                      setIsSmokeModalOpen(true);
+                      return;
+                    }
                     setActiveNav(item.id);
                     setIsHoverExpanded(true);
                   }}
@@ -1567,6 +1581,11 @@ export const Sidebar: React.FC = () => {
       <SettingsModal 
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+      />
+
+      <SmokeSuiteModal
+        isOpen={isSmokeModalOpen}
+        onClose={() => setIsSmokeModalOpen(false)}
       />
     </div>
   );

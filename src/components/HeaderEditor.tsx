@@ -23,6 +23,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
   const [bulkText, setBulkText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
 
   // Per-variable hover tooltip state
   const [hoveredVar, setHoveredVar] = useState<{
@@ -63,9 +64,29 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
     collection: activeCollection
   }), [environments, activeEnvId, activeCollection]);
 
+  // Normalize items to ensure all items have a unique id
+  const normalizedItems = useMemo(() => {
+    let changed = false;
+    const safeItems = (items || []).filter(Boolean).map(item => {
+      if (!item.id) {
+        changed = true;
+        return {
+          ...item,
+          id: Math.random().toString(36).substr(2, 9)
+        };
+      }
+      return item;
+    });
+
+    if (changed) {
+      setTimeout(() => onChange(safeItems), 0);
+    }
+    return safeItems;
+  }, [items, onChange]);
+
   // Bulk edit management
   const startBulkEdit = () => {
-    const text = (items || [])
+    const text = (normalizedItems || [])
       .filter(item => item && item.active)
       .map(item => `${item.key}: ${item.value}`)
       .join('\n');
@@ -105,7 +126,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
   // List operations
   const handleItemChange = (id: string, updates: Partial<KeyValue>) => {
-    onChange(items.map(item => item.id === id ? { ...item, ...updates } : item));
+    onChange(normalizedItems.map(item => item.id === id ? { ...item, ...updates } : item));
   };
 
   const addItem = () => {
@@ -115,11 +136,11 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
       value: '',
       active: true
     };
-    onChange([...items, newItem]);
+    onChange([...normalizedItems, newItem]);
   };
 
   const removeItem = (id: string) => {
-    onChange(items.filter(item => item.id !== id));
+    onChange(normalizedItems.filter(item => item.id !== id));
   };
 
   // Variable parsing helper
@@ -132,13 +153,13 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
   // Filtered headers to preserve layout speed
   const filteredItems = useMemo(() => {
-    if (!searchQuery) return items;
+    if (!searchQuery) return normalizedItems;
     const query = searchQuery.toLowerCase();
-    return items.filter(item => 
+    return normalizedItems.filter(item => 
       (item.key || '').toLowerCase().includes(query) || 
       (item.value || '').toLowerCase().includes(query)
     );
-  }, [items, searchQuery]);
+  }, [normalizedItems, searchQuery]);
 
   // Click outside listener to dismiss popovers
   useEffect(() => {
@@ -293,16 +314,22 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                       type="text"
                       value={item.value}
                       onChange={(e) => handleItemChange(item.id, { value: e.target.value })}
+                      onFocus={() => setFocusedRowId(item.id)}
+                      onBlur={() => setFocusedRowId(null)}
                       placeholder={placeholderValue}
+                      spellCheck={false}
+                      style={(hasVariables && focusedRowId !== item.id) ? { color: 'transparent', caretColor: '#3ECF8E' } : {}}
                       className={cn(
-                        "w-full bg-transparent text-[11px] text-[#A0A0A0] px-2.5 py-1.5 pr-8 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[#3ECF8E]/30 focus:bg-[#070707] transition-all font-mono focus:text-white",
-                        hasVariables && "text-transparent caret-[#3ECF8E]"
+                        "w-full bg-transparent text-[11px] text-[#A0A0A0] px-2.5 py-1.5 pr-8 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[#3ECF8E]/30 focus:bg-[#070707] transition-all font-mono focus:text-white"
                       )}
                     />
 
                     {/* Syntax Highlighted Variable overlay */}
-                    {hasVariables && (
-                      <div className="absolute inset-0 pointer-events-none text-[11px] font-mono px-2.5 py-1.5 flex items-center gap-0.5 select-none overflow-hidden whitespace-nowrap">
+                    {hasVariables && focusedRowId !== item.id && (
+                      <div 
+                        className="absolute inset-0 pointer-events-none text-[11px] font-mono px-2.5 py-1.5 flex items-center gap-0.5 select-none overflow-hidden whitespace-nowrap border border-transparent"
+                        style={{ boxSizing: 'border-box' }}
+                      >
                         {item.value.split(/(\{\{[^}]+\}\})/g).map((part, index) => {
                           const partKey = `overlay-part-${item.id}-${index}`;
                           if (part.startsWith('{{') && part.endsWith('}}')) {

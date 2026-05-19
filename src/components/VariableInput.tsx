@@ -41,6 +41,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [hoveredVariable, setHoveredVariable] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTooltipTimerRef = useRef<number | null>(null);
 
@@ -205,8 +206,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
             }}
             className={cn(
               "px-1 rounded pointer-events-auto cursor-pointer border",
-              exists ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/20" : "text-red-400 bg-red-400/10 border-red-500/30",
-              unresolved && "animate-pulse"
+              exists ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/20" : "text-red-400 bg-red-400/10 border-red-500/30"
             )}
             title={exists ? `${lookup.scope} variable` : 'Unresolved variable'}
           >
@@ -229,21 +229,29 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => {
+            setIsFocused(true);
             setShowSuggestions((value || '').includes('{{'));
           }}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          onBlur={() => {
+            setIsFocused(false);
+            setTimeout(() => setShowSuggestions(false), 200);
+          }}
           placeholder={placeholder}
+          spellCheck={false}
+          style={(value.includes('{{') && !isFocused) ? { color: 'transparent', caretColor: 'white' } : {}}
           className={cn(
             "w-full bg-transparent text-[11px] font-mono py-1.5 px-2 outline-none border border-transparent rounded transition-all relative z-10",
             "focus:border-[#222222] focus:bg-[#0F0F0F]",
-            value.includes('{{') && "text-transparent caret-white",
             disabled && "opacity-60 cursor-not-allowed",
             className
           )}
         />
         {/* Overlay for highlighting (Postman-style) */}
-        {value.includes('{{') && (
-           <div className="absolute inset-0 pointer-events-none text-[11px] font-mono py-1.5 px-2 whitespace-pre overflow-hidden flex items-center z-0">
+        {value.includes('{{') && !isFocused && (
+           <div 
+             className="absolute inset-0 pointer-events-none text-[11px] font-mono py-1.5 px-2 whitespace-pre overflow-hidden flex items-center z-0 border border-transparent"
+             style={{ boxSizing: 'border-box' }}
+           >
              {renderValueWithHighlights()}
            </div>
         )}

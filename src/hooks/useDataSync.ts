@@ -66,9 +66,7 @@ export const useDataSync = () => {
   const fetchCollections = async (workspaceId: string) => {
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     try {
-      const teamIds = (store.teams || []).map(t => t.id);
-      
-      const tryFetch = async (useCollaborators: boolean, useTeamId: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
+      const tryFetch = async (useCollaborators: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
         let relations = [];
         if (useRequests) relations.push('requests(*)');
         if (useFolders) relations.push('folders(*)');
@@ -76,20 +74,13 @@ export const useDataSync = () => {
 
         const selectStr = relations.length > 0 ? `*, ${relations.join(', ')}` : '*';
 
-        let query = supabase.from('collections').select(selectStr);
-        
-        if (useTeamId && teamIds.length > 0) {
-          return query
-            .or(`workspace_id.eq.${workspaceId},team_id.in.(${teamIds.join(',')})`)
-            .order('created_at', { ascending: false });
-        } else {
-          return query
-            .eq('workspace_id', workspaceId)
-            .order('created_at', { ascending: false });
-        }
+        return supabase.from('collections')
+          .select(selectStr)
+          .eq('workspace_id', workspaceId)
+          .order('created_at', { ascending: false });
       };
 
-      let result = await tryFetch(true, true);
+      let result = await tryFetch(true);
       
       // Multi-layer fallback for database inconsistencies
       if (result.error) {
@@ -103,17 +94,12 @@ export const useDataSync = () => {
           console.warn('[Sync] Collection fetch failed due to schema mismatch. Attempting recovery...', { code, msg });
           
           // Try without collaborators first
-          result = await tryFetch(false, true);
+          result = await tryFetch(false);
           
           if (result.error) {
-            // Try without team_id
-            result = await tryFetch(false, false);
-            
-            if (result.error) {
-              // Extreme fallback: No relations at all
-              console.error('[Sync] Collection fetch critical failure. Stripping all relations.');
-              result = await tryFetch(false, false, false, false);
-            }
+            // Extreme fallback: No relations at all
+            console.error('[Sync] Collection fetch critical failure. Stripping all relations.');
+            result = await tryFetch(false, false, false);
           }
         }
       }
@@ -147,6 +133,11 @@ export const useDataSync = () => {
         };
       });
 
+      if (workspaceId !== store.activeWorkspaceId) {
+        console.warn(`[Sync] Stale fetchCollections ignored for workspace ${workspaceId}`);
+        return;
+      }
+
       store.setCollections(mappedData);
     } catch (err) {
       console.error('Collections Sync Error:', err);
@@ -161,7 +152,10 @@ export const useDataSync = () => {
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false });
     
-    if (data) store.setEnvironments(data);
+    if (data) {
+      if (workspaceId !== store.activeWorkspaceId) return;
+      store.setEnvironments(data);
+    }
   };
 
   const fetchUserTabs = async () => {
@@ -169,8 +163,21 @@ export const useDataSync = () => {
     try {
       const data = await PersistenceService.getUserTabs(store.profile.id);
       if (data) {
-        store.setUserTabs(data.tabs || []);
-        store.setActiveTab(data.active_tab_id || null);
+        // Only load tabs that belong to the active workspace!
+        const filteredTabs = (data.tabs || []).filter((tab: any) => {
+          if (tab && typeof tab === 'object' && 'workspace_id' in tab) {
+            return tab.workspace_id === store.activeWorkspaceId;
+          }
+          return false;
+        });
+
+        let activeTabId = data.active_tab_id;
+        if (activeTabId && !filteredTabs.some((t: any) => t.id === activeTabId)) {
+          activeTabId = filteredTabs.length > 0 ? filteredTabs[filteredTabs.length - 1].id : null;
+        }
+
+        store.setUserTabs(filteredTabs);
+        store.setActiveTab(activeTabId);
       }
     } catch (e) {
       console.error('User tabs fetch error:', e);
@@ -195,7 +202,10 @@ export const useDataSync = () => {
       .order('created_at', { ascending: false })
       .limit(50);
     
-    if (data) (store as any).setHistory?.(data);
+    if (data) {
+      if (workspaceId !== store.activeWorkspaceId) return;
+      (store as any).setHistory?.(data);
+    }
   };
 
   const fetchTeams = async (userId: string) => {

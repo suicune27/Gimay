@@ -136,12 +136,6 @@ export default function App() {
     });
 
     const handleAuthChange = async (event: string, session: any) => {
-      console.log(`[AUTH] Event: ${event}`, { 
-        sessionId: session?.user?.id, 
-        currentUserId: useOnboardingStore.getState().userId,
-        isConfigured: useOnboardingStore.getState().isConfigured 
-      });
-
       setSession(session);
       
       if (session?.user?.id) {
@@ -303,11 +297,142 @@ export default function App() {
 
   if (loading || schemaBootstrapLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-deep)]">
-        <div className="w-16 h-16 border-2 border-[var(--brand)]/20 border-t-[var(--brand)] rounded-full animate-spin shadow-[0_0_20px_var(--brand-muted)]" />
-        <p className="mt-4 text-[10px] font-black text-[var(--brand)] uppercase tracking-widest animate-pulse">
-          {loading ? 'Initializing System...' : schemaBootstrapMessage}
-        </p>
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050505] text-white select-none relative overflow-hidden font-sans">
+        {/* Style block for advanced custom CSS animations (shimmer, dash offset, orb rotation) */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes border-shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+          @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.2; }
+            50% { transform: scale(1.05); opacity: 0.6; }
+            100% { transform: scale(0.95); opacity: 0.2; }
+          }
+          @keyframes orbit {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .animate-border-shimmer {
+            animation: border-shimmer 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          }
+          .animate-pulse-ring {
+            animation: pulse-ring 3s ease-in-out infinite;
+          }
+          .animate-orbit {
+            animation: orbit 8s linear infinite;
+          }
+        `}} />
+
+        {/* Ambient background glows */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-[var(--brand)]/5 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] bg-blue-500/5 rounded-full blur-[60px] pointer-events-none" />
+
+        {/* Technical grid lines in the background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
+        <div className="relative flex flex-col items-center justify-center space-y-8 z-10">
+          {/* Futuristic Circular Loading Unit */}
+          <div className="relative w-32 h-32 flex items-center justify-center">
+            {/* Outer dotted tech ring (rotates slowly) */}
+            <svg className="absolute w-full h-full animate-[spin_24s_linear_infinite]" viewBox="0 0 100 100">
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="46" 
+                stroke="var(--brand)" 
+                strokeWidth="1" 
+                strokeDasharray="2, 6" 
+                fill="none" 
+                className="opacity-40"
+              />
+            </svg>
+
+            {/* Middle segmented technical ring (rotates counter-clockwise) */}
+            <svg className="absolute w-[90%] h-[90%] animate-[spin_10s_linear_infinite_reverse]" viewBox="0 0 100 100">
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="44" 
+                stroke="var(--brand)" 
+                strokeWidth="1.5" 
+                strokeDasharray="25, 40, 10, 15" 
+                fill="none" 
+                className="opacity-60"
+              />
+            </svg>
+
+            {/* Inner glowing pulse ring */}
+            <div className="absolute w-[76%] h-[76%] border border-blue-500/30 rounded-full animate-pulse-ring" />
+
+            {/* Small technical orbits */}
+            <div className="absolute w-full h-full animate-orbit">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_8px_var(--brand)]" />
+            </div>
+
+            {/* Central Gimay glowing terminal brand-mark */}
+            <div className="relative w-14 h-14 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-[0_0_25px_rgba(62,207,142,0.15)] overflow-hidden">
+              {/* Internal abstract pattern */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-[var(--brand)]/5 via-transparent to-blue-500/5" />
+              <svg 
+                width="20" 
+                height="20" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="var(--brand)" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                className="drop-shadow-[0_0_8px_rgba(62,207,142,0.6)]"
+              >
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" y1="19" x2="20" y2="19" className="animate-pulse" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Dynamic Technical Status Indicators */}
+          <div className="flex flex-col items-center space-y-4 max-w-xs w-full">
+            {/* Minimal glowing progress line */}
+            <div className="w-48 h-[2px] bg-white/[0.04] rounded-full overflow-hidden relative border border-white/[0.02]">
+              <div className="absolute top-0 bottom-0 left-0 w-full bg-gradient-to-r from-transparent via-[var(--brand)] to-transparent animate-border-shimmer" />
+            </div>
+
+            {/* Status title with dynamic system messages */}
+            <div className="flex flex-col items-center space-y-1">
+              <span className="text-[10px] font-black text-white uppercase tracking-[0.25em] font-display">
+                Gimay Command Node
+              </span>
+              <p className="text-[8px] font-bold text-[var(--brand)] uppercase tracking-[0.2em] font-mono text-center opacity-90 min-h-[12px] animate-pulse">
+                {loading ? 'INITIALIZING SUBSYSTEMS...' : schemaBootstrapMessage.toUpperCase()}
+              </p>
+            </div>
+
+            {/* Interactive tactical diagnostics hud */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pt-4 border-t border-white/[0.05] w-full text-[7px] font-bold font-mono text-[#555555]">
+              <div className="flex items-center justify-between">
+                <span>SYS.CORE</span>
+                <span className="text-[#3ECF8E]/80 animate-pulse">● READY</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>NET.CONN</span>
+                <span className={typeof navigator !== 'undefined' && !navigator.onLine ? "text-amber-500" : "text-[#3ECF8E]/80 animate-pulse"}>
+                  {typeof navigator !== 'undefined' && !navigator.onLine ? "▲ OFFLINE" : "● ONLINE"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>DB.SCHEMA</span>
+                <span className={schemaBootstrapLoading ? "text-blue-400 animate-pulse" : "text-[#3ECF8E]/80"}>
+                  {schemaBootstrapLoading ? "◌ SYNCING" : "● VERIFIED"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>ENV.SECURE</span>
+                <span className="text-[#3ECF8E]/80">● ACTIVE</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -18,7 +18,8 @@ import {
   Pencil,
   TerminalSquare,
   Layout,
-  Columns
+  Columns,
+  Sparkles
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -33,6 +34,7 @@ import { HeaderEditor } from '../../components/HeaderEditor';
 import { NameModal } from '../../components/NameModal';
 import { ScriptService } from '../../services/ScriptService';
 import { AuthEditor } from '../../components/AuthEditor';
+import { SmokeTestPanel } from '../../components/SmokeTestPanel';
 import { ResponseViewer } from './ResponseViewer';
 import { CollectionEditor } from './CollectionEditor';
 import { EnvironmentEditor } from './EnvironmentEditor';
@@ -170,7 +172,7 @@ export const RequestEditor: React.FC = () => {
     updateEnvironment
   } = useStore();
 
-  const [activeSection, setActiveSection] = useState<'Parameters' | 'Authorization' | 'Headers' | 'Body' | 'Scripts' | 'Settings'>('Parameters');
+  const [activeSection, setActiveSection] = useState<'Parameters' | 'Authorization' | 'Headers' | 'Body' | 'Scripts' | 'Settings' | 'Smoke Test'>('Parameters');
   const [editingCollectionTabId, setEditingCollectionTabId] = useState<string | null>(null);
   const [collectionTabNameDraft, setCollectionTabNameDraft] = useState('');
   const [editingRequestTabId, setEditingRequestTabId] = useState<string | null>(null);
@@ -777,7 +779,7 @@ export const RequestEditor: React.FC = () => {
 
               {/* Section Selector */}
               <div className="flex border-b border-[#222222] gap-6 px-1">
-                {(['Parameters', 'Authorization', 'Headers', 'Body', 'Scripts', 'Settings'] as const).map((section) => (
+                {(['Parameters', 'Authorization', 'Headers', 'Body', 'Scripts', 'Settings', 'Smoke Test'] as const).map((section) => (
                   <button
                     key={section}
                     onClick={() => setActiveSection(section)}
@@ -817,36 +819,66 @@ export const RequestEditor: React.FC = () => {
 
                 {activeSection === 'Body' && (
                   <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        'none', 
-                        'json', 
-                        'form-data', 
-                        'urlencoded', 
-                        'raw', 
-                        'graphql', 
-                        'xml', 
-                        'binary'
-                      ].map((type) => (
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#222222]/30 pb-3">
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          'none', 
+                          'json', 
+                          'form-data', 
+                          'urlencoded', 
+                          'raw', 
+                          'graphql', 
+                          'xml', 
+                          'binary'
+                        ].map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => {
+                              const newBody = RequestUtils.normalizeRequestBody(activeRequest!.body, type as BodyType);
+                              updateRequest(activeRequest!.id, { 
+                                bodyType: type as BodyType,
+                                body: newBody
+                              });
+                            }}
+                            className={cn(
+                              "px-3 py-1 rounded border text-[8px] font-black uppercase tracking-widest transition-all",
+                              activeRequest!.bodyType === type
+                                ? "bg-[#3ECF8E]/20 text-[#3ECF8E] border-[#3ECF8E]/40"
+                                : "border-[#222222] text-[#555555] hover:border-[#444444] hover:text-[#AAAAAA]"
+                            )}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+
+                      {activeRequest!.bodyType === 'json' && (
                         <button
-                          key={type}
                           onClick={() => {
-                            const newBody = RequestUtils.normalizeRequestBody(activeRequest!.body, type as BodyType);
-                            updateRequest(activeRequest!.id, { 
-                              bodyType: type as BodyType,
-                              body: newBody
-                            });
+                            try {
+                              const rawVal = typeof activeRequest!.body === 'string' 
+                                ? activeRequest!.body 
+                                : (activeRequest!.body as RequestBody).content;
+                              const obj = JSON.parse(rawVal);
+                              const formatted = JSON.stringify(obj, null, 2);
+                              const body = typeof activeRequest!.body === 'string' 
+                                ? RequestUtils.normalizeRequestBody(formatted, activeRequest!.bodyType)
+                                : activeRequest!.body as RequestBody;
+                              
+                              updateRequest(activeRequest!.id, { 
+                                body: { ...body, content: formatted } 
+                              });
+                              addToast({ type: 'success', message: 'Payload beautified successfully.' });
+                            } catch (err) {
+                              addToast({ type: 'error', message: 'Invalid JSON payload. Format failed.' });
+                            }
                           }}
-                          className={cn(
-                            "px-3 py-1 rounded border text-[8px] font-black uppercase tracking-widest transition-all",
-                            activeRequest!.bodyType === type
-                              ? "bg-[#3ECF8E]/20 text-[#3ECF8E] border-[#3ECF8E]/40"
-                              : "border-[#222222] text-[#555555] hover:border-[#444444] hover:text-[#AAAAAA]"
-                          )}
+                          className="px-3 py-1.5 rounded border border-[#3ECF8E]/30 bg-[#3ECF8E]/5 text-[#3ECF8E] text-[8px] font-black uppercase tracking-widest hover:bg-[#3ECF8E]/20 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer shadow-[0_0_8px_rgba(62,207,142,0.1)]"
                         >
-                          {type}
+                          <Sparkles size={10} />
+                          Beautify
                         </button>
-                      ))}
+                      )}
                     </div>
 
                     <div className="min-h-[300px]">
@@ -1105,6 +1137,10 @@ export const RequestEditor: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {activeSection === 'Smoke Test' && (
+                  <SmokeTestPanel activeRequest={activeRequest!} collection={collection} />
                 )}
               </div>
             </div>

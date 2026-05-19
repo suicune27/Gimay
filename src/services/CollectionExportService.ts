@@ -7,13 +7,17 @@ export enum ExportFormat {
   BRUNO = 'bruno',
   OPENAPI_V3 = 'openapi_v3',
   CURL_BUNDLE = 'curl_bundle',
-  JSON = 'json'
+  JSON = 'json',
+  JMETER = 'jmeter'
 }
 
 export class CollectionExportService {
   static exportCollection(collection: Collection, format: ExportFormat = ExportFormat.POSTMAN) {
     if (format === ExportFormat.CURL_BUNDLE) {
       return this.exportCurlBundle(collection);
+    }
+    if (format === ExportFormat.JMETER) {
+      return this.exportJMeter(collection);
     }
     const postmanCollection = {
       info: {
@@ -183,5 +187,195 @@ export class CollectionExportService {
       raw: body,
       options: type === 'json' ? { raw: { language: 'json' } } : undefined
     };
+  }
+
+  static exportJMeter(collection: Collection) {
+    const escapeXml = (unsafe: string) => {
+      if (!unsafe) return '';
+      return unsafe.replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+          default: return c;
+        }
+      });
+    };
+
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="${escapeXml(collection.name)}" enabled="true">
+      <stringProp name="TestPlan.comments">${escapeXml(collection.description || '')}</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments">`;
+
+    (collection.variables || []).forEach(v => {
+      xml += `
+          <elementProp name="${escapeXml(v.key)}" elementType="Argument">
+            <stringProp name="Argument.name">${escapeXml(v.key)}</stringProp>
+            <stringProp name="Argument.value">${escapeXml(v.value)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>`;
+    });
+
+    xml += `
+        </collectionProp>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Thread Group" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>`;
+
+    const requests: RequestData[] = [];
+    const collectRequests = (node: any) => {
+      if (node.requests) {
+        node.requests.forEach((r: any) => requests.push(r));
+      }
+      if (node.folders) {
+        node.folders.forEach((f: any) => collectRequests(f));
+      }
+    };
+    
+    collectRequests(collection);
+
+    requests.forEach((req) => {
+      let protocol = 'http';
+      let domain = '';
+      let port = '';
+      let path = '';
+
+      try {
+        if (req.url) {
+          const urlStr = req.url.trim();
+          if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
+            const urlObj = new URL(urlStr);
+            protocol = urlObj.protocol.replace(':', '');
+            domain = urlObj.hostname;
+            port = urlObj.port;
+            path = urlObj.pathname + urlObj.search;
+          } else {
+            path = urlStr;
+          }
+        }
+      } catch {
+        path = req.url || '';
+      }
+
+      const hasRawBody = req.bodyType === 'json' || req.bodyType === 'raw' || req.bodyType === 'xml';
+      const bodyContent = typeof req.body === 'string' ? req.body : req.body?.content || '';
+
+      xml += `
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="${escapeXml(req.name)}" enabled="true">`;
+
+      if (hasRawBody && bodyContent) {
+        xml += `
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">${escapeXml(bodyContent)}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>`;
+      } else {
+        xml += `
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+            <collectionProp name="Arguments.arguments">`;
+        
+        (req.params || []).forEach(p => {
+          if (p.active) {
+            xml += `
+              <elementProp name="${escapeXml(p.key)}" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">true</boolProp>
+                <stringProp name="Argument.value">${escapeXml(p.value)}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+                <boolProp name="HTTPArgument.use_equals">true</boolProp>
+                <stringProp name="Argument.name">${escapeXml(p.key)}</stringProp>
+              </elementProp>`;
+          }
+        });
+
+        xml += `
+            </collectionProp>
+          </elementProp>`;
+      }
+
+      xml += `
+          <stringProp name="HTTPSampler.domain">${escapeXml(domain)}</stringProp>
+          <stringProp name="HTTPSampler.port">${escapeXml(port)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">${escapeXml(protocol)}</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+          <stringProp name="HTTPSampler.path">${escapeXml(path)}</stringProp>
+          <stringProp name="HTTPSampler.method">${escapeXml(req.method || 'GET')}</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.embedded_url_re"></stringProp>
+          <stringProp name="HTTPSampler.connect_timeout"></stringProp>
+          <stringProp name="HTTPSampler.response_timeout"></stringProp>
+        </HTTPSamplerProxy>
+        <hashTree>`;
+
+      const activeHeaders = (req.headers || []).filter(h => h.active);
+      if (activeHeaders.length > 0) {
+        xml += `
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
+            <collectionProp name="HeaderManager.headers">`;
+        
+        activeHeaders.forEach(h => {
+          xml += `
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">${escapeXml(h.key)}</stringProp>
+                <stringProp name="Header.value">${escapeXml(h.value)}</stringProp>
+              </elementProp>`;
+        });
+
+        xml += `
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>`;
+      }
+
+      xml += `
+        </hashTree>`;
+    });
+
+    xml += `
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>`;
+
+    const blob = new Blob([xml], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${collection.name.replace(/\s+/g, '_')}.jmx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 }

@@ -26,8 +26,28 @@ export const KVEditor: React.FC<KVEditorProps> = ({
   const [isBulkEdit, setIsBulkEdit] = useState(false);
   const [bulkText, setBulkText] = useState('');
 
+  // Normalize items to ensure all items have a unique id
+  const normalizedItems = React.useMemo(() => {
+    let changed = false;
+    const safeItems = (items || []).filter(Boolean).map(item => {
+      if (!item.id) {
+        changed = true;
+        return {
+          ...item,
+          id: Math.random().toString(36).substr(2, 9)
+        };
+      }
+      return item;
+    });
+
+    if (changed) {
+      setTimeout(() => onChange(safeItems), 0);
+    }
+    return safeItems;
+  }, [items, onChange]);
+
   const handleItemChange = (id: string, updates: Partial<KeyValue>) => {
-    const safeItems = items || [];
+    const safeItems = normalizedItems || [];
     const newItems = safeItems.map(item => {
       if (!item) return item;
       return item.id === id ? { ...item, ...updates } : item;
@@ -36,7 +56,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
   };
 
   const addItem = () => {
-    const safeItems = (items || []).filter(Boolean);
+    const safeItems = (normalizedItems || []).filter(Boolean);
     const newItem: KeyValue = {
       id: Math.random().toString(36).substr(2, 9),
       key: '',
@@ -47,12 +67,12 @@ export const KVEditor: React.FC<KVEditorProps> = ({
   };
 
   const removeItem = (id: string) => {
-    const safeItems = (items || []).filter(Boolean);
+    const safeItems = (normalizedItems || []).filter(Boolean);
     onChange(safeItems.filter(item => item.id !== id));
   };
 
   const startBulkEdit = () => {
-    const safeItems = (items || []).filter(Boolean);
+    const safeItems = (normalizedItems || []).filter(Boolean);
     const text = safeItems
       .filter(item => item && item.active)
       .map(item => `${item.key}: ${item.value}`)
@@ -139,7 +159,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
         </div>
       ) : (
         <>
-          {(items || []).map((item) => (
+          {(normalizedItems || []).map((item) => (
             <div key={item.id} className="flex items-center gap-1 group">
               <button 
                 onClick={() => handleItemChange(item.id, { active: !item.active })}

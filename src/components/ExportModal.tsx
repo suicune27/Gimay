@@ -71,6 +71,13 @@ const FORMAT_OPTIONS: Array<{
     color: 'text-blue-500 bg-blue-500/10 border-blue-500/30',
   },
   {
+    id: ExportFormat.JMETER,
+    title: 'JMeter (.jmx)',
+    subtitle: 'Performance Test Plan',
+    icon: FileCode,
+    color: 'text-red-500 bg-red-500/10 border-red-500/30',
+  },
+  {
     id: ExportFormat.CURL_BUNDLE,
     title: 'cURL Bundle',
     subtitle: 'Bash Script',

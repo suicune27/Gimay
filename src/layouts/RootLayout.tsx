@@ -210,12 +210,14 @@ export const RootLayout: React.FC = () => {
   };
 
   const handleConfirmedDeleteWorkspace = async () => {
-    if (!wsToDelete) return;
+    if (!wsToDelete || !profile?.id) return;
     try {
       await PersistenceService.deleteWorkspace(wsToDelete.id);
+      await fetchWorkspaces(profile.id);
       addToast({ type: 'info', message: `Workspace "${wsToDelete.name}" decommissioned.` });
       if (activeWorkspaceId === wsToDelete.id) {
-        const nextWs = workspaces.find(w => w.id !== wsToDelete.id);
+        const freshWorkspaces = useStore.getState().workspaces;
+        const nextWs = freshWorkspaces.find(w => w.id !== wsToDelete.id);
         setActiveWorkspaceId(nextWs?.id || null);
       }
     } catch (err) {
