@@ -136,10 +136,22 @@ export const DatabaseMigrationModal: React.FC<DatabaseMigrationModalProps> = ({
           {progress.step === 'idle' ? (
             <>
               {/* Security Banner */}
-              <div className="p-4 rounded-xl bg-amber-500/[0.03] border border-amber-500/10 flex gap-3 text-amber-500/80">
-                <ShieldAlert size={18} className="shrink-0 mt-0.5" />
-                <div className="text-[9px] uppercase tracking-wide leading-relaxed font-semibold">
-                  <span className="font-black text-amber-400">Important Requirement:</span> To clone data across different users and team rosters securely without triggering Row-Level Security (RLS) constraints, you must supply the target project's <span className="font-black text-amber-400">Service Role API Key</span> (service_role). Avoid using the public Anon Key.
+              <div className="p-4 rounded-xl bg-amber-500/[0.03] border border-amber-500/10 flex flex-col gap-2.5 text-amber-500/80">
+                <div className="flex gap-3">
+                  <ShieldAlert size={18} className="shrink-0 mt-0.5" />
+                  <div className="text-[9px] uppercase tracking-wide leading-relaxed font-semibold">
+                    <span className="font-black text-amber-400">Important Requirement:</span> To clone data across different users and team rosters securely without triggering Row-Level Security (RLS) constraints, you must supply the target project's <span className="font-black text-amber-400">Service Role API Key</span> (service_role). Avoid using the public Anon Key.
+                  </div>
+                </div>
+                <div className="pl-7">
+                  <a
+                    href="https://supabase.com/dashboard/project/_/settings/api"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8px] font-black text-amber-400 uppercase tracking-widest hover:bg-amber-500/20 transition-all cursor-pointer"
+                  >
+                    Retrieve API Keys in Supabase Dashboard &rarr;
+                  </a>
                 </div>
               </div>
 

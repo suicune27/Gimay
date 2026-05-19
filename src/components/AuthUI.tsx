@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { globalSupabase } from '../lib/supabase';
-import { LogIn, UserPlus, Terminal } from 'lucide-react';
-import { motion } from 'motion/react';
+import { supabase } from '../lib/supabase';
+import { LogIn, UserPlus, Terminal, Mail, Lock, Eye, EyeOff, Sparkles, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface AuthUIProps {
   onOfflineMode?: () => void;
@@ -11,148 +11,195 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccessMessage(null);
+
+    // Standardize redirection parameter for standard web contexts and Electron local file contexts
+    const redirectTo = window.location.origin.startsWith('file:') 
+      ? undefined 
+      : window.location.origin + '/app';
 
     const { error: authError } = isLogin 
-      ? await globalSupabase.auth.signInWithPassword({ email, password })
-      : await globalSupabase.auth.signUp({ 
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ 
           email, 
           password,
-          options: {
-            emailRedirectTo: window.location.origin + '/app'
-          }
+          options: redirectTo ? { emailRedirectTo: redirectTo } : undefined
         });
 
     if (authError) {
       setError(authError.message);
-    } else if (!isLogin) {
-      setSuccessMessage('A secure activation link has been dispatched to your email. Please click the link to verify your operator profile and activate your node.');
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] p-4 font-sans">
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#050506] overflow-hidden p-4 font-sans selection:bg-[#3ECF8E]/20">
+      {/* Ambient background glows like loading */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#3ECF8E]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
+
+      {/* Technical grid lines in the background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md p-8 rounded-xl border border-[#222222] bg-[#0F0F0F] shadow-2xl"
+        initial={{ opacity: 0, y: 15, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="relative w-full max-w-md bg-[#0C0C0E]/90 border border-white/[0.04] rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.8)] p-8 backdrop-blur-xl z-10 flex flex-col overflow-hidden"
       >
-        <div className="flex items-center gap-4 mb-10">
-          <div className="w-12 h-12 bg-[#3ECF8E] rounded-xl shadow-[0_0_30px_rgba(62,207,142,0.1)] flex items-center justify-center">
-            <Terminal size={28} className="text-[#0A0A0A]" />
+        {/* Top Glow Boundary Line */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#3ECF8E]/20 to-transparent pointer-events-none" />
+
+        {/* Brand Header */}
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-11 h-11 bg-[#3ECF8E] rounded-xl shadow-[0_0_30px_rgba(62,207,142,0.15)] flex items-center justify-center transition-all hover:scale-105">
+            <Terminal size={22} className="text-[#050506] stroke-[2.5]" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Gimay</h1>
-            <p className="text-[10px] text-[#3ECF8E] font-mono uppercase tracking-[0.3em] font-bold mt-1">v9.0.0 // PRODUCTION CORE</p>
+            <h1 className="text-2xl font-black text-white tracking-tighter uppercase leading-none flex items-center gap-1.5">
+              Gimay <span className="text-[9px] py-0.5 px-1.5 rounded-full border border-[#3ECF8E]/25 text-[#3ECF8E] font-mono tracking-widest font-black bg-[#3ECF8E]/5">CORE</span>
+            </h1>
+            <p className="text-[8px] text-zinc-500 font-mono uppercase tracking-[0.25em] font-black mt-1">Cortex API Uplink Engine</p>
           </div>
         </div>
 
-        {successMessage ? (
-          <div className="space-y-6 text-center py-4">
-            <div className="w-16 h-16 bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 text-[#3ECF8E] rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(62,207,142,0.15)]">
-              <UserPlus size={32} />
+        <AnimatePresence mode="wait">
+          {/* Access and Sign Up Forms */}
+          <motion.div
+            key="auth-form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-6"
+          >
+            {/* Sliding Tab Selector */}
+            <div className="p-1 bg-black/60 rounded-xl border border-white/[0.03] flex relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setError(null);
+                }}
+                className={`flex-1 text-center py-2 text-[9px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 ${isLogin ? 'text-black' : 'text-zinc-500'}`}
+              >
+                Establish Link
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(false);
+                  setError(null);
+                }}
+                className={`flex-1 text-center py-2 text-[9px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 ${!isLogin ? 'text-black' : 'text-zinc-500'}`}
+              >
+                Register Node
+              </button>
+              
+              <motion.div
+                className="absolute top-1 bottom-1 rounded-lg bg-[#3ECF8E] z-0"
+                animate={{
+                  left: isLogin ? '4px' : 'calc(50% + 2px)',
+                  right: isLogin ? 'calc(50% + 2px)' : '4px',
+                }}
+                transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+              />
             </div>
-            <div className="space-y-2">
-              <h2 className="text-[14px] font-black text-white uppercase tracking-widest">Verification Pending</h2>
-              <p className="text-[11px] text-[#888888] font-mono leading-relaxed px-2">
-                {successMessage}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setSuccessMessage(null);
-                setIsLogin(true);
-              }}
-              className="w-full py-3 border border-[#222222] hover:border-[#3ECF8E]/30 text-[#888888] hover:text-[#3ECF8E] font-bold rounded-lg transition-all text-xs tracking-wider uppercase"
-            >
-              Return to Authenticate
-            </button>
-          </div>
-        ) : (
-          <>
+
             <form onSubmit={handleAuth} className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#555555] mb-2">Access Portal</label>
-                <input 
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#AAAAAA] focus:border-[#3ECF8E] focus:text-[#E0E0E0] outline-none transition-all placeholder:text-[#333333]"
-                  placeholder="operator@putment.io"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#555555] mb-2">Security Hash</label>
-                <input 
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0A0A0A] border border-[#222222] rounded-lg px-4 py-3 text-sm text-[#AAAAAA] focus:border-[#3ECF8E] focus:text-[#E0E0E0] outline-none transition-all placeholder:text-[#333333]"
-                  placeholder="••••••••"
-                  required
-                />
+              {/* Email input field */}
+              <div className="space-y-1.5">
+                <label className="block text-[8px] font-black uppercase tracking-widest text-zinc-500">Access Portal (Email)</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                  <input 
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-[#050506] border border-white/[0.04] rounded-xl py-3 pl-11 pr-4 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[#3ECF8E]/40 focus:bg-white/[0.01] transition-all"
+                    placeholder="operator@putment.io"
+                    required
+                  />
+                </div>
               </div>
 
+              {/* Password input field */}
+              <div className="space-y-1.5">
+                <label className="block text-[8px] font-black uppercase tracking-widest text-zinc-500">Security Hash (Password)</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600" size={14} />
+                  <input 
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[#050506] border border-white/[0.04] rounded-xl py-3 pl-11 pr-11 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[#3ECF8E]/40 focus:bg-white/[0.01] transition-all"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Cyber error log */}
               {error && (
-                <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg space-y-2">
-                  <div className="text-red-500 text-[10px] font-mono leading-relaxed">
-                    &gt; FATAL ERROR: {error.toUpperCase()}
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3.5 bg-rose-500/[0.02] border border-rose-500/10 rounded-xl space-y-2 text-left"
+                >
+                  <div className="text-rose-500 text-[9px] font-mono leading-relaxed break-all">
+                    &gt; SYSTEM ERROR: {error.toUpperCase()}
                   </div>
                   {error.toLowerCase().includes('api key') && (
-                    <div className="text-[9px] text-[#888888] font-mono border-t border-red-500/10 pt-2">
-                      <p>Check your <code className="text-[#3ECF8E]">VITE_SUPABASE_URL</code> and <code className="text-[#3ECF8E]">VITE_SUPABASE_ANON_KEY</code> in the environment settings.</p>
-                      <p className="mt-1">The global infrastructure must be configured before authenticating.</p>
+                    <div className="text-[8px] text-zinc-500 font-mono border-t border-rose-500/10 pt-2 leading-relaxed">
+                      Verify your VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY config parameters in the workspace environment configuration.
                     </div>
                   )}
-                </div>
+                </motion.div>
               )}
 
+              {/* Command Action Button */}
               <button 
                 disabled={loading}
-                className="w-full bg-[#3ECF8E] hover:bg-[#34B37A] text-[#0A0A0A] font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-lg shadow-[#3ECF8E1A]"
+                className="w-full bg-[#3ECF8E] hover:bg-[#46e6a0] disabled:bg-[#3ECF8E]/20 text-[#050506] font-black text-[9px] uppercase tracking-widest py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-lg shadow-[#3ECF8E]/10 cursor-pointer active:scale-[0.98]"
               >
                 {loading ? (
-                  <span className="w-5 h-5 border-2 border-[#0A0A0A]/30 border-t-[#0A0A0A] rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[#050506]/30 border-t-[#050506] rounded-full animate-spin" />
                 ) : (
                   <>
-                    {isLogin ? <LogIn size={18} /> : <UserPlus size={18} />}
-                    <span className="tracking-tighter">{isLogin ? 'ESTABLISH LINK' : 'REGISTER NODE'}</span>
+                    {isLogin ? <LogIn size={13} className="stroke-[2.5]" /> : <UserPlus size={13} className="stroke-[2.5]" />}
+                    <span>{isLogin ? 'ESTABLISH LINK' : 'REGISTER NODE'}</span>
+                    <ChevronRight size={13} className="stroke-[2.5]" />
                   </>
                 )}
               </button>
             </form>
 
-            <div className="mt-8 pt-8 border-t border-[#222222] text-center flex flex-col gap-3">
-              <p className="text-[10px] text-[#555555] tracking-widest uppercase">
-                {isLogin ? "No active credentials?" : "Credential set found?"}
-                <button 
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="ml-2 text-[#3ECF8E] hover:text-white transition-colors"
-                >
-                  {isLogin ? 'Request Access' : 'Authenticate'}
-                </button>
-              </p>
-              {onOfflineMode && (
+            {/* Sandbox Offline mode capsule */}
+            {onOfflineMode && (
+              <div className="pt-4 border-t border-white/[0.04] text-center">
                 <button
                   onClick={onOfflineMode}
-                  className="text-[10px] text-[#888888] hover:text-[#E0E0E0] tracking-widest uppercase transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.04] text-[8px] font-black text-zinc-500 hover:text-zinc-300 uppercase tracking-widest transition-all cursor-pointer active:scale-[0.97]"
                 >
-                  [ Launch Offline Sandbox ]
+                  <Sparkles size={11} className="text-[#3ECF8E]" /> Launch Offline Sandbox
                 </button>
-              )}
-            </div>
-          </>
-        )}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </motion.div>
     </div>
   );

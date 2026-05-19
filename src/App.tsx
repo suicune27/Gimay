@@ -117,7 +117,7 @@ export default function App() {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profile, error } = await globalSupabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -232,11 +232,11 @@ export default function App() {
     };
 
     // Initial check
-    globalSupabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       handleAuthChange('INITIAL_SESSION', session);
     });
 
-    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       handleAuthChange(event, session);
     });
 
