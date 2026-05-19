@@ -35,6 +35,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Moon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { isElectron } from '../lib/platform';
 
 import { StatusBar } from '../components/StatusBar';
 

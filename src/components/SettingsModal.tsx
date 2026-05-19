@@ -911,6 +911,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       </div>
                    </div>
 
+                   {isElectron() && (
+                     <div className="w-full max-w-sm border border-[var(--brand-border)] bg-[var(--brand-muted)] rounded-xl p-4 space-y-3 mt-4 text-center">
+                       <div className="text-[10px] font-black uppercase tracking-widest text-[var(--brand)]">
+                         Desktop Environment Update Core
+                       </div>
+                       <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-wider">
+                         Verify client packages and local resources integrity
+                       </p>
+                       <button
+                         onClick={() => {
+                           (window as any).electron?.checkForUpdates();
+                           addToast({ type: 'info', message: 'Checking for desktop updates...' });
+                         }}
+                         className="w-full py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-black text-[9px] font-black uppercase tracking-widest rounded-lg transition-all shadow-lg cursor-pointer"
+                       >
+                         Scan updates pipeline
+                       </button>
+                     </div>
+                   )}
+
                    <div className="flex items-center gap-6 mt-8">
                       <button className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] hover:text-[var(--brand)] transition-all">Protocol</button>
                       <button className="text-[10px] font-black uppercase tracking-widest text-[var(--text-dim)] hover:text-[var(--brand)] transition-all">Uplink</button>

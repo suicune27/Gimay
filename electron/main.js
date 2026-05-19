@@ -73,7 +73,30 @@ function createWindow() {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:3000');
+    const getDynamicPort = () => {
+      try {
+        const portFilePath = path.join(app.getAppPath(), '.port.tmp');
+        if (fs.existsSync(portFilePath)) {
+          return parseInt(fs.readFileSync(portFilePath, 'utf-8').trim(), 10);
+        }
+      } catch (e) {
+        console.error('Error reading port file:', e);
+      }
+      return 3000;
+    };
+
+    const loadWithRetry = () => {
+      const activePort = getDynamicPort();
+      const devUrl = `http://localhost:${activePort}`;
+      console.log(`[Electron Main] Loading development URL: ${devUrl}`);
+      
+      mainWindow.loadURL(devUrl).catch((err) => {
+        console.log(`[Electron Main] Dev server not ready yet, retrying in 250ms...`);
+        setTimeout(loadWithRetry, 250);
+      });
+    };
+
+    loadWithRetry();
   } else {
     mainWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
   }

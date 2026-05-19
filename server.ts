@@ -2,10 +2,12 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import axios from 'axios';
 import path from 'path';
+import http from 'http';
+import fs from 'fs';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  let currentPort = parseInt(process.env.PORT || '3000', 10);
 
   app.use(express.json());
 
@@ -52,9 +54,32 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  const server = http.createServer(app);
+
+  function tryListen(port: number) {
+    server.listen(port, '0.0.0.0');
+  }
+
+  server.on('listening', () => {
+    console.log(`Server running on http://localhost:${currentPort}`);
+    try {
+      fs.writeFileSync(path.join(process.cwd(), '.port.tmp'), currentPort.toString(), 'utf-8');
+    } catch (e) {
+      console.error('Failed to write port file:', e);
+    }
   });
+
+  server.on('error', (error: any) => {
+    if (error.code === 'EADDRINUSE') {
+      console.log(`Port ${currentPort} is in use, trying next port...`);
+      currentPort++;
+      tryListen(currentPort);
+    } else {
+      console.error('Server error:', error);
+    }
+  });
+
+  tryListen(currentPort);
 }
 
 startServer();
