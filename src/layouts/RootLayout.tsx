@@ -107,30 +107,51 @@ export const RootLayout: React.FC = () => {
 
   useEffect(() => {
     const initSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profileData) {
-          setProfile(profileData);
-          if (profileData.preferences?.theme) {
-             updateSettings({ appearance: { ...settings.appearance, theme: profileData.preferences.theme } });
-          }
-        } else {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        console.warn('[RootLayout] Offline mode active. Using local data context.');
+        if (!profile) {
           setProfile({
-            id: session.user.id,
-            email: session.user.email!,
-            full_name: session.user.user_metadata?.full_name || 'Operator',
+            id: 'offline-user-id',
+            email: 'offline@putmen.io',
+            full_name: 'Offline Operator',
             preferences: { theme: 'dark', sidebar_width: 300 }
-          });
+          } as any);
         }
-        
-        fetchWorkspaces(session.user.id);
-        fetchTeams(session.user.id);
+        if (workspaces.length === 0) {
+          const localWs = { id: 'offline-ws', name: 'Offline Sandbox Workspace', user_id: 'offline-user-id', visibility: 'private' };
+          useStore.setState({ workspaces: [localWs as any], activeWorkspaceId: 'offline-ws' });
+        }
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileData) {
+            setProfile(profileData);
+            if (profileData.preferences?.theme) {
+               updateSettings({ appearance: { ...settings.appearance, theme: profileData.preferences.theme } });
+            }
+          } else {
+            setProfile({
+              id: session.user.id,
+              email: session.user.email!,
+              full_name: session.user.user_metadata?.full_name || 'Operator',
+              preferences: { theme: 'dark', sidebar_width: 300 }
+            } as any);
+          }
+          
+          fetchWorkspaces(session.user.id);
+          fetchTeams(session.user.id);
+        }
+      } catch (err) {
+        console.warn('[RootLayout] Session check failed. Running offline fallback:', err);
       }
     };
 

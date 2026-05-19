@@ -165,6 +165,38 @@ export default function App() {
     };
   }, [hasHydrated, setSyncStatus, setProfile, resetOnboarding, setUserId, resetStore, setStep]);
 
+  const handleOfflineMode = () => {
+    const offlineSession = {
+      user: {
+        id: 'offline-user-id',
+        email: 'offline-operator@putmen.io',
+        user_metadata: {
+          full_name: 'Offline Operator',
+          username: 'offline'
+        }
+      }
+    };
+    
+    // Force onboarding configuration to true for offline sandbox
+    setUserId('offline-user-id');
+    setStep('complete');
+    useOnboardingStore.getState().setIsConfigured(true);
+
+    const mainStore = useStore.getState();
+    mainStore.setProfile({
+      id: 'offline-user-id',
+      email: 'offline-operator@putmen.io',
+      full_name: 'Offline Operator',
+      username: 'offline',
+      avatar_url: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      preferences: {}
+    });
+
+    setSession(offlineSession);
+  };
+
   const runSchemaBootstrap = useCallback(async () => {
     if (!session?.user?.id || !isConfigured) {
       return;
@@ -183,9 +215,27 @@ export default function App() {
     setSchemaBootstrapMessage('Checking database structure...');
     setSchemaBootstrapLoading(true);
 
+    // If we are offline, bypass completely
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      console.warn('[Schema Bootstrap] Client is offline. Bypassing database schema bootstrap to support offline mode.');
+      schemaCheckedUserRef.current = session.user.id;
+      setSchemaBootstrapLoading(false);
+      return;
+    }
+
     const compare = await compareDatabaseStructure(config.url, config.anonKey);
 
     if (!compare.success) {
+      const errStr = String(compare.error || '').toLowerCase();
+      const isConnectionIssue = errStr.includes('fetch') || errStr.includes('network') || errStr.includes('timeout') || errStr.includes('failed to connect');
+      
+      if (isConnectionIssue) {
+        console.warn('[Schema Bootstrap] Database is unreachable. Bypassing to support offline mode:', compare.error);
+        schemaCheckedUserRef.current = session.user.id;
+        setSchemaBootstrapLoading(false);
+        return;
+      }
+
       setSchemaBootstrapLoading(false);
       setSchemaBootstrapError(compare.error || 'Failed to compare database structure.');
       return;
@@ -256,7 +306,7 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      {!session && <AuthUI />}
+      {!session && <AuthUI onOfflineMode={handleOfflineMode} />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}
     </>

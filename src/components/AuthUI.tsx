@@ -3,7 +3,11 @@ import { globalSupabase } from '../lib/supabase';
 import { LogIn, UserPlus, Terminal } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export const AuthUI: React.FC = () => {
+interface AuthUIProps {
+  onOfflineMode?: () => void;
+}
+
+export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -95,7 +99,7 @@ export const AuthUI: React.FC = () => {
           </button>
         </form>
 
-        <div className="mt-8 pt-8 border-t border-[#222222] text-center">
+        <div className="mt-8 pt-8 border-t border-[#222222] text-center flex flex-col gap-3">
           <p className="text-[10px] text-[#555555] tracking-widest uppercase">
             {isLogin ? "No active credentials?" : "Credential set found?"}
             <button 
@@ -105,6 +109,14 @@ export const AuthUI: React.FC = () => {
               {isLogin ? 'Request Access' : 'Authenticate'}
             </button>
           </p>
+          {onOfflineMode && (
+            <button
+              onClick={onOfflineMode}
+              className="text-[10px] text-[#888888] hover:text-[#E0E0E0] tracking-widest uppercase transition-colors"
+            >
+              [ Launch Offline Sandbox ]
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

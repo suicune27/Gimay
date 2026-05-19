@@ -60,6 +60,7 @@ function createWindow() {
     minHeight: 600,
     frame: true, // Keep standard OS frame (can be set to false for borderless)
     show: false,
+    icon: path.join(app.getAppPath(), "build/gimay.ico"),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'electron/preload.cjs'),
       contextIsolation: true,
@@ -89,7 +90,7 @@ function createWindow() {
       const activePort = getDynamicPort();
       const devUrl = `http://localhost:${activePort}`;
       console.log(`[Electron Main] Loading development URL: ${devUrl}`);
-      
+
       mainWindow.loadURL(devUrl).catch((err) => {
         console.log(`[Electron Main] Dev server not ready yet, retrying in 250ms...`);
         setTimeout(loadWithRetry, 250);
@@ -125,7 +126,8 @@ function createTray() {
     }
 
     const contextMenu = Menu.buildFromTemplate([
-      { label: 'Restore Application', click: () => {
+      {
+        label: 'Restore Application', click: () => {
           if (mainWindow) {
             mainWindow.show();
             mainWindow.focus();
@@ -136,7 +138,8 @@ function createTray() {
       },
       { label: 'Check for Updates', click: () => checkForUpdates() },
       { type: 'separator' },
-      { label: 'Quit Putmen', click: () => {
+      {
+        label: 'Quit Putmen', click: () => {
           saveWindowState();
           app.quit();
         }
@@ -160,7 +163,7 @@ async function checkForUpdates() {
   console.log('[Electron Auto-Updater] Invoking updates scan...');
   try {
     const { autoUpdater } = await import('electron-updater');
-    
+
     autoUpdater.on('update-available', (info) => {
       mainWindow?.webContents.send('update-available', info);
       new Notification({
