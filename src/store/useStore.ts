@@ -47,6 +47,10 @@ interface AppState {
   activeTabId: string | null;
   addTab: (item: RequestData | Collection | EnvironmentTab) => void;
   closeTab: (id: string) => void;
+  closeAllTabs: () => void;
+  closeOtherTabs: (id: string) => void;
+  closeTabsToTheRight: (id: string) => void;
+  closeTabsToTheLeft: (id: string) => void;
   setActiveTab: (id: string | null) => void;
   updateTab: (id: string, data: Partial<RequestData | Collection | EnvironmentTab>) => void;
   updateRequest: (id: string, data: Partial<RequestData>) => void;
@@ -333,6 +337,36 @@ export const useStore = create<AppState>()(
         let newActiveId = state.activeTabId;
         if (state.activeTabId === id) {
           newActiveId = newTabs.length > 0 ? newTabs[newTabs.length - 1].id : null;
+        }
+        return { openTabs: newTabs, activeTabId: newActiveId };
+      }),
+      closeAllTabs: () => set({ openTabs: [], activeTabId: null }),
+      closeOtherTabs: (id) => set((state) => {
+        const tab = state.openTabs.find(t => t.id === id);
+        return {
+          openTabs: tab ? [tab] : [],
+          activeTabId: tab ? id : null
+        };
+      }),
+      closeTabsToTheRight: (id) => set((state) => {
+        const index = state.openTabs.findIndex(t => t.id === id);
+        if (index === -1) return {};
+        const newTabs = state.openTabs.slice(0, index + 1);
+        let newActiveId = state.activeTabId;
+        const activeStillExists = newTabs.some(t => t.id === state.activeTabId);
+        if (!activeStillExists) {
+          newActiveId = id;
+        }
+        return { openTabs: newTabs, activeTabId: newActiveId };
+      }),
+      closeTabsToTheLeft: (id) => set((state) => {
+        const index = state.openTabs.findIndex(t => t.id === id);
+        if (index === -1) return {};
+        const newTabs = state.openTabs.slice(index);
+        let newActiveId = state.activeTabId;
+        const activeStillExists = newTabs.some(t => t.id === state.activeTabId);
+        if (!activeStillExists) {
+          newActiveId = id;
         }
         return { openTabs: newTabs, activeTabId: newActiveId };
       }),

@@ -149,6 +149,10 @@ export const RequestEditor: React.FC = () => {
     openTabs,
     activeTabId,
     closeTab,
+    closeAllTabs,
+    closeOtherTabs,
+    closeTabsToTheRight,
+    closeTabsToTheLeft,
     setActiveTab,
     updateTab,
     updateRequest,
@@ -180,6 +184,8 @@ export const RequestEditor: React.FC = () => {
   const [editingRequestTabId, setEditingRequestTabId] = useState<string | null>(null);
   const [requestTabNameDraft, setRequestTabNameDraft] = useState('');
   const [activeScriptTarget, setActiveScriptTarget] = useState<'pre_request_script' | 'test_script'>('pre_request_script');
+  const [contextMenuTabId, setContextMenuTabId] = useState<string | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [isSavingManual, setIsSavingManual] = useState(false);
   const paramUrlSyncSourceRef = useRef<'url' | 'params' | null>(null);
 
@@ -497,6 +503,11 @@ export const RequestEditor: React.FC = () => {
                 key={tab.id}
                 draggable={isEditingThisTab ? false : undefined}
                 onClick={() => !isEditingThisTab && setActiveTab(tab.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenuTabId(tab.id);
+                  setContextMenuPosition({ x: e.clientX, y: e.clientY });
+                }}
                 onDoubleClick={() => {
                   if (isTabCollection) {
                     setEditingCollectionTabId(tab.id);
@@ -1404,6 +1415,82 @@ export const RequestEditor: React.FC = () => {
           addToast({ type: 'success', message: 'Script integrated into protocol' });
         }}
       />
+
+      {contextMenuTabId && contextMenuPosition && (
+        <>
+          <div 
+            className="fixed inset-0 z-[999] bg-transparent cursor-default" 
+            onClick={() => {
+              setContextMenuTabId(null);
+              setContextMenuPosition(null);
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenuTabId(null);
+              setContextMenuPosition(null);
+            }}
+          />
+          <div 
+            style={{ 
+              top: `${contextMenuPosition.y}px`, 
+              left: `${contextMenuPosition.x}px` 
+            }}
+            className="fixed z-[1000] min-w-[170px] bg-[#0E0E10]/95 backdrop-blur-md border border-white/[0.05] rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 select-none"
+          >
+            <button
+              onClick={() => {
+                closeTab(contextMenuTabId);
+                setContextMenuTabId(null);
+                setContextMenuPosition(null);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-[9px] uppercase font-black tracking-widest text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all"
+            >
+              Close Tab
+            </button>
+            <button
+              onClick={() => {
+                closeOtherTabs(contextMenuTabId);
+                setContextMenuTabId(null);
+                setContextMenuPosition(null);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-[9px] uppercase font-black tracking-widest text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all"
+            >
+              Close Others
+            </button>
+            <button
+              onClick={() => {
+                closeTabsToTheRight(contextMenuTabId);
+                setContextMenuTabId(null);
+                setContextMenuPosition(null);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-[9px] uppercase font-black tracking-widest text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all"
+            >
+              Close to the Right
+            </button>
+            <button
+              onClick={() => {
+                closeTabsToTheLeft(contextMenuTabId);
+                setContextMenuTabId(null);
+                setContextMenuPosition(null);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-[9px] uppercase font-black tracking-widest text-zinc-400 hover:text-white hover:bg-white/[0.03] transition-all"
+            >
+              Close to the Left
+            </button>
+            <div className="h-px bg-white/[0.04] my-1" />
+            <button
+              onClick={() => {
+                closeAllTabs();
+                setContextMenuTabId(null);
+                setContextMenuPosition(null);
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left text-[9px] uppercase font-black tracking-widest text-rose-500 hover:text-rose-400 hover:bg-rose-500/5 transition-all"
+            >
+              Close All Tabs
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

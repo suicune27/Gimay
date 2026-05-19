@@ -5,9 +5,10 @@ import yaml from 'js-yaml';
 
 export type ImportFormat = 'postman' | 'insomnia' | 'apidog' | 'openapi';
 
-type ImportNode =
-  | { type: 'folder'; name: string; children: ImportNode[] }
+export type ImportNode =
+  | { id?: string; type: 'folder'; name: string; children: ImportNode[] }
   | {
+    id?: string;
     type: 'request';
     name: string;
     request: {
@@ -75,6 +76,18 @@ export class CollectionImportService {
       throw new Error('No importable collection data found in this export.');
     }
 
+    let idCounter = 0;
+    const assignIds = (nodes: ImportNode[], parentPath = '') => {
+      nodes.forEach((node) => {
+        const currentPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+        node.id = `${currentPath}::${idCounter++}`;
+        if (node.type === 'folder') {
+          assignIds(node.children, currentPath);
+        }
+      });
+    };
+    assignIds(normalized.items);
+
     const stats = this.collectStats(normalized);
     const warnings: string[] = [];
     if (stats.requests === 0) warnings.push('No requests detected in this file.');
@@ -86,7 +99,8 @@ export class CollectionImportService {
     jsonString: string,
     workspaceId: string,
     userId: string,
-    sourceHint: ImportFormat | 'auto' = 'auto'
+    sourceHint: ImportFormat | 'auto' = 'auto',
+    selectedNodeIds?: string[]
   ) {
     const preview = this.previewImport(jsonString, sourceHint);
 
@@ -98,7 +112,7 @@ export class CollectionImportService {
       documentation: preview.normalized.documentation || '',
     } as any);
 
-    await this.importNodes(preview.normalized.items, collection.id, workspaceId, userId, null);
+    await this.importNodes(preview.normalized.items, collection.id, workspaceId, userId, null, selectedNodeIds);
     return { collection, format: preview.format, stats: preview.stats };
   }
 
@@ -567,12 +581,17 @@ export class CollectionImportService {
     collectionId: string,
     workspaceId: string,
     userId: string,
-    folderId: string | null
+    folderId: string | null,
+    selectedNodeIds?: string[]
   ) {
     for (const node of nodes) {
+      if (selectedNodeIds && node.id && !selectedNodeIds.includes(node.id)) {
+        continue;
+      }
+
       if (node.type === 'folder') {
         const folder = await PersistenceService.createFolder(node.name, collectionId, userId, folderId || undefined, workspaceId);
-        await this.importNodes(node.children, collectionId, workspaceId, userId, folder.id);
+        await this.importNodes(node.children, collectionId, workspaceId, userId, folder.id, selectedNodeIds);
       } else {
         await PersistenceService.createRequest({
           collection_id: collectionId,
