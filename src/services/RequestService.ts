@@ -144,11 +144,16 @@ export class RequestService {
       try {
         if (useWebProxy) {
           // Route request through our internal Express CORS proxy bridge
+          let requestData = config.data;
+          if (requestData && (requestData instanceof URLSearchParams || requestData.constructor?.name === 'URLSearchParams' || typeof requestData.append === 'function')) {
+            requestData = requestData.toString();
+          }
+
           const proxyResponse = await axios.post('/api/proxy', {
             method: config.method,
             url: config.url,
             headers: config.headers,
-            data: config.data,
+            data: requestData,
             params: config.params
           });
 
