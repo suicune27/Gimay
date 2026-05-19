@@ -19,7 +19,9 @@ import {
   TerminalSquare,
   Layout,
   Columns,
-  Sparkles
+  Sparkles,
+  Settings2,
+  Activity
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -434,6 +436,7 @@ export const RequestEditor: React.FC = () => {
   const [responseHeight, setResponseHeight] = useState(40); // percentage
   const [responseWidth, setResponseWidth] = useState(40); // percentage
   const [isResizing, setIsResizing] = useState(false);
+  const [isMethodDropdownOpen, setIsMethodDropdownOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const startResizing = useCallback((e: React.MouseEvent) => {
@@ -664,26 +667,68 @@ export const RequestEditor: React.FC = () => {
 
               {/* URL & Send Module */}
               <div className="flex gap-2 p-1 bg-[#141414] border border-[#222222] rounded-xl shadow-2xl focus-within:border-[#3ECF8E]/30 transition-all">
-                <div className="relative group min-w-[90px]">
-                  <select
+                <div className="relative min-w-[100px] border-r border-white/5">
+                  <button
                     disabled={!canEdit}
-                    value={activeRequest!.method}
-                    onChange={(e) => updateRequest(activeRequest!.id, { method: e.target.value as any })}
-                    style={{ backgroundColor: '#141414', color: '#3ECF8E', colorScheme: 'dark' }}
+                    onClick={() => setIsMethodDropdownOpen(!isMethodDropdownOpen)}
                     className={cn(
-                      "w-full bg-transparent text-[9px] font-black py-2 px-3 outline-none cursor-pointer text-[#3ECF8E] appearance-none",
-                      !canEdit && "opacity-50 cursor-not-allowed"
+                      "w-full flex items-center justify-between bg-transparent text-[9px] font-black py-2.5 px-3.5 outline-none cursor-pointer hover:bg-white/5 transition-all text-left",
+                      activeRequest!.method === 'GET' ? 'text-[#3ECF8E]' :
+                      activeRequest!.method === 'POST' ? 'text-yellow-500' :
+                      activeRequest!.method === 'PUT' ? 'text-blue-500' :
+                      activeRequest!.method === 'DELETE' ? 'text-red-500' :
+                      activeRequest!.method === 'PATCH' ? 'text-indigo-400' : 'text-[#A0A0A0]',
+                      !canEdit && "opacity-50 cursor-not-allowed pointer-events-none"
                     )}
                   >
-                    <option value="GET" style={{ backgroundColor: '#141414', color: '#3ECF8E' }}>GET</option>
-                    <option value="POST" style={{ backgroundColor: '#141414', color: '#F59E0B' }}>POST</option>
-                    <option value="PUT" style={{ backgroundColor: '#141414', color: '#3B82F6' }}>PUT</option>
-                    <option value="PATCH" style={{ backgroundColor: '#141414', color: '#6366F1' }}>PATCH</option>
-                    <option value="DELETE" style={{ backgroundColor: '#141414', color: '#EF4444' }}>DELETE</option>
-                    <option value="OPTIONS" style={{ backgroundColor: '#141414', color: '#A0A0A0' }}>OPTIONS</option>
-                    <option value="HEAD" style={{ backgroundColor: '#141414', color: '#A0A0A0' }}>HEAD</option>
-                  </select>
-                  <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-40" />
+                    <span>{activeRequest!.method}</span>
+                    <ChevronDown size={10} className={cn("transition-transform duration-200 opacity-40 ml-1.5", isMethodDropdownOpen && "rotate-180")} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isMethodDropdownOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-40 cursor-default" 
+                          onClick={() => setIsMethodDropdownOpen(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                          transition={{ duration: 0.1, ease: "easeOut" }}
+                          className="absolute left-1.5 mt-2 w-[130px] bg-[#0E0E10]/95 backdrop-blur-xl border border-[#222222] rounded-xl shadow-2xl z-50 p-1.5 space-y-0.5"
+                        >
+                          {(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'] as const).map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => {
+                                updateRequest(activeRequest!.id, { method: m });
+                                setIsMethodDropdownOpen(false);
+                              }}
+                              className={cn(
+                                "w-full text-left px-2.5 py-1.5 text-[9px] font-black tracking-wide rounded-lg transition-all flex items-center justify-between",
+                                activeRequest!.method === m 
+                                  ? "bg-[#3ECF8E]/10 text-[#3ECF8E]" 
+                                  : "text-[#888888] hover:text-[#E0E0E0] hover:bg-white/5"
+                              )}
+                            >
+                              <span className={cn(
+                                m === 'GET' ? 'text-[#3ECF8E]' :
+                                m === 'POST' ? 'text-yellow-500' :
+                                m === 'PUT' ? 'text-blue-500' :
+                                m === 'DELETE' ? 'text-red-500' :
+                                m === 'PATCH' ? 'text-indigo-400' : 'text-[#AAAAAA]'
+                              )}>
+                                {m}
+                              </span>
+                              {activeRequest!.method === m && <div className="w-1 h-1 rounded-full bg-[#3ECF8E]" />}
+                            </button>
+                          ))}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
                 </div>
                 <div className="flex-1 border-x border-white/5 flex items-center px-4">
                   <VariableInput
@@ -1142,6 +1187,177 @@ export const RequestEditor: React.FC = () => {
 
                 {activeSection === 'Smoke Test' && (
                   <SmokeTestPanel activeRequest={activeRequest!} collection={collection} />
+                )}
+
+                {activeSection === 'Settings' && (
+                  <div className="space-y-6 max-w-2xl font-mono animate-in fade-in duration-200">
+                    
+                    {/* General Request Settings Card */}
+                    <div className="p-5 bg-[#0C0C0F] border border-[#1A1A22] rounded-2xl space-y-4">
+                      <div className="flex items-center gap-2 border-b border-[#1A1A22] pb-3">
+                        <Settings2 size={14} className="text-[#3ECF8E]" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest font-mono">General Request Config</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Connection Timeout (ms)</label>
+                          <input 
+                            type="number"
+                            value={activeRequest!.settings?.timeout || 0}
+                            onChange={(e) => {
+                              const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                              updateRequest(activeRequest!.id, {
+                                settings: { ...settings, timeout: Math.max(0, parseInt(e.target.value, 10) || 0) }
+                              });
+                            }}
+                            placeholder="0 (no timeout)"
+                            className="w-full bg-[#050507] border border-[#1C1C22] px-3.5 py-2.5 rounded-xl text-white font-mono text-[10px] focus:outline-none focus:border-[#3ECF8E]/30"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Max Redirects Limit</label>
+                          <input 
+                            type="number"
+                            value={activeRequest!.settings?.maxRedirects ?? 10}
+                            onChange={(e) => {
+                              const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                              updateRequest(activeRequest!.id, {
+                                settings: { ...settings, maxRedirects: Math.max(0, parseInt(e.target.value, 10) || 0) }
+                              });
+                            }}
+                            className="w-full bg-[#050507] border border-[#1C1C22] px-3.5 py-2.5 rounded-xl text-white font-mono text-[10px] focus:outline-none focus:border-[#3ECF8E]/30"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2">
+                        <div>
+                          <div className="text-[10px] font-bold text-[#E0E0E6] font-mono">Follow Redirects</div>
+                          <div className="text-[8px] text-[#555] uppercase mt-0.5 font-sans">Automatically traverse HTTP redirects</div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                            updateRequest(activeRequest!.id, {
+                              settings: { ...settings, followRedirects: !settings.followRedirects }
+                            });
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all border font-mono",
+                            activeRequest!.settings?.followRedirects ?? true
+                              ? "bg-[#3ECF8E]/10 text-[#3ECF8E] border-[#3ECF8E]/20"
+                              : "bg-[#1C1C22] text-[#555] border-[#222]"
+                          )}
+                        >
+                          {(activeRequest!.settings?.followRedirects ?? true) ? 'ENABLED' : 'DISABLED'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Inline Network Chaos & Reliability Fuzzer Card */}
+                    <div className="p-5 bg-[#0C0C0F] border border-[#1A1A22] rounded-2xl space-y-4 relative overflow-hidden">
+                      <div className="flex items-center justify-between border-b border-[#1A1A22] pb-3">
+                        <div className="flex items-center gap-2">
+                          <Activity size={14} className={cn("text-[#3ECF8E]", (activeRequest!.settings as any)?.chaosEnabled && "animate-pulse text-red-400")} />
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest font-mono">Network Chaos Fuzzer</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                            updateRequest(activeRequest!.id, {
+                              settings: { 
+                                ...settings, 
+                                chaosEnabled: !(settings as any).chaosEnabled 
+                              }
+                            });
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all border font-mono",
+                            (activeRequest!.settings as any)?.chaosEnabled
+                              ? "bg-red-500/10 text-red-400 border-red-500/20"
+                              : "bg-[#1C1C22] text-[#555] border-[#222]"
+                          )}
+                        >
+                          {(activeRequest!.settings as any)?.chaosEnabled ? 'ENGAGED ⚡' : 'BYPASSED'}
+                        </button>
+                      </div>
+
+                      <div className="p-3 bg-white/[0.01] border border-white/5 rounded-xl space-y-1.5">
+                        <span className="text-[8px] font-black text-[#555] uppercase tracking-widest block font-mono">Simulate Network Instability</span>
+                        <p className="text-[9px] text-[#888] leading-relaxed font-sans">
+                          Test how your frontend handles latency jitter and API reliability crashes. Programmatically fuzz request results and inject lag without modifying backend code.
+                        </p>
+                      </div>
+
+                      <AnimatePresence>
+                        {(activeRequest!.settings as any)?.chaosEnabled && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-4 pt-2 font-mono"
+                          >
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Min Delay Jitter (ms)</label>
+                                <input 
+                                  type="number"
+                                  value={(activeRequest!.settings as any)?.chaosMinDelay || 0}
+                                  onChange={(e) => {
+                                    const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                                    updateRequest(activeRequest!.id, {
+                                      settings: { ...settings, chaosMinDelay: Math.max(0, parseInt(e.target.value, 10) || 0) }
+                                    });
+                                  }}
+                                  className="w-full bg-[#050507] border border-[#1C1C22] px-3.5 py-2.5 rounded-xl text-white font-mono text-[10px] focus:outline-none focus:border-[#3ECF8E]/30"
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Max Delay Jitter (ms)</label>
+                                <input 
+                                  type="number"
+                                  value={(activeRequest!.settings as any)?.chaosMaxDelay || 0}
+                                  onChange={(e) => {
+                                    const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                                    updateRequest(activeRequest!.id, {
+                                      settings: { ...settings, chaosMaxDelay: Math.max(0, parseInt(e.target.value, 10) || 0) }
+                                    });
+                                  }}
+                                  className="w-full bg-[#050507] border border-[#1C1C22] px-3.5 py-2.5 rounded-xl text-white font-mono text-[10px] focus:outline-none focus:border-[#3ECF8E]/30"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider font-mono">
+                                <span className="text-[#55555C]">Fuzz failure rate probability</span>
+                                <span className="text-red-400">{(activeRequest!.settings as any)?.chaosFailureRate || 0}%</span>
+                              </div>
+                              <input 
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={(activeRequest!.settings as any)?.chaosFailureRate || 0}
+                                onChange={(e) => {
+                                  const settings = activeRequest!.settings || { followRedirects: true, timeout: 0, maxRedirects: 10 };
+                                  updateRequest(activeRequest!.id, {
+                                    settings: { ...settings, chaosFailureRate: parseInt(e.target.value, 10) || 0 }
+                                  });
+                                }}
+                                className="w-full accent-red-500 h-1 bg-[#15151A] rounded-lg appearance-none cursor-pointer"
+                              />
+                              <span className="text-[7px] text-[#444] uppercase block font-sans">CHANCE TO RETURN SIMULATED TIMEOUT (408), THROTTLE (429), OR SERVER CRASH (500/503/504)</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                  </div>
                 )}
               </div>
             </div>

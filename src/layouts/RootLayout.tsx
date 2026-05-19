@@ -108,7 +108,7 @@ export const RootLayout: React.FC = () => {
 
   useEffect(() => {
     const initSession = async () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      if (isElectron() && typeof navigator !== 'undefined' && !navigator.onLine) {
         console.warn('[RootLayout] Offline mode active. Using local data context.');
         if (!profile) {
           setProfile({

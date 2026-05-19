@@ -97,6 +97,52 @@ export class RequestService {
 
     // 3. Resolve variables
     const resolvedUrl = VariableService.resolve(request.url, variableContext);
+    
+    // 3.5. Inject Network Chaos Fuzzer
+    const isChaosEnabled = (request.settings as any)?.chaosEnabled ?? false;
+    if (isChaosEnabled) {
+      // 1. Latency Jitter simulation
+      const minDelay = (request.settings as any)?.chaosMinDelay ?? 0;
+      const maxDelay = (request.settings as any)?.chaosMaxDelay ?? 0;
+      if (maxDelay > minDelay) {
+        const jitter = Math.floor(Math.random() * (maxDelay - minDelay) + minDelay);
+        await new Promise(resolve => setTimeout(resolve, jitter));
+      }
+
+      // 2. HTTP Status Failure Fuzzing
+      const failureRate = (request.settings as any)?.chaosFailureRate ?? 0;
+      if (Math.random() * 100 < failureRate) {
+        const end = Date.now();
+        const fuzzedErrors = [
+          { status: 408, text: 'Request Timeout (Fuzzed)', msg: 'Target timeout limit exceeded.' },
+          { status: 429, text: 'Too Many Requests (Fuzzed)', msg: 'API Rate limit throttled by Chaos Fuzzer.' },
+          { status: 500, text: 'Internal Server Error (Fuzzed)', msg: 'Simulated backend database collision.' },
+          { status: 503, text: 'Service Unavailable (Fuzzed)', msg: 'Backend instance reported unhealthy.' },
+          { status: 504, text: 'Gateway Timeout (Fuzzed)', msg: 'Ingress proxy socket dropped link.' }
+        ];
+        const errorTemplate = fuzzedErrors[Math.floor(Math.random() * fuzzedErrors.length)];
+        
+        return {
+          id: Math.random().toString(36).substr(2, 9),
+          status: errorTemplate.status,
+          statusText: `Chaos Intercept: ${errorTemplate.text}`,
+          headers: { 'x-gimay-chaos': 'active' },
+          body: JSON.stringify({
+            error: errorTemplate.text,
+            message: errorTemplate.msg,
+            recommendation: 'Verify your client application handles network retries, throttles, and server crash screens gracefully.'
+          }, null, 2),
+          time: end - start,
+          size: 0,
+          contentType: 'application/json',
+          request_config: {
+            runtimeEnv: isElectron() ? 'Electron/Desktop' : 'Web Browser',
+            chaosFuzzer: 'Active intercept'
+          }
+        };
+      }
+    }
+
     const resolvedHeaders = this.resolveKeyValues(request.headers, variableContext);
     const resolvedParams = this.resolveKeyValues(request.params, variableContext);
     
@@ -209,7 +255,25 @@ export class RequestService {
         }
       };
     } else {
-      const diagnostics = this.diagnoseError(lastError, !isElectron());
+      let diagnostics = this.diagnoseError(lastError, !isElectron());
+      let traceSteps: any[] = [];
+
+      if (isElectron() && typeof (window as any).electron?.runNetworkDiagnostics === 'function') {
+        try {
+          const nativeDiag = await (window as any).electron.runNetworkDiagnostics(resolvedUrl);
+          if (nativeDiag) {
+            diagnostics = {
+              errorType: nativeDiag.errorType,
+              message: nativeDiag.message,
+              recommendation: nativeDiag.recommendation
+            };
+            traceSteps = nativeDiag.steps || [];
+          }
+        } catch (diagErr) {
+          console.error('[RequestService] Native socket diagnostics tracer failed:', diagErr);
+        }
+      }
+
       return {
         id: Math.random().toString(36).substr(2, 9),
         status: 0,
@@ -221,6 +285,7 @@ export class RequestService {
             type: diagnostics.errorType,
             message: diagnostics.message,
             recommendation: diagnostics.recommendation,
+            trace: traceSteps.length > 0 ? traceSteps : undefined
           },
           details: lastError?.stack || 'Request execution failed after retries'
         }, null, 2),

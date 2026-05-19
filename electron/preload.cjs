@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Proxy Resolution & Controls
   resolveProxy: (url) => ipcRenderer.invoke('resolve-proxy', url),
   updateProxy: (settings) => ipcRenderer.send('update-proxy-settings', settings),
+  runNetworkDiagnostics: (url) => ipcRenderer.invoke('run-network-diagnostics', url),
   
   // Persistent Storage Helper
   getStoreValue: (key) => ipcRenderer.invoke('store-get', key),

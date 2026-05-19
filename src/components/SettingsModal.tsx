@@ -36,7 +36,6 @@ import {
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
 import { AppSettings } from '../types';
-import { GitHubService } from '../services/GitHubService';
 import { isElectron } from '../lib/platform';
 import { ProxyService } from '../services/ProxyService';
 
@@ -45,7 +44,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'GitHub Sync' | 'Experimental' | 'Diagnostics' | 'About';
+type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings, resetSettings, activeWorkspaceId, profile, addToast } = useStore();
@@ -75,7 +74,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     { id: 'SSL/TLS', icon: Shield, label: 'SSL / TLS' },
     { id: 'Cookies', icon: Database, label: 'Cookies' },
     { id: 'Response & Network', icon: Zap, label: 'Network' },
-    { id: 'GitHub Sync', icon: Github, label: 'GitHub Sync' },
     { id: 'Experimental', icon: FlaskConical, label: 'Experimental' },
     { id: 'Diagnostics', icon: Activity, label: 'Diagnostics' },
     { id: 'About', icon: Info, label: 'About' },
@@ -598,96 +596,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         description="Keep cookies restricted to their specific workspace jar." 
                         enabled={settings.cookies.workspaceIsolation}
                         onChange={(v) => handleUpdate('cookies.workspaceIsolation', v)}
-                      />
-                    </div>
-                  </Section>
-                </motion.div>
-              )}
-
-              {activeSection === 'GitHub Sync' && (
-                <motion.div
-                  key="github"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="space-y-8"
-                >
-                  <Section title="Authentication">
-                    <SettingInput 
-                      label="GitHub Personal Access Token" 
-                      description="Create a token with 'repo' scope at github.com/settings/tokens"
-                      placeholder="ghp_xxxxxxxxxxxx"
-                      value={settings.github.token}
-                      type="password"
-                      onChange={(v) => handleUpdate('github.token', v)}
-                    />
-                  </Section>
-
-                  <Section title="Repository Link">
-                    <div className="space-y-4">
-                      <SettingInput 
-                        label="Target Repository" 
-                        description="Format: owner/repo"
-                        placeholder="whitehats27/api-collections"
-                        value={settings.github.repo}
-                        onChange={(v) => handleUpdate('github.repo', v)}
-                      />
-                      <div className="grid grid-cols-2 gap-6">
-                        <SettingInput 
-                          label="Branch" 
-                          placeholder="main"
-                          value={settings.github.branch}
-                          onChange={(v) => handleUpdate('github.branch', v)}
-                        />
-                        <SettingInput 
-                          label="Root Path" 
-                          description="Directory for collections"
-                          placeholder="collections"
-                          value={settings.github.path}
-                          onChange={(v) => handleUpdate('github.path', v)}
-                        />
-                      </div>
-                    </div>
-                  </Section>
-
-                  <Section title="Operational Sync">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-4 bg-[var(--bg-elevated)] rounded-lg border border-[var(--border-subtle)]">
-                        <div>
-                          <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">Pull Remote Updates</div>
-                          <div className="text-[10px] text-[var(--text-dim)] mt-0.5">Fetch latest collection nodes from specified repository.</div>
-                          {settings.github.lastPulledAt && (
-                            <div className="text-[8px] text-[var(--brand)] font-mono mt-1 uppercase tracking-tighter">
-                              Last Pulled: {new Date(settings.github.lastPulledAt).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                        <button 
-                          onClick={async () => {
-                            if (!activeWorkspaceId || !profile?.id) return;
-                            setIsPulling(true);
-                            try {
-                              const count = await GitHubService.pullUpdates(activeWorkspaceId, profile.id);
-                              addToast({ type: 'success', message: `Uplink successful: Imported ${count} nodes.` });
-                            } catch (e: any) {
-                              addToast({ type: 'error', message: `Uplink failed: ${e.message}` });
-                            } finally {
-                              setIsPulling(false);
-                            }
-                          }}
-                          disabled={isPulling || !settings.github.token || !settings.github.repo}
-                          className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--brand)] hover:bg-[var(--brand)]/10 rounded-lg transition-all disabled:opacity-20"
-                        >
-                          {isPulling ? <RefreshCw size={14} className="animate-spin" /> : <CloudDownload size={14} />}
-                          Pull Updates
-                        </button>
-                      </div>
-
-                      <SettingToggle 
-                        label="Background Synchronization" 
-                        description="Automatically push local changes to GitHub in intervals (Experimental)." 
-                        enabled={settings.github.autoSync}
-                        onChange={(v) => handleUpdate('github.autoSync', v)}
                       />
                     </div>
                   </Section>

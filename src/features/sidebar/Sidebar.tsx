@@ -48,7 +48,6 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { Collection, Folder as FolderType, RequestData, Environment } from '../../types';
 import { PersistenceService } from '../../services/PersistenceService';
 import { CollectionExportService } from '../../services/CollectionExportService';
-import { GitHubService } from '../../services/GitHubService';
 import { NameModal } from '../../components/NameModal';
 import { TeamModal } from '../../components/TeamModal';
 import { EnvironmentModal } from '../../components/EnvironmentModal';
@@ -1322,23 +1321,6 @@ export const Sidebar: React.FC = () => {
                   className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
                   <FileDown size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Export Schema
-                </button>
-                <button
-                  onClick={async () => {
-                    const col = collections.find(c => c.id === contextMenu.id);
-                    if (col) {
-                      try {
-                        addToast({ type: 'info', message: 'Pushing changes to GitHub...' });
-                        await GitHubService.pushUpdates(col);
-                        addToast({ type: 'success', message: 'Collection pushed to GitHub.' });
-                      } catch (err: any) {
-                        addToast({ type: 'error', message: `Push failed: ${err.message}` });
-                      }
-                    }
-                  }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
-                >
-                  <Activity size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> GitHub Sync
                 </button>
                 <div className="h-px bg-white/[0.03] my-1" />
                 <button

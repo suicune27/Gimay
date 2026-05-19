@@ -1,6 +1,9 @@
-import { app, BrowserWindow, ipcMain, session, Notification, Tray, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, session, Notification, Tray, Menu, nativeTheme } from 'electron';
 import path from 'path';
 import fs from 'fs';
+import dns from 'dns';
+import net from 'net';
+import tls from 'tls';
 
 let mainWindow = null;
 let tray = null;
@@ -193,6 +196,7 @@ async function checkForUpdates() {
 }
 
 app.whenReady().then(() => {
+  nativeTheme.themeSource = 'dark';
   Menu.setApplicationMenu(null);
   createWindow();
   createTray();
@@ -281,6 +285,20 @@ app.whenReady().then(() => {
       console.error('Failed to relaunch app:', e);
     }
   });
+
+  ipcMain.handle('run-network-diagnostics', async (event, url) => {
+    try {
+      return await traceNetworkDiagnostics(url);
+    } catch (e) {
+      console.error('[Electron Main] Network diagnostics error:', e);
+      return {
+        success: false,
+        errorType: 'GENERIC_ERROR',
+        message: e.message,
+        recommendation: 'Internal diagnostic trace engine error.'
+      };
+    }
+  });
 });
 
 async function configureSessionProxy(settings) {
@@ -331,3 +349,215 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+async function traceNetworkDiagnostics(targetUrl) {
+  const steps = [];
+  let diagnosticSummary = {
+    success: false,
+    errorType: 'GENERIC_ERROR',
+    message: '',
+    recommendation: '',
+    steps: steps
+  };
+
+  try {
+    const parsed = new URL(targetUrl);
+    const host = parsed.hostname;
+    const isHttps = parsed.protocol === 'https:';
+    const port = parsed.port ? parseInt(parsed.port, 10) : (isHttps ? 443 : 80);
+
+    steps.push({
+      name: 'URL Validation',
+      status: 'SUCCESS',
+      message: `Parsed destination: ${host}:${port} (${isHttps ? 'HTTPS' : 'HTTP'})`
+    });
+
+    const dnsStart = Date.now();
+    let ip = null;
+    try {
+      const addresses = await dns.promises.lookup(host);
+      ip = addresses.address;
+      const duration = Date.now() - dnsStart;
+      steps.push({
+        name: 'DNS Resolution',
+        status: 'SUCCESS',
+        message: `Resolved hostname ${host} to IP: ${ip}`,
+        durationMs: duration
+      });
+    } catch (dnsErr) {
+      steps.push({
+        name: 'DNS Resolution',
+        status: 'FAILED',
+        message: `Failed to resolve hostname "${host}". ${dnsErr.message}`
+      });
+      diagnosticSummary.errorType = 'DNS_FAILURE';
+      diagnosticSummary.message = `DNS resolution failed for hostname "${host}".`;
+      diagnosticSummary.recommendation = 'Verify your local network connection, check if the domain is registered, and ensure your DNS servers are reachable.';
+      return diagnosticSummary;
+    }
+
+    const tcpStart = Date.now();
+    let tcpSuccess = false;
+    let tcpError = null;
+
+    await new Promise((resolve) => {
+      const socket = new net.Socket();
+      socket.setTimeout(4000);
+
+      socket.on('connect', () => {
+        tcpSuccess = true;
+        socket.destroy();
+        resolve();
+      });
+
+      socket.on('error', (err) => {
+        tcpError = err;
+        socket.destroy();
+        resolve();
+      });
+
+      socket.on('timeout', () => {
+        tcpError = new Error('Connection timed out');
+        socket.destroy();
+        resolve();
+      });
+
+      socket.connect(port, ip);
+    });
+
+    const tcpDuration = Date.now() - tcpStart;
+    if (tcpSuccess) {
+      steps.push({
+        name: 'TCP Handshake',
+        status: 'SUCCESS',
+        message: `Established raw TCP connection socket with ${ip}:${port}`,
+        durationMs: tcpDuration
+      });
+    } else {
+      steps.push({
+        name: 'TCP Handshake',
+        status: 'FAILED',
+        message: `Failed to connect to ${ip}:${port}. Reason: ${tcpError ? tcpError.message : 'Timeout'}`
+      });
+      diagnosticSummary.errorType = 'CONNECTION_REFUSED';
+      diagnosticSummary.message = `Target server port ${port} is unreachable.`;
+      diagnosticSummary.recommendation = `Ensure the backend server is running and actively listening on Port ${port}. If running inside Docker/Localhost, verify your port bindings.`;
+      return diagnosticSummary;
+    }
+
+    if (isHttps) {
+      const tlsStart = Date.now();
+      let tlsSuccess = false;
+      let tlsError = null;
+      let certInfo = null;
+
+      await new Promise((resolve) => {
+        const socket = tls.connect({
+          host: host,
+          port: port,
+          servername: host,
+          rejectUnauthorized: false,
+          timeout: 4000
+        });
+
+        socket.on('secureConnect', () => {
+          tlsSuccess = true;
+          try {
+            const cert = socket.getPeerCertificate(true);
+            if (cert && Object.keys(cert).length > 0) {
+              certInfo = {
+                subject: cert.subject?.CN || host,
+                issuer: cert.issuer?.O || cert.issuer?.CN || 'Unknown',
+                validFrom: cert.valid_from,
+                validTo: cert.valid_to,
+                authorized: socket.authorized,
+                authorizationError: socket.authorizationError
+              };
+            }
+          } catch (e) {
+            console.error('Failed to get cert info:', e);
+          }
+          socket.destroy();
+          resolve();
+        });
+
+        socket.on('error', (err) => {
+          tlsError = err;
+          socket.destroy();
+          resolve();
+        });
+
+        socket.on('timeout', () => {
+          tlsError = new Error('TLS Handshake timed out');
+          socket.destroy();
+          resolve();
+        });
+      });
+
+      const tlsDuration = Date.now() - tlsStart;
+
+      if (tlsSuccess) {
+        if (certInfo && !certInfo.authorized) {
+          const authError = certInfo.authorizationError || '';
+          steps.push({
+            name: 'TLS Handshake',
+            status: 'FAILED',
+            message: `Secure TLS Handshake failed validation. Certificate untrusted: ${authError}`,
+            durationMs: tlsDuration,
+            details: certInfo
+          });
+
+          diagnosticSummary.errorType = 'SSL_ERROR';
+          diagnosticSummary.message = `SSL/TLS Certificate untrusted. Reason: ${authError}`;
+          
+          if (authError.includes('CERT_HAS_EXPIRED')) {
+            diagnosticSummary.recommendation = `The server certificate expired on ${certInfo.validTo}. Renew the certificate or disable SSL verification in Request settings.`;
+          } else if (authError.includes('DEPTH_ZERO_SELF_SIGNED_CERT') || authError.includes('self signed')) {
+            diagnosticSummary.recommendation = 'The server is serving a Self-Signed certificate. Go to Request settings and enable "Skip SSL Verification" for this workspace.';
+          } else {
+            diagnosticSummary.recommendation = 'Verify the server has a valid, globally trusted SSL/TLS certificate chain. Toggle off "Verify SSL" in settings for local development.';
+          }
+          return diagnosticSummary;
+        } else {
+          steps.push({
+            name: 'TLS Handshake',
+            status: 'SUCCESS',
+            message: `TLS secure socket established perfectly. Server identity verified via ${certInfo?.issuer || 'Certificate Authority'}.`,
+            durationMs: tlsDuration,
+            details: certInfo
+          });
+        }
+      } else {
+        steps.push({
+          name: 'TLS Handshake',
+          status: 'FAILED',
+          message: `TLS negotiation failed entirely: ${tlsError ? tlsError.message : 'Timeout'}`
+        });
+        diagnosticSummary.errorType = 'SSL_ERROR';
+        diagnosticSummary.message = `TLS secure handshake negotiation failed.`;
+        diagnosticSummary.recommendation = `The server at ${host}:${port} rejected the secure socket connection. Verify your target host configuration, or check if the server supports TLS v1.2 / v1.3.`;
+        return diagnosticSummary;
+      }
+    }
+
+    diagnosticSummary.success = true;
+    diagnosticSummary.errorType = 'CORS_ERROR';
+    diagnosticSummary.message = 'Network socket path is fully active and reachable.';
+    diagnosticSummary.recommendation = 'The connection to the server was established successfully. The error is likely an application-level response status, proxy intercept, or request headers reject.';
+    return diagnosticSummary;
+
+  } catch (err) {
+    steps.push({
+      name: 'Diagnostic Parser',
+      status: 'FAILED',
+      message: `Fatal analyzer exception: ${err.message}`
+    });
+    return {
+      success: false,
+      errorType: 'GENERIC_ERROR',
+      message: err.message,
+      recommendation: 'Check URL format spelling or application network permissions.',
+      steps: steps
+    };
+  }
+}

@@ -203,8 +203,14 @@ export default function App() {
           }).catch(err => console.error('Team check failed:', err));
         }
 
-        // Only reset onboarding if we DEFINITELY have a user ID mismatch and not currently configuring
-        if (currentUserId && currentUserId !== session.user.id && !currentIsConfigured) {
+        // Only reset onboarding if we DEFINITELY have a user ID mismatch, not currently configuring, and neither is the offline fallback user
+        if (
+          currentUserId && 
+          currentUserId !== session.user.id && 
+          !currentIsConfigured && 
+          currentUserId !== 'offline-user-id' && 
+          session.user.id !== 'offline-user-id'
+        ) {
           console.warn('[AUTH] User mismatch detected, resetting fallback state');
           resetOnboarding();
           resetStore();
@@ -267,6 +273,9 @@ export default function App() {
       preferences: { theme: 'dark', sidebar_width: 300 }
     });
 
+    mainStore.updateSyncMetadata({ isOffline: true });
+    mainStore.setSyncStatus('offline');
+
     setSession(offlineSession);
   };
 
@@ -288,8 +297,8 @@ export default function App() {
     setSchemaBootstrapMessage('Checking database structure...');
     setSchemaBootstrapLoading(true);
 
-    // If we are offline, bypass completely
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    // If we are offline, bypass completely (Desktop only)
+    if (isElectron() && typeof navigator !== 'undefined' && !navigator.onLine) {
       console.warn('[Schema Bootstrap] Client is offline. Bypassing database schema bootstrap to support offline mode.');
       schemaCheckedUserRef.current = session.user.id;
       setSchemaBootstrapLoading(false);
@@ -302,7 +311,7 @@ export default function App() {
       const errStr = String(compare.error || '').toLowerCase();
       const isConnectionIssue = errStr.includes('fetch') || errStr.includes('network') || errStr.includes('timeout') || errStr.includes('failed to connect');
       
-      if (isConnectionIssue) {
+      if (isElectron() && isConnectionIssue) {
         console.warn('[Schema Bootstrap] Database is unreachable. Bypassing to support offline mode:', compare.error);
         schemaCheckedUserRef.current = session.user.id;
         setSchemaBootstrapLoading(false);
@@ -513,7 +522,7 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      {!session && <AuthUI onOfflineMode={handleOfflineMode} />}
+      {!session && <AuthUI onOfflineMode={isElectron() ? handleOfflineMode : undefined} />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}
     </>

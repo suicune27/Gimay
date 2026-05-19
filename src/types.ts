@@ -48,6 +48,10 @@ export interface RequestData {
     followRedirects: boolean;
     timeout: number;
     maxRedirects: number;
+    chaosEnabled?: boolean;
+    chaosMinDelay?: number;
+    chaosMaxDelay?: number;
+    chaosFailureRate?: number;
   };
   created_at: string;
   updated_at: string;
@@ -209,7 +213,7 @@ export interface AppSettings {
     lastPushedAt?: string;
   };
 }
-export type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'GitHub Sync' | 'Experimental' | 'Diagnostics' | 'About';
+export type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
 
 export interface SyncMetadata {
   lastSaved: number | null;

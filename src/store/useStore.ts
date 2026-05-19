@@ -855,3 +855,6 @@ export const useStore = create<AppState>()(
     }
   )
 );
+
+PersistenceService.registerStore(useStore);
+

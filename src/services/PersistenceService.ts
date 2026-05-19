@@ -1,9 +1,85 @@
 import { supabase, globalSupabase } from '../lib/supabase';
 import { RequestData, Collection, Environment, Workspace, Folder, Profile, KeyValue, ScriptExecutionLog } from '../types';
+import { isElectron } from '../lib/platform';
 
 export class PersistenceService {
+  private static store: any = null;
+
+  static registerStore(store: any) {
+    this.store = store;
+  }
+
+  private static isOffline(): boolean {
+    if (!isElectron()) return false;
+    if (typeof window !== 'undefined' && !window.navigator.onLine) return true;
+    return this.store?.getState()?.syncMetadata?.isOffline ?? false;
+  }
+
+  private static setOffline(offline: boolean) {
+    if (this.store) {
+      this.store.getState().updateSyncMetadata({ isOffline: offline });
+      const { syncManager } = require('./SyncService');
+      syncManager.setStatus(offline ? 'offline' : 'idle');
+    }
+  }
+
+  private static async runResilientAction<T>(
+    onlineAction: () => Promise<T>,
+    offlineAction: () => T,
+    enqueueAction: (offlineResult: T) => void
+  ): Promise<T> {
+    if (this.isOffline()) {
+      console.log('[PersistenceService] Offline mode active. Using local fallback.');
+      const result = offlineAction();
+      enqueueAction(result);
+      return result;
+    }
+
+    try {
+      return await onlineAction();
+    } catch (err: any) {
+      const isNetworkError = err.message?.includes('Network Error') || 
+        err.message?.includes('Failed to fetch') || 
+        err.message?.includes('timeout') ||
+        err.code === 'ECONNABORTED' ||
+        err.status === 0;
+
+      if (isNetworkError) {
+        console.warn('[PersistenceService] Database write request timed out or was cut off. Transitioning to local cache buffer.');
+        this.setOffline(true);
+        const result = offlineAction();
+        enqueueAction(result);
+        return result;
+      }
+      throw err;
+    }
+  }
+
   // --- Workspace Actions ---
   static async createWorkspace(name: string, userId: string, teamId?: string) {
+    return this.runResilientAction(
+      () => this.createWorkspaceOnline(name, userId, teamId),
+      () => {
+        const mockWS: Workspace = {
+          id: 'offline-' + Math.random().toString(36).substr(2, 9),
+          name,
+          user_id: userId,
+          visibility: teamId ? 'team' : 'private',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as any;
+        const state = this.store.getState();
+        state.setWorkspaces([...state.workspaces, mockWS]);
+        return mockWS;
+      },
+      (mockWS) => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('workspace', 'create', mockWS.id, { name, userId, teamId });
+      }
+    );
+  }
+
+  static async createWorkspaceOnline(name: string, userId: string, teamId?: string) {
     const payload: any = { 
       name, 
       user_id: userId, 
@@ -14,7 +90,6 @@ export class PersistenceService {
       payload.team_id = teamId;
     }
 
-    // Use global if teamId is present or if we want to ensure it's in the global registry
     const client = teamId ? globalSupabase : supabase;
 
     let { data, error } = await client
@@ -24,36 +99,37 @@ export class PersistenceService {
       .maybeSingle();
 
     if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in workspaces table. Stripping visibility/team_id.');
-      const oldVisibility = payload.visibility;
-      const oldTeamId = payload.team_id;
-      delete payload.visibility;
-      delete payload.team_id;
-      
+      const fallbackPayload = { name, user_id: userId };
       const fallback = await client
         .from('workspaces')
-        .insert([payload])
+        .insert([fallbackPayload])
         .select()
         .maybeSingle();
         
       data = fallback.data;
       error = fallback.error;
-
-      if (!error && data) {
-        console.warn(`[Persistence] Workspace created, but RELATIONAL LINK FAILED. 
-          Visibility "${oldVisibility}" and Team ID "${oldTeamId}" were ignored because the columns do not exist in the target database.
-          This workspace will appear as "Private" and will not be correctly grouped under the team.`);
-      }
     }
 
-    if (error) {
-      console.error('Workspace Creation Error:', error);
-      throw new Error(`Failed to initialize workspace: ${error.message}`);
-    }
+    if (error) throw error;
     return data as Workspace;
   }
 
   static async updateWorkspace(id: string, updates: Partial<Workspace>) {
+    return this.runResilientAction(
+      () => this.updateWorkspaceOnline(id, updates),
+      () => {
+        const state = this.store.getState();
+        state.setWorkspaces(state.workspaces.map((w: any) => w.id === id ? { ...w, ...updates } : w));
+        return { id, ...updates } as Workspace;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('workspace', 'update', id, updates);
+      }
+    );
+  }
+
+  static async updateWorkspaceOnline(id: string, updates: Partial<Workspace>) {
     const { data, error } = await supabase
       .from('workspaces')
       .update(updates)
@@ -66,26 +142,82 @@ export class PersistenceService {
   }
 
   static async deleteWorkspace(id: string) {
+    return this.runResilientAction(
+      () => this.deleteWorkspaceOnline(id),
+      () => {
+        const state = this.store.getState();
+        state.setWorkspaces(state.workspaces.filter((w: any) => w.id !== id));
+        return id;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('workspace', 'delete', id, null);
+      }
+    );
+  }
+
+  static async deleteWorkspaceOnline(id: string) {
     const { error } = await supabase.from('workspaces').delete().eq('id', id);
     if (error) throw error;
   }
 
   // --- Collection Actions ---
   static async createCollection(workspaceId: string, userId: string, name: string = 'New Collection') {
+    return this.runResilientAction(
+      () => this.createCollectionOnline(workspaceId, userId, name),
+      () => {
+        const mockCollection: Collection = {
+          id: 'offline-' + Math.random().toString(36).substr(2, 9),
+          name,
+          workspace_id: workspaceId,
+          user_id: userId,
+          folders: [],
+          requests: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          visibility: 'private',
+          permission: 'owner' as any,
+          variables: [],
+          auth: { type: 'inherit' }
+        };
+        const state = this.store.getState();
+        state.setCollections([...state.collections, mockCollection]);
+        return mockCollection;
+      },
+      (mockCollection) => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('collection', 'create', mockCollection.id, mockCollection);
+      }
+    );
+  }
+
+  static async createCollectionOnline(workspaceId: string, userId: string, name: string) {
     const { data: collection, error } = await supabase
       .from('collections')
       .insert([{ name, workspace_id: workspaceId, user_id: userId }])
       .select()
       .maybeSingle();
 
-    if (error) {
-      console.error('Collection Creation Error:', error);
-      throw new Error(`Failed to create collection: ${error.message}`);
-    }
+    if (error) throw error;
     return collection as Collection;
   }
 
   static async updateCollection(id: string, updates: Partial<Collection>) {
+    return this.runResilientAction(
+      () => this.updateCollectionOnline(id, updates),
+      () => {
+        const state = this.store.getState();
+        state.setCollections(state.collections.map((c: any) => c.id === id ? { ...c, ...updates } : c));
+        return { id, ...updates } as Collection;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('collection', 'update', id, updates);
+      }
+    );
+  }
+
+  static async updateCollectionOnline(id: string, updates: Partial<Collection>) {
     let { data, error } = await supabase
       .from('collections')
       .update(updates)
@@ -94,9 +226,7 @@ export class PersistenceService {
       .maybeSingle();
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in collections table. Stripping new fields.');
       const sanitizedUpdates = { ...updates } as any;
-      
       const problematicColumns = [
         'team_id', 'visibility', 'permission', 'pre_request_script', 
         'test_script', 'workspace_id', 'updated_at', 'variables', 'auth', 'documentation'
@@ -120,12 +250,73 @@ export class PersistenceService {
   }
 
   static async deleteCollection(id: string) {
+    return this.runResilientAction(
+      () => this.deleteCollectionOnline(id),
+      () => {
+        const state = this.store.getState();
+        state.setCollections(state.collections.filter((c: any) => c.id !== id));
+        return id;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('collection', 'delete', id, null);
+      }
+    );
+  }
+
+  static async deleteCollectionOnline(id: string) {
     const { error } = await supabase.from('collections').delete().eq('id', id);
     if (error) throw error;
   }
 
   static async duplicateCollection(collectionId: string, userId: string, workspaceId: string) {
-    // 1. Fetch original collection
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      const original = state.collections.find((c: any) => c.id === collectionId);
+      if (!original) throw new Error('Original collection not found offline.');
+      
+      const newCol = await this.createCollection(workspaceId, userId, `${original.name} (Copy)`);
+      
+      const duplicateFolder = async (oldFolder: any, parentId?: string) => {
+        const nf = await this.createFolder(oldFolder.name, newCol.id, userId, parentId, workspaceId);
+        const children = (original.folders || []).filter((f: any) => f.parent_id === oldFolder.id);
+        for (const child of children) {
+          await duplicateFolder(child, nf.id);
+        }
+        
+        const requests = (oldFolder.requests || []);
+        for (const r of requests) {
+          await this.createRequest({
+            ...r,
+            name: r.name,
+            collection_id: newCol.id,
+            folder_id: nf.id,
+            workspace_id: workspaceId,
+            user_id: userId
+          });
+        }
+      };
+
+      const rootFolders = (original.folders || []).filter((f: any) => !f.parent_id);
+      for (const f of rootFolders) {
+        await duplicateFolder(f);
+      }
+
+      const rootRequests = (original.requests || []);
+      for (const r of rootRequests) {
+        await this.createRequest({
+          ...r,
+          name: r.name,
+          collection_id: newCol.id,
+          folder_id: null as any,
+          workspace_id: workspaceId,
+          user_id: userId
+        });
+      }
+      return newCol;
+    }
+
+    // Online duplication flow
     const { data: collection, error: colError } = await supabase
       .from('collections')
       .select('*, folders(*), requests(*)')
@@ -134,15 +325,10 @@ export class PersistenceService {
 
     if (colError || !collection) throw colError || new Error('Collection lookup failed.');
 
-    // 2. Create new collection record
     const newCol = await this.createCollection(workspaceId, userId, `${collection.name} (Copy)`);
-
-    // 3. Mapping for nested folders
     const folderMap: Record<string, string> = {};
-
-    // 4. Duplicate Folders
     const folders = collection.folders || [];
-    // Sort by depth if needed, but since we use recursion it is fine
+
     const duplicateFolder = async (oldFolder: any, parentId?: string) => {
       const { id: oldId, created_at, updated_at, ...folderData } = oldFolder;
       const nf = await this.createFolder(
@@ -154,19 +340,16 @@ export class PersistenceService {
       );
       folderMap[oldId] = nf.id;
 
-      // Find children
       const children = folders.filter((f: any) => f.parent_id === oldId);
       for (const child of children) {
         await duplicateFolder(child, nf.id);
       }
     };
 
-    // Root folders
     for (const f of folders.filter((f: any) => !f.parent_id)) {
       await duplicateFolder(f);
     }
 
-    // 5. Duplicate Requests
     const requests = collection.requests || [];
     for (const r of requests) {
       const { id, created_at, updated_at, ...requestData } = r;
@@ -188,6 +371,35 @@ export class PersistenceService {
 
   // --- Folder Actions ---
   static async createFolder(name: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
+    return this.runResilientAction(
+      () => this.createFolderOnline(name, collectionId, userId, parentId, workspaceId),
+      () => {
+        const mockFolder: Folder = {
+          id: 'offline-' + Math.random().toString(36).substr(2, 9),
+          name,
+          collection_id: collectionId,
+          user_id: userId,
+          parent_id: parentId || null,
+          auth: { type: 'inherit' },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as any;
+        const state = this.store.getState();
+        const newCollections = state.collections.map((c: any) => {
+          if (c.id !== collectionId) return c;
+          return { ...c, folders: [...(c.folders || []), mockFolder] };
+        });
+        state.setCollections(newCollections);
+        return mockFolder;
+      },
+      (mockFolder) => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('folder', 'create', mockFolder.id, mockFolder);
+      }
+    );
+  }
+
+  static async createFolderOnline(name: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
     const payload: any = { 
       name, 
       collection_id: collectionId, 
@@ -207,7 +419,6 @@ export class PersistenceService {
       .maybeSingle();
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in folders table. Stripping workspace_id.');
       delete payload.workspace_id;
       const fallback = await supabase
         .from('folders')
@@ -223,6 +434,32 @@ export class PersistenceService {
   }
 
   static async updateFolder(id: string, updates: Partial<Folder>) {
+    return this.runResilientAction(
+      () => this.updateFolderOnline(id, updates),
+      () => {
+        const state = this.store.getState();
+        const updateFolderInTree = (folders: any[]): any[] => {
+          return folders.map(f => {
+            if (f.id === id) return { ...f, ...updates };
+            if (f.folders) return { ...f, folders: updateFolderInTree(f.folders) };
+            return f;
+          });
+        };
+        const newCollections = state.collections.map((c: any) => ({
+          ...c,
+          folders: c.folders ? updateFolderInTree(c.folders) : []
+        }));
+        state.setCollections(newCollections);
+        return { id, ...updates } as Folder;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('folder', 'update', id, updates);
+      }
+    );
+  }
+
+  static async updateFolderOnline(id: string, updates: Partial<Folder>) {
     let { data, error } = await supabase
       .from('folders')
       .update(updates)
@@ -231,7 +468,6 @@ export class PersistenceService {
       .maybeSingle();
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in folders update. Stripping new fields.');
       const sanitizedUpdates = { ...updates } as any;
       delete sanitizedUpdates.workspace_id;
       delete sanitizedUpdates.user_id;
@@ -251,12 +487,77 @@ export class PersistenceService {
   }
 
   static async deleteFolder(id: string) {
+    return this.runResilientAction(
+      () => this.deleteFolderOnline(id),
+      () => {
+        const state = this.store.getState();
+        const deleteFolderInTree = (folders: any[]): any[] => {
+          return folders.filter(f => f.id !== id).map(f => {
+            if (f.folders) return { ...f, folders: deleteFolderInTree(f.folders) };
+            return f;
+          });
+        };
+        const newCollections = state.collections.map((c: any) => ({
+          ...c,
+          folders: c.folders ? deleteFolderInTree(c.folders) : []
+        }));
+        state.setCollections(newCollections);
+        return id;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('folder', 'delete', id, null);
+      }
+    );
+  }
+
+  static async deleteFolderOnline(id: string) {
     const { error } = await supabase.from('folders').delete().eq('id', id);
     if (error) throw error;
   }
 
   static async duplicateFolder(folderId: string, collectionId: string, userId: string, parentId?: string, workspaceId?: string) {
-    // 1. Fetch original folder details
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      const findFolder = (folders: any[]): any => {
+        for (const f of folders) {
+          if (f.id === folderId) return f;
+          if (f.folders) {
+            const found = findFolder(f.folders);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      
+      let folder: any = null;
+      for (const c of state.collections) {
+        folder = findFolder(c.folders || []);
+        if (folder) break;
+      }
+      if (!folder) throw new Error('Folder lookup failed offline.');
+
+      const duplicated = await this.createFolder(`${folder.name} (Copy)`, collectionId, userId, parentId, workspaceId);
+
+      const subfolders = folder.folders || [];
+      for (const sub of subfolders) {
+        await this.duplicateFolder(sub.id, collectionId, userId, duplicated.id, workspaceId);
+      }
+
+      const requests = folder.requests || [];
+      for (const r of requests) {
+        await this.createRequest({
+          ...r,
+          name: r.name,
+          collection_id: collectionId,
+          folder_id: duplicated.id,
+          workspace_id: workspaceId || r.workspace_id,
+          user_id: userId
+        });
+      }
+      return duplicated;
+    }
+
     const { data: folder, error: folderError } = await supabase
       .from('folders')
       .select('*')
@@ -264,10 +565,8 @@ export class PersistenceService {
       .single();
     if (folderError || !folder) throw folderError || new Error('Folder lookup failed.');
 
-    // 2. Create the duplicated folder
     const duplicated = await this.createFolder(`${folder.name} (Copy)`, collectionId, userId, parentId, workspaceId);
 
-    // 3. Find subfolders
     const { data: subfolders } = await supabase
       .from('folders')
       .select('*')
@@ -279,7 +578,6 @@ export class PersistenceService {
       }
     }
 
-    // 4. Duplicate requests inside this folder
     const { data: requests } = await supabase
       .from('requests')
       .select('*')
@@ -304,15 +602,24 @@ export class PersistenceService {
 
   // --- Team Actions ---
   static async createTeam(name: string, ownerId: string) {
+    if (this.isOffline()) {
+      const mockTeam = {
+        id: 'offline-' + Math.random().toString(36).substr(2, 9),
+        name,
+        created_at: new Date().toISOString()
+      };
+      const state = this.store.getState();
+      state.setTeams([...state.teams, mockTeam]);
+      return mockTeam;
+    }
+
     console.group(`[PersistenceService] createTeam("${name}")`);
     const normalizedName = name.trim();
     if (!normalizedName) {
-      console.error('Validation Failed: Empty team name');
       console.groupEnd();
       throw new Error('Team name is required.');
     }
 
-    console.log('Checking for existing team with same name...');
     const { data: existingTeam, error: checkError } = await globalSupabase
       .from('teams')
       .select('id, name')
@@ -320,19 +627,15 @@ export class PersistenceService {
       .limit(1);
 
     if (checkError) {
-      console.error('Existing team check failed:', checkError);
       console.groupEnd();
       throw checkError;
     }
 
     if (existingTeam && existingTeam.length > 0) {
-      console.warn('Team already exists:', existingTeam[0]);
       console.groupEnd();
       throw new Error('A team with this name already exists.');
     }
 
-    // 1. Create the team
-    console.log('Inserting team record...');
     const { data: team, error: teamError } = await globalSupabase
       .from('teams')
       .insert([{ name: normalizedName }])
@@ -340,42 +643,33 @@ export class PersistenceService {
       .single();
 
     if (teamError) {
-      console.error('Team insertion error:', teamError);
       console.groupEnd();
       throw teamError;
     }
 
-    console.log('Team record created:', team.id);
-
-    // 2. Add creator as admin
-    console.log('Adding owner to team_members...');
     const { error: memberError } = await globalSupabase
       .from('team_members')
       .insert([{ team_id: team.id, user_id: ownerId, role: 'admin' }]);
 
     if (memberError) {
-      console.error('Member insertion error:', memberError);
-      console.log('Rolling back team record...', team.id);
-      await globalSupabase.from('teams').delete().eq('id', team.id); // Rollback
+      await globalSupabase.from('teams').delete().eq('id', team.id);
       console.groupEnd();
       throw memberError;
     }
 
-    // 3. Create a default workspace for the team
-    console.log('Creating default workspace for team...');
     try {
       await this.createWorkspace('General', ownerId, team.id);
     } catch (wsError) {
       console.error('Default workspace creation failed (non-blocking for team):', wsError);
     }
 
-    console.log('✅ Team successfully created.');
     console.groupEnd();
     return team;
   }
 
   static async addTeamMember(teamId: string, userEmail: string, role: 'viewer' | 'editor' | 'admin' = 'viewer') {
-    // Find user by email first
+    if (this.isOffline()) return;
+
     const identifier = userEmail.trim();
     const { data: profile, error: profileError } = await globalSupabase
       .from('profiles')
@@ -386,8 +680,6 @@ export class PersistenceService {
 
     if (profileError || !profile) throw new Error('User not found in system.');
 
-    // Map role to match team_members check constraint if needed
-    // SQL uses: ('owner', 'admin', 'member')
     let dbRole = role;
     if (role === 'viewer' || role === 'editor') {
       dbRole = 'member' as any;
@@ -398,7 +690,6 @@ export class PersistenceService {
       .insert([{ team_id: teamId, user_id: profile.id, role: dbRole }]);
 
     if (error) {
-      // If even with mapping it fails, try without role
       if (String(error.message || '').toLowerCase().includes('role')) {
         const { error: fallbackError } = await globalSupabase
           .from('team_members')
@@ -411,6 +702,7 @@ export class PersistenceService {
   }
 
   static async updateTeamMemberRole(teamId: string, userId: string, role: 'viewer' | 'editor' | 'admin') {
+    if (this.isOffline()) return;
     const { error } = await globalSupabase
       .from('team_members')
       .update({ role })
@@ -420,6 +712,7 @@ export class PersistenceService {
   }
 
   static async removeTeamMember(teamId: string, userId: string) {
+    if (this.isOffline()) return;
     const { error } = await globalSupabase
       .from('team_members')
       .delete()
@@ -431,9 +724,10 @@ export class PersistenceService {
   // --- Request Actions ---
   static async saveRequest(request: RequestData) {
     if (request.id.startsWith('temp-') || request.id.startsWith('history-')) return;
+    return this.updateRequest(request.id, request);
+  }
 
-    console.log(`[Persistence] Saving request ${request.id} (${request.method} ${request.url})`);
-
+  static async saveRequestOnline(request: RequestData) {
     const bodyToSave = typeof request.body === 'object' 
       ? JSON.stringify(request.body) 
       : request.body;
@@ -461,9 +755,7 @@ export class PersistenceService {
       .eq('id', request.id);
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in requests table. Stripping ALL new fields for fallback.');
       const safeUpdates = { ...updates } as any;
-      
       const problematicColumns = [
         'pre_request_script', 'test_script', 'settings', 'type', 
         'auth', 'workspace_id', 'body_type', 'updated_at', 'is_deleted'
@@ -479,15 +771,43 @@ export class PersistenceService {
       error = fallback.error;
     }
 
-    if (error) {
-      console.error('[Persistence] Save failed (Supabase Error):', error.message, error.details, error.hint);
-      throw error;
-    }
-
-    console.log(`[Persistence] Request ${request.id} synchronized.`);
+    if (error) throw error;
   }
 
   static async createRequest(data: Partial<RequestData>) {
+    return this.runResilientAction(
+      () => this.createRequestOnline(data),
+      () => {
+        const mockRequest: RequestData = {
+          id: 'offline-' + Math.random().toString(36).substr(2, 9),
+          name: data.name || 'New Request',
+          method: (data.method as any) || 'GET',
+          url: data.url || 'https://api.example.com',
+          headers: data.headers || [],
+          params: data.params || [],
+          body: data.body || '',
+          bodyType: data.bodyType || 'none',
+          auth: data.auth || { type: 'inherit' },
+          collection_id: data.collection_id!,
+          folder_id: data.folder_id || null,
+          workspace_id: data.workspace_id!,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user_id: data.user_id || '',
+          type: 'rest'
+        };
+        const state = this.store.getState();
+        state.addRequest(mockRequest);
+        return mockRequest;
+      },
+      (mockRequest) => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('request', 'create', mockRequest.id, mockRequest);
+      }
+    );
+  }
+
+  static async createRequestOnline(data: Partial<RequestData>) {
     const bodyToSave = typeof data.body === 'object' 
       ? JSON.stringify(data.body) 
       : data.body;
@@ -506,7 +826,6 @@ export class PersistenceService {
       .single();
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in requests table during creation. Stripping new fields.');
       const safeData = { ...mappedData } as any;
       const problematicColumns = [
         'pre_request_script', 'test_script', 'settings', 'type', 
@@ -524,10 +843,29 @@ export class PersistenceService {
     }
 
     if (error) throw error;
-    return request as RequestData;
+    return {
+      ...request,
+      bodyType: request.body_type,
+      body: request.body
+    } as RequestData;
   }
 
   static async updateRequest(id: string, updates: Partial<RequestData>) {
+    return this.runResilientAction(
+      () => this.updateRequestOnline(id, updates),
+      () => {
+        const state = this.store.getState();
+        state.updateRequest(id, updates);
+        return { id, ...updates } as RequestData;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('request', 'update', id, updates);
+      }
+    );
+  }
+
+  static async updateRequestOnline(id: string, updates: Partial<RequestData>) {
     const dbUpdates = { ...updates } as any;
     
     if (dbUpdates.bodyType) {
@@ -547,7 +885,6 @@ export class PersistenceService {
       .single();
 
     if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] Handling missing columns in updateRequest. Stripping new fields.');
       const safeUpdates = { ...dbUpdates };
       const problematicColumns = [
         'pre_request_script', 'test_script', 'settings', 'type', 
@@ -566,20 +903,67 @@ export class PersistenceService {
     }
 
     if (error) throw error;
-    return data as RequestData;
+    return {
+      ...data,
+      bodyType: data.body_type,
+      body: data.body
+    } as RequestData;
   }
 
   static async deleteRequest(id: string) {
+    return this.runResilientAction(
+      () => this.deleteRequestOnline(id),
+      () => {
+        const state = this.store.getState();
+        state.deleteRequestState(id);
+        return id;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('request', 'delete', id, null);
+      }
+    );
+  }
+
+  static async deleteRequestOnline(id: string) {
     const { error } = await supabase
       .from('requests')
       .delete()
       .eq('id', id);
 
-    if (error) console.error('Deletion Error:', error);
+    if (error) throw error;
   }
 
   static async duplicateRequest(originalId: string, overrides: Partial<RequestData> = {}) {
-    // 1. Fetch original
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      
+      const findReq = (nodes: any[]): RequestData | null => {
+        for (const n of nodes) {
+          if (n.id === originalId) return n;
+          if (n.folders) {
+            const found = findReq(n.folders);
+            if (found) return found;
+          }
+          if (n.requests) {
+            const found = n.requests.find((r: any) => r.id === originalId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const original = findReq(state.collections);
+      if (!original) throw new Error('Original request not found offline.');
+
+      const newRequest = await this.createRequest({
+        ...original,
+        name: `${original.name} (Copy)`,
+        ...overrides
+      });
+      return newRequest;
+    }
+
     const { data: original, error: fetchError } = await supabase
       .from('requests')
       .select('*')
@@ -588,7 +972,6 @@ export class PersistenceService {
 
     if (fetchError || !original) throw new Error('Original request not found.');
 
-    // 2. Clone and override
     const { id, created_at, updated_at, ...cloneData } = original;
     const newRequest = {
       ...cloneData,
@@ -596,7 +979,6 @@ export class PersistenceService {
       ...overrides
     };
 
-    // 3. Insert clone
     const { data: inserted, error: insertError } = await supabase
       .from('requests')
       .insert([newRequest])
@@ -608,17 +990,22 @@ export class PersistenceService {
     return {
       ...inserted,
       bodyType: inserted.body_type,
-      body: inserted.body // Body normalization will happen in useDataSync or store
+      body: inserted.body
     } as RequestData;
   }
 
   static async saveHistory(entry: any) {
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      state.setHistory([entry, ...state.history].slice(0, 100));
+      return;
+    }
+
     let { error } = await supabase
       .from('history')
       .insert([entry]);
       
     if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in history table. Stripping new fields.');
       const safeEntry = { ...entry };
       delete safeEntry.workspace_id;
       delete safeEntry.request_name;
@@ -634,11 +1021,21 @@ export class PersistenceService {
   }
 
   static async deleteHistory(id: string) {
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      state.setHistory(state.history.filter((h: any) => h.id !== id));
+      return;
+    }
     const { error } = await supabase.from('history').delete().eq('id', id);
     if (error) throw error;
   }
 
   static async clearHistory(workspaceId: string, userId: string) {
+    if (this.isOffline()) {
+      const state = this.store.getState();
+      state.setHistory([]);
+      return;
+    }
     const { error } = await supabase
       .from('history')
       .delete()
@@ -648,6 +1045,34 @@ export class PersistenceService {
 
   // --- Environment Actions ---
   static async createEnvironment(workspaceId: string, userId: string, name: string, variables: KeyValue[] = [], isGlobal: boolean = false, preRequestScript = '', testScript = '', documentation = '') {
+    return this.runResilientAction(
+      () => this.createEnvironmentOnline(workspaceId, userId, name, variables, isGlobal, preRequestScript, testScript, documentation),
+      () => {
+        const mockEnv: Environment = {
+          id: 'offline-' + Math.random().toString(36).substr(2, 9),
+          workspace_id: workspaceId,
+          user_id: userId,
+          name,
+          variables,
+          is_global: isGlobal,
+          pre_request_script: preRequestScript || '',
+          test_script: testScript || '',
+          documentation: documentation || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        const state = this.store.getState();
+        state.setEnvironments([...state.environments, mockEnv]);
+        return mockEnv;
+      },
+      (mockEnv) => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('environment', 'create', mockEnv.id, mockEnv);
+      }
+    );
+  }
+
+  static async createEnvironmentOnline(workspaceId: string, userId: string, name: string, variables: KeyValue[] = [], isGlobal: boolean = false, preRequestScript = '', testScript = '', documentation = '') {
     let insertData: any = {
       name,
       workspace_id: workspaceId,
@@ -666,7 +1091,6 @@ export class PersistenceService {
       .single();
 
     if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in environments table. Stripping new fields.');
       delete insertData.pre_request_script;
       delete insertData.test_script;
       delete insertData.documentation;
@@ -681,25 +1105,26 @@ export class PersistenceService {
       error = fallback.error;
     }
 
-    if (error) {
-      console.warn('[PersistenceService] Supabase creation failed, returning mock offline environment.', error);
-      return {
-        id: 'mock-' + Math.random().toString(36).substr(2, 9),
-        workspace_id: workspaceId,
-        user_id: userId,
-        name,
-        variables,
-        is_global: isGlobal,
-        pre_request_script: '',
-        test_script: '',
-        documentation: '',
-        created_at: new Date().toISOString()
-      } as Environment;
-    }
+    if (error) throw error;
     return data as Environment;
   }
 
   static async updateEnvironment(id: string, updates: Partial<Environment>) {
+    return this.runResilientAction(
+      () => this.updateEnvironmentOnline(id, updates),
+      () => {
+        const state = this.store.getState();
+        state.setEnvironments(state.environments.map((e: any) => e.id === id ? { ...e, ...updates } : e));
+        return { id, ...updates } as Environment;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('environment', 'update', id, updates);
+      }
+    );
+  }
+
+  static async updateEnvironmentOnline(id: string, updates: Partial<Environment>) {
     let { data, error } = await supabase
       .from('environments')
       .update(updates)
@@ -724,35 +1149,64 @@ export class PersistenceService {
       error = fallback.error;
     }
 
-    if (error) {
-      console.warn('[PersistenceService] Supabase update failed, returning mock updated environment offline.', error);
-      return {
-        id,
-        ...updates
-      } as Environment;
-    }
+    if (error) throw error;
     return data as Environment;
   }
 
   static async deleteEnvironment(id: string) {
+    return this.runResilientAction(
+      () => this.deleteEnvironmentOnline(id),
+      () => {
+        const state = this.store.getState();
+        state.setEnvironments(state.environments.filter((e: any) => e.id !== id));
+        return id;
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('environment', 'delete', id, null);
+      }
+    );
+  }
+
+  static async deleteEnvironmentOnline(id: string) {
     const { error } = await supabase.from('environments').delete().eq('id', id);
     if (error) throw error;
   }
 
   static async updateProfilePreferences(userId: string, preferences: Profile['preferences']) {
+    return this.runResilientAction(
+      () => this.updateProfileOnline(userId, { preferences }),
+      () => {
+        const state = this.store.getState();
+        if (state.profile) {
+          state.setProfile({ ...state.profile, preferences });
+        }
+        return { preferences };
+      },
+      () => {
+        const { syncManager } = require('./SyncService');
+        syncManager.enqueueAction('profile', 'update', userId, { preferences });
+      }
+    );
+  }
+
+  static async updateProfileOnline(id: string, updates: Partial<Profile> | any) {
     let { data, error } = await supabase
       .from('profiles')
-      .update({ preferences, updated_at: new Date().toISOString() })
-      .eq('id', userId)
+      .update(updates)
+      .eq('id', id)
       .select()
       .single();
 
     if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in profiles table (preferences).');
+      const safeUpdates = { ...updates };
+      delete safeUpdates.preferences;
+      delete safeUpdates.updated_at;
+
       const fallback = await supabase
         .from('profiles')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', userId)
+        .update(safeUpdates)
+        .eq('id', id)
         .select()
         .single();
       data = fallback.data;
@@ -760,10 +1214,59 @@ export class PersistenceService {
     }
 
     if (error) throw error;
-    return data;
+    return data as Profile;
   }
 
+  // --- Saved Responses Resiliency ---
+  static async createSavedResponse(requestId: string, userId: string, response: any) {
+    if (this.isOffline()) return null;
+    try {
+      const { data, error } = await supabase
+        .from('saved_responses')
+        .insert([{
+          request_id: requestId,
+          user_id: userId,
+          name: response.name || 'New Response',
+          status: response.status,
+          body: response.body,
+          headers: response.headers
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static async getSavedResponses(requestId: string) {
+    if (this.isOffline()) return [];
+    try {
+      const { data, error } = await supabase
+        .from('saved_responses')
+        .select('*')
+        .eq('request_id', requestId)
+        .order('created_at', { ascending: false });
+  
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static async deleteSavedResponse(id: string) {
+    if (this.isOffline()) return;
+    try {
+      const { error } = await supabase.from('saved_responses').delete().eq('id', id);
+      if (error) throw error;
+    } catch (e) {}
+  }
+
+  // --- Collaborator Resiliency ---
   static async inviteCollectionCollaborator(collectionId: string, identifier: string, role: 'viewer' | 'editor' | 'admin', invitedBy: string) {
+    if (this.isOffline()) throw new Error('Collaborator operations require a network connection.');
     const query = identifier.trim();
     const { data: profile, error: profileError } = await globalSupabase
       .from('profiles')
@@ -776,7 +1279,6 @@ export class PersistenceService {
       throw new Error('No registered user found for that email or username.');
     }
 
-    // For inviting to a collection, we use the tenant client if it's a team workspace collection
     const { data, error } = await supabase
       .from('collection_collaborators')
       .upsert({
@@ -794,6 +1296,7 @@ export class PersistenceService {
   }
 
   static async updateCollectionCollaboratorRole(collectionId: string, userId: string, role: 'viewer' | 'editor' | 'admin') {
+    if (this.isOffline()) throw new Error('Collaborator operations require a network connection.');
     const { data, error } = await supabase
       .from('collection_collaborators')
       .update({ role, updated_at: new Date().toISOString() })
@@ -806,6 +1309,7 @@ export class PersistenceService {
   }
 
   static async removeCollectionCollaborator(collectionId: string, userId: string) {
+    if (this.isOffline()) throw new Error('Collaborator operations require a network connection.');
     const { error } = await supabase
       .from('collection_collaborators')
       .delete()
@@ -814,134 +1318,108 @@ export class PersistenceService {
     if (error) throw error;
   }
 
-  // --- Saved Responses ---
-  static async createSavedResponse(requestId: string, userId: string, response: any) {
+  // --- User Tabs Resiliency ---
+  static async syncUserTabs(userId: string, tabs: any[], activeTabId: string | null) {
+    if (this.isOffline()) return null;
     try {
       const { data, error } = await supabase
-        .from('saved_responses')
-        .insert([{
-          request_id: requestId,
+        .from('user_tabs')
+        .upsert({
           user_id: userId,
-          name: response.name || 'New Response',
-          status: response.status,
-          body: response.body,
-          headers: response.headers
-        }])
+          tabs,
+          active_tab_id: activeTabId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
         .select()
         .single();
+
       if (error) throw error;
       return data;
     } catch (e) {
-      console.warn('[Persistence] saved_responses table missing. Skipping save.', e);
       return null;
     }
   }
 
-  static async getSavedResponses(requestId: string) {
+  static async getUserTabs(userId: string) {
+    if (this.isOffline()) {
+      return { tabs: this.store?.getState()?.openTabs || [], active_tab_id: this.store?.getState()?.activeTabId || null };
+    }
     try {
       const { data, error } = await supabase
-        .from('saved_responses')
+        .from('user_tabs')
         .select('*')
-        .eq('request_id', requestId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // --- Workspace & Teams Resiliency ---
+  static async fetchUserTeams(userId: string) {
+    if (this.isOffline()) return this.store?.getState()?.teams || [];
+    try {
+      let { data, error } = await globalSupabase
+        .from('teams')
+        .select('*, team_members!inner(*, profiles(email, full_name, username))')
+        .eq('team_members.user_id', userId)
         .order('created_at', { ascending: false });
-  
+
+      if (error && String(error.message || '').match(/profiles|relation|schema cache/i)) {
+        const fallback = await globalSupabase
+          .from('teams')
+          .select('*, team_members!inner(*)')
+          .eq('team_members.user_id', userId)
+          .order('created_at', { ascending: false });
+        data = fallback.data;
+        error = fallback.error;
+      }
+
       if (error) throw error;
       return data || [];
     } catch (e) {
-      console.warn('[Persistence] saved_responses table missing. Returning empty array.', e);
-      return [];
+      return this.store?.getState()?.teams || [];
     }
-  }
-
-  static async deleteSavedResponse(id: string) {
-    try {
-      const { error } = await supabase.from('saved_responses').delete().eq('id', id);
-      if (error) throw error;
-    } catch (e) {
-      console.warn('[Persistence] saved_responses table missing or delete failed.', e);
-    }
-  }
-
-  // --- User Tabs Actions ---
-  static async syncUserTabs(userId: string, tabs: any[], activeTabId: string | null) {
-    const { data, error } = await supabase
-      .from('user_tabs')
-      .upsert({
-        user_id: userId,
-        tabs,
-        active_tab_id: activeTabId,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async getUserTabs(userId: string) {
-    const { data, error } = await supabase
-      .from('user_tabs')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
-  }
-
-  static async fetchUserTeams(userId: string) {
-    let { data, error } = await globalSupabase
-      .from('teams')
-      .select('*, team_members!inner(*, profiles(email, full_name, username))')
-      .eq('team_members.user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error && String(error.message || '').match(/profiles|relation|schema cache/i)) {
-      const fallback = await globalSupabase
-        .from('teams')
-        .select('*, team_members!inner(*)')
-        .eq('team_members.user_id', userId)
-        .order('created_at', { ascending: false });
-      data = fallback.data;
-      error = fallback.error;
-    }
-
-    if (error) throw error;
-    return data || [];
   }
 
   static async fetchWorkspacesByTeam(teamId: string) {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teamId || '');
-    if (!isUuid) return [];
+    if (this.isOffline()) return [];
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(teamId || '');
+      if (!isUuid) return [];
 
-    let { data, error } = await globalSupabase
-      .from('workspaces')
-      .select('*')
-      .eq('team_id', teamId);
-    
-    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] team_id missing in workspaces table. Returning empty to avoid crash.');
+      let { data, error } = await globalSupabase
+        .from('workspaces')
+        .select('*')
+        .eq('team_id', teamId);
+      
+      if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+        return [];
+      }
+
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
       return [];
     }
-
-    if (error) throw error;
-    return data || [];
   }
 
-  // --- Global Variables ---
+  // --- Global Variables Resiliency ---
   static async saveGlobalVariables(userId: string, variables: KeyValue[]) {
+    if (this.isOffline()) return;
     try {
       const { error } = await supabase
         .from('global_variables')
         .upsert({ user_id: userId, variables, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
       if (error) throw error;
-    } catch (e) {
-      console.warn('[Persistence] Global variables table missing or inaccessible. Skipping save.', e);
-    }
+    } catch (e) {}
   }
 
   static async getGlobalVariables(userId: string) {
+    if (this.isOffline()) return this.store?.getState()?.globalVariables || [];
     try {
       const { data, error } = await supabase
         .from('global_variables')
@@ -951,13 +1429,13 @@ export class PersistenceService {
       if (error) throw error;
       return data?.variables || [];
     } catch (e) {
-      console.warn('[Persistence] Global variables table missing. Returning empty array.', e);
-      return [];
+      return this.store?.getState()?.globalVariables || [];
     }
   }
 
-  // --- Script Logs ---
+  // --- Script Logs Resiliency ---
   static async createScriptLog(log: Partial<ScriptExecutionLog>) {
+    if (this.isOffline()) return null;
     try {
       const { data, error } = await supabase
         .from('script_execution_logs')
@@ -967,56 +1445,63 @@ export class PersistenceService {
       if (error) throw error;
       return data;
     } catch (e) {
-      console.warn('[Persistence] script_execution_logs table missing. Skipping log creation.', e);
       return null;
     }
   }
 
   static async fetchScripts(workspaceId: string) {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
-    if (!isUuid) {
-      console.warn('[Persistence] fetchScripts bypassed due to invalid UUID workspace ID:', workspaceId);
+    if (this.isOffline()) return [];
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
+      if (!isUuid) return [];
+      const { data, error } = await supabase
+        .from('scripts')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
       return [];
     }
-    const { data, error } = await supabase
-      .from('scripts')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .order('updated_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
   }
 
   static async fetchScriptFolders(workspaceId: string) {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
-    if (!isUuid) {
-      console.warn('[Persistence] fetchScriptFolders bypassed due to invalid UUID workspace ID:', workspaceId);
-      return [];
-    }
-    let { data, error } = await supabase
-      .from('folders')
-      .select('*')
-      .eq('workspace_id', workspaceId)
-      .is('parent_id', null);
-
-    if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
-      console.warn('[Persistence] workspace_id missing in folders. Searching via collection join.');
-      // Fallback: This is much slower but avoids crashing. 
-      // In a real app we'd join but Supabase JS doesn't support complex joins easily without a view.
-      // We just return empty or fetch all if workspace_id missing for now to prevent fatal crash.
-      const fallback = await supabase
+    if (this.isOffline()) return [];
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(workspaceId || '');
+      if (!isUuid) return [];
+      let { data, error } = await supabase
         .from('folders')
         .select('*')
+        .eq('workspace_id', workspaceId)
         .is('parent_id', null);
-      data = fallback.data;
-      error = fallback.error;
-    }
 
-    if (error) throw error;
-    return data || [];
+      if (error && String(error.message || '').match(/column.*not exist|schema cache/i)) {
+        const fallback = await supabase
+          .from('folders')
+          .select('*')
+          .is('parent_id', null);
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      return [];
+    }
   }
 
   static async createScript(data: any) {
+    if (this.isOffline()) {
+      const mockScript = {
+        id: 'offline-' + Math.random().toString(36).substr(2, 9),
+        ...data,
+        created_at: new Date().toISOString()
+      };
+      return mockScript;
+    }
     const { data: script, error } = await supabase
       .from('scripts')
       .insert([data])
@@ -1027,6 +1512,9 @@ export class PersistenceService {
   }
 
   static async updateScript(id: string, updates: any) {
+    if (this.isOffline()) {
+      return { id, ...updates };
+    }
     const { data, error } = await supabase
       .from('scripts')
       .update(updates)
@@ -1038,35 +1526,8 @@ export class PersistenceService {
   }
 
   static async deleteScript(id: string) {
+    if (this.isOffline()) return;
     const { error } = await supabase.from('scripts').delete().eq('id', id);
     if (error) throw error;
-  }
-
-  static async updateProfile(id: string, updates: Partial<Profile> | any) {
-    let { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error && String(error.message || '').toLowerCase().includes('column')) {
-      console.warn('[Persistence] Handling missing columns in updateProfile.');
-      const safeUpdates = { ...updates };
-      delete safeUpdates.preferences;
-      delete safeUpdates.updated_at;
-
-      const fallback = await supabase
-        .from('profiles')
-        .update(safeUpdates)
-        .eq('id', id)
-        .select()
-        .single();
-      data = fallback.data;
-      error = fallback.error;
-    }
-
-    if (error) throw error;
-    return data as Profile;
   }
 }
