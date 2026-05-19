@@ -292,14 +292,14 @@ export default function App() {
   }, [session?.user?.id, isConfigured]);
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user?.id && landingSkipped) {
       runSchemaBootstrap();
     } else {
       schemaCheckedUserRef.current = null;
       setSchemaBootstrapError(null);
       setSchemaBootstrapLoading(false);
     }
-  }, [session?.user?.id, runSchemaBootstrap]);
+  }, [session?.user?.id, landingSkipped, runSchemaBootstrap]);
 
   if (loading || schemaBootstrapLoading) {
     return (
