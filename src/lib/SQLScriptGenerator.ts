@@ -12,7 +12,7 @@ export class SQLScriptGenerator {
   }
 
   static generateTeamSchemaScript(): string {
-    return `-- Putman Team Infrastructure initialization
+    return `-- Gimay Team Infrastructure initialization
 -- This script specifically handles the creation and hardening of the team system.
 -- It can be used to manually update the init_scripts table or run directly in Supabase SQL editor.
 
@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON public.team_members(team_
 
   static generateMinimalInitializationScript(): string {
     return [
-      '-- Minimal Putman Database Initialization Script',
+      '-- Minimal Gimay Database Initialization Script',
       `-- Generated: ${new Date().toISOString()}`,
       '',
       '-- HELPER FUNCTIONS',
@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_team_members_team_id ON public.team_members(team_
   }
 
   static generateInitializationScript(): string {
-    return `-- PUTMAN ULTIMATE SCHEMA V10.3 - PRODUCTION GRADE (Initialization)
+    return `-- GIMAY ULTIMATE SCHEMA V10.3 - PRODUCTION GRADE (Initialization)
 -- Generated: ${new Date().toISOString()}
 -- Architectural Goal: Scalable, Multi-tenant, Real-time synchronized API Client
 
@@ -588,7 +588,7 @@ DO $$
 BEGIN 
   PERFORM pg_notify('pgrst', 'reload schema');
 END $$;
-DO $final_comment$ BEGIN EXECUTE 'COMMENT ON TABLE public.profiles IS ''Putman Infrastructure repaired at ' || NOW() || ''''; END $final_comment$;
+DO $final_comment$ BEGIN EXECUTE 'COMMENT ON TABLE public.profiles IS ''Gimay Infrastructure repaired at ' || NOW() || ''''; END $final_comment$;
 
 `;
   }

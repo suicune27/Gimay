@@ -25,6 +25,30 @@ export default function App() {
     }
   }, [landingSkipped, setLandingSkipped]);
 
+  // Sync landingSkipped with URL path on web
+  useEffect(() => {
+    if (isElectron()) return;
+
+    const handleUrlChange = () => {
+      const isAppPath = window.location.pathname === '/app';
+      if (isAppPath) {
+        if (!landingSkipped) {
+          setLandingSkipped(true);
+        }
+      } else {
+        if (landingSkipped) {
+          setLandingSkipped(false);
+        }
+      }
+    };
+
+    // Run on mount
+    handleUrlChange();
+
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, [landingSkipped, setLandingSkipped]);
+
   // Check for deep link invite
   useEffect(() => {
     if (hasHydrated && !isConfigured) {
@@ -188,10 +212,8 @@ export default function App() {
       email: 'offline-operator@putmen.io',
       full_name: 'Offline Operator',
       username: 'offline',
-      avatar_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      preferences: {}
+      avatar_url: undefined,
+      preferences: { theme: 'dark', sidebar_width: 300 }
     });
 
     setSession(offlineSession);
@@ -297,6 +319,9 @@ export default function App() {
     return (
       <LandingPage 
         onStart={() => {
+          if (!isElectron()) {
+            window.history.pushState(null, '', '/app');
+          }
           setLandingSkipped(true);
         }} 
       />

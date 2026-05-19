@@ -14,10 +14,10 @@ export class SecureConfigStorage {
     ).toString();
     
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('putman-supabase-config-encrypted', encrypted);
+      localStorage.setItem('gimay-supabase-config-encrypted', encrypted);
     } else if (typeof window !== 'undefined' && (window as any).indexedDB) {
       // Fallback for environments without localStorage
-      this.saveToIndexedDB('putman-config', 'supabase', encrypted);
+      this.saveToIndexedDB('gimay-config', 'supabase', encrypted);
     }
   }
 
@@ -29,7 +29,14 @@ export class SecureConfigStorage {
       let encrypted: string | null = null;
 
       if (typeof localStorage !== 'undefined') {
-        encrypted = localStorage.getItem('putman-supabase-config-encrypted');
+        encrypted = localStorage.getItem('gimay-supabase-config-encrypted');
+        if (!encrypted) {
+          encrypted = localStorage.getItem('putman-supabase-config-encrypted');
+          if (encrypted) {
+            localStorage.setItem('gimay-supabase-config-encrypted', encrypted);
+            localStorage.removeItem('putman-supabase-config-encrypted');
+          }
+        }
       }
       // Note: IndexedDB retrieval requires async, so we only use localStorage for sync access
 
@@ -56,7 +63,7 @@ export class SecureConfigStorage {
   }): void {
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('putman-workspace-metadata', JSON.stringify(data));
+        localStorage.setItem('gimay-workspace-metadata', JSON.stringify(data));
       }
     } catch (error) {
       console.error('Failed to save workspace metadata:', error);
@@ -74,7 +81,14 @@ export class SecureConfigStorage {
   } | null {
     try {
       if (typeof localStorage === 'undefined') return null;
-      const data = localStorage.getItem('putman-workspace-metadata');
+      let data = localStorage.getItem('gimay-workspace-metadata');
+      if (!data) {
+        data = localStorage.getItem('putman-workspace-metadata');
+        if (data) {
+          localStorage.setItem('gimay-workspace-metadata', data);
+          localStorage.removeItem('putman-workspace-metadata');
+        }
+      }
       return data ? JSON.parse(data) : null;
     } catch (error) {
       console.error('Failed to retrieve workspace metadata:', error);
@@ -87,6 +101,8 @@ export class SecureConfigStorage {
    */
   static clearConfiguration(): void {
     if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('gimay-supabase-config-encrypted');
+      localStorage.removeItem('gimay-workspace-metadata');
       localStorage.removeItem('putman-supabase-config-encrypted');
       localStorage.removeItem('putman-workspace-metadata');
     }

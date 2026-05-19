@@ -18,7 +18,7 @@ import { motion } from 'motion/react';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-json';
-import '../../themes/prism-putman.css';
+import '../../themes/prism-gimay.css';
 
 export const ResponseViewer: React.FC = () => {
   const { lastResponse, isSending } = useStore();

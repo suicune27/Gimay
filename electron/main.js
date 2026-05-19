@@ -58,7 +58,7 @@ function createWindow() {
     y: windowState.y,
     minWidth: 900,
     minHeight: 600,
-    frame: true, // Keep standard OS frame (can be set to false for borderless)
+    frame: false, // Keep standard OS frame (can be set to false for borderless)
     show: false,
     icon: path.join(app.getAppPath(), "build/gimay.ico"),
     webPreferences: {
@@ -139,14 +139,14 @@ function createTray() {
       { label: 'Check for Updates', click: () => checkForUpdates() },
       { type: 'separator' },
       {
-        label: 'Quit Putmen', click: () => {
+        label: 'Quit Gimay', click: () => {
           saveWindowState();
           app.quit();
         }
       }
     ]);
 
-    tray.setToolTip('Putmen API Engine');
+    tray.setToolTip('Gimay API Engine');
     tray.setContextMenu(contextMenu);
     tray.on('double-click', () => {
       if (mainWindow) {

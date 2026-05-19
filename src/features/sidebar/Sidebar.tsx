@@ -603,16 +603,18 @@ export const Sidebar: React.FC = () => {
             <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-[#3ECF8E] border-2 border-[#09090B] shadow-[0_0_5px_#3ECF8E]" />
 
             {/* Micro logout popover */}
-            <div className="absolute left-[40px] bottom-0 hidden group-hover/avatar:flex flex-col w-48 bg-[#0F0F12] border border-[#1D1D22] rounded-xl shadow-2xl p-3 z-[100] backdrop-blur-xl animate-in fade-in duration-200">
-              <div className="text-[9px] font-bold text-white uppercase tracking-wider truncate">{profile?.full_name || 'Protocol User'}</div>
-              <div className="text-[8px] text-[#55555C] font-mono truncate mt-0.5">{profile?.email}</div>
-              <div className="h-px bg-[#1D1D22] my-2" />
-              <button 
-                onClick={() => logout()}
-                className="w-full py-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500 text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
-              >
-                <LogOut size={10} /> Disconnect
-              </button>
+            <div className="absolute left-full pl-2 bottom-0 hidden group-hover/avatar:flex flex-col w-48 z-[100] animate-in fade-in duration-200">
+              <div className="bg-[#0F0F12] border border-[#1D1D22] rounded-xl shadow-2xl p-3 flex flex-col w-full backdrop-blur-xl">
+                <div className="text-[9px] font-bold text-white uppercase tracking-wider truncate">{profile?.full_name || 'Protocol User'}</div>
+                <div className="text-[8px] text-[#55555C] font-mono truncate mt-0.5">{profile?.email}</div>
+                <div className="h-px bg-[#1D1D22] my-2" />
+                <button 
+                  onClick={() => logout()}
+                  className="w-full py-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <LogOut size={10} /> Disconnect
+                </button>
+              </div>
             </div>
           </div>
         </div>

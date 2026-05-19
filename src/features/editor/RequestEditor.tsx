@@ -41,7 +41,7 @@ import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { VariableService } from '../../services/VariableService';
 import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 import { parseCurl } from '../../lib/curlParser';
-import { registerPutmanCompletions } from '../../services/monacoCompletion';
+import { registerGimayCompletions } from '../../services/monacoCompletion';
 const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 const parseUrlParams = (url: string): Array<{ key: string; value: string }> => {
@@ -1056,7 +1056,7 @@ export const RequestEditor: React.FC = () => {
                             language="javascript"
                             theme={theme === 'light' ? 'vs' : 'vs-dark'}
                             value={activeRequest!.pre_request_script || ''}
-                            onMount={(editor, monaco) => registerPutmanCompletions(monaco)}
+                            onMount={(editor, monaco) => registerGimayCompletions(monaco)}
                             onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
                             options={{
                               minimap: { enabled: false },
@@ -1090,7 +1090,7 @@ export const RequestEditor: React.FC = () => {
                             language="javascript"
                             theme={theme === 'light' ? 'vs' : 'vs-dark'}
                             value={activeRequest!.test_script || ''}
-                            onMount={(editor, monaco) => registerPutmanCompletions(monaco)}
+                            onMount={(editor, monaco) => registerGimayCompletions(monaco)}
                             onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
                             options={{
                               minimap: { enabled: false },

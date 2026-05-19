@@ -11,7 +11,9 @@ import {
   Github,
   Monitor,
   Code2,
-  Layers
+  Layers,
+  WifiOff,
+  FileJson
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -36,7 +38,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="w-6 h-6 rounded bg-[#3ECF8E] flex items-center justify-center shadow-[0_0_15px_rgba(62,207,142,0.3)]">
               <Terminal size={14} className="text-black" />
             </div>
-            <span className="font-black text-[10px] tracking-widest uppercase italic">Gimay <span className="opacity-40 italic ml-1 font-medium">Node v2.4</span></span>
+            <span className="font-black text-[10px] tracking-widest uppercase italic">Gimay <span className="opacity-40 italic ml-1 font-medium">Node v1.0.0</span></span>
           </div>
           
           <div className="hidden md:flex items-center gap-6 text-[9px] font-black uppercase tracking-[0.2em] text-[#555555]">
@@ -103,7 +105,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex flex-wrap items-center justify-center gap-3"
+            id="download"
+            className="scroll-mt-20 flex flex-wrap items-center justify-center gap-3"
           >
             <button 
               onClick={onStart}
@@ -112,13 +115,15 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <Terminal size={14} />
               Boot Environment
             </button>
-            <button 
-              onClick={() => handleDownload('Desktop')}
-              className="px-8 py-3 bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] rounded font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all"
+            <a 
+              href="https://github.com/suicune27/Gimay/releases/tag/release"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 hover:bg-[#3ECF8E]/25 rounded font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all cursor-pointer text-[#3ECF8E] hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_15px_rgba(62,207,142,0.1)]"
             >
               <Download size={14} />
               Pull Desktop
-            </button>
+            </a>
           </motion.div>
 
           {/* Screenshot Preview */}
@@ -174,43 +179,55 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/5 to-transparent mx-8 hidden md:block" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-1">
             {[
               {
                 icon: <Zap size={18} className="text-[#3ECF8E]" />,
-                title: "Zero Latency",
-                desc: "High-frequency request engine optimized for mission-critical debugging."
+                title: "Command Engine",
+                desc: "High-frequency API request runner supporting param auto-sync, inline renaming, and bulk headers."
               },
               {
                 icon: <Code2 size={18} className="text-blue-400" />,
                 title: "Script Logic",
-                desc: "Advanced pre-execution handlers and automated test assertions."
+                desc: "Advanced JavaScript runtime supporting pre-request hooks, test assertions, and completions."
               },
               {
+                id: "teams",
                 icon: <Users size={18} className="text-purple-400" />,
                 title: "Sector Sync",
-                desc: "Real-time state synchronization across distributed team networks."
+                desc: "Real-time state synchronization across distributed networks with role-based permissions."
               },
               {
                 icon: <Layers size={18} className="text-emerald-400" />,
-                title: "Grid Isolation",
-                desc: "Clean workspace separation with hierarchical collection logic."
+                title: "Workspace Isolation",
+                desc: "Clean workspace separation with hierarchical collection logic and custom environment scoping."
               },
               {
                 icon: <Database size={18} className="text-orange-400" />,
-                title: "State Variables",
-                desc: "Dynamic environment parameters with global namespace resolution."
+                title: "Namespace Variables",
+                desc: "Dynamic environment parameters and variables with {{variable}} hover preview and inline edit."
+              },
+              {
+                icon: <WifiOff size={18} className="text-pink-400" />,
+                title: "Offline Sandbox",
+                desc: "Complete isolated offline runtime enabling authenticated entry and mock workspace generation."
+              },
+              {
+                icon: <FileJson size={18} className="text-yellow-400" />,
+                title: "Portability Importer",
+                desc: "Auto-detects and normalizes API definitions from Postman, Insomnia, and API Dog with reviews."
               },
               {
                 icon: <Globe size={18} className="text-cyan-400" />,
-                title: "Proxy Tunnel",
-                desc: "Secure bypass protocols for restricted environment access."
+                title: "Routing & Tunnels",
+                desc: "Strict SSL verification, OS Native proxy auto-detection, custom PAC scripts, and client certs."
               }
             ].map((feature, i) => (
               <motion.div
                 key={i}
+                id={feature.id}
                 whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)' }}
-                className="p-6 border border-white/[0.03] bg-black/20 group transition-all"
+                className="scroll-mt-24 p-6 border border-white/[0.03] bg-black/20 group transition-all"
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-8 h-8 rounded bg-white/[0.03] flex items-center justify-center group-hover:bg-[#3ECF8E]/10 transition-colors border border-white/[0.05]">

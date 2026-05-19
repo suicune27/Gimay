@@ -79,7 +79,7 @@ export const useOnboardingStore = create<OnboardingState>()(
       },
     }),
     {
-      name: 'putman-onboarding-storage',
+      name: 'gimay-onboarding-storage',
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

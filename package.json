@@ -1,7 +1,7 @@
 {
   "name": "gimay",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Gimay API Management Suite Client",
   "author": "Gimay Development Team",
   "type": "module",

@@ -98,7 +98,7 @@ export const useScriptStore = create<ScriptState>()(
       }))
     }),
     {
-      name: 'putman-scripts-storage',
+      name: 'gimay-scripts-storage',
       partialize: (state) => ({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,

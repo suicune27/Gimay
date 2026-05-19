@@ -4,7 +4,7 @@ import { Play, Save, X, FileCode } from 'lucide-react';
 import { useScriptStore } from '../../store/scriptStore';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
-import { registerPutmanCompletions } from '../../services/monacoCompletion';
+import { registerGimayCompletions } from '../../services/monacoCompletion';
 import { ScriptEngine } from '../../services/scriptEngine';
 import { PersistenceService } from '../../services/PersistenceService';
 
@@ -31,7 +31,7 @@ export const ScriptEditor: React.FC = () => {
     // Clear old registrations
     disposablesRef.current.forEach(d => d.dispose());
     // Register optimized completions
-    disposablesRef.current = registerPutmanCompletions(monaco);
+    disposablesRef.current = registerGimayCompletions(monaco);
     
     updateEditorTheme();
   };
@@ -41,7 +41,7 @@ export const ScriptEditor: React.FC = () => {
     
     const monaco = monacoRef.current;
     
-    monaco.editor.defineTheme('putman-custom', {
+    monaco.editor.defineTheme('gimay-custom', {
       base: theme === 'light' ? 'vs' : 'vs-dark',
       inherit: true,
       rules: [
@@ -59,7 +59,7 @@ export const ScriptEditor: React.FC = () => {
       }
     });
     
-    monaco.editor.setTheme('putman-custom');
+    monaco.editor.setTheme('gimay-custom');
   };
 
   useEffect(() => {

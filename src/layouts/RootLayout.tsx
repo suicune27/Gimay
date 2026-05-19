@@ -61,7 +61,8 @@ export const RootLayout: React.FC = () => {
     isSidebarPinned,
     setIsSidebarPinned,
     isScriptLabOpen,
-    setIsScriptLabOpen
+    setIsScriptLabOpen,
+    setLandingSkipped
   } = useStore();
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
 
@@ -112,7 +113,7 @@ export const RootLayout: React.FC = () => {
         if (!profile) {
           setProfile({
             id: 'offline-user-id',
-            email: 'offline@putmen.io',
+            email: 'offline@gimay.io',
             full_name: 'Offline Operator',
             preferences: { theme: 'dark', sidebar_width: 300 }
           } as any);
@@ -294,29 +295,43 @@ export const RootLayout: React.FC = () => {
       <ScriptLibraryModal />
       <ScriptLab isOpen={isScriptLabOpen} onClose={() => setIsScriptLabOpen(false)} />
       {/* Top Universal Rail */}
-      <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-[100]">
+      <header className={cn(
+        "h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center px-4 justify-between z-[100]",
+        isElectron() && "titlebar-drag-region select-none"
+      )}>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setIsSidebarPinned(!isSidebarPinned)}
               className={cn(
-                "p-1.5 rounded-md transition-all text-[#555555] hover:text-[var(--brand)] hover:bg-white/[0.03]",
+                "p-1.5 rounded-md transition-all text-[#555555] hover:text-[var(--brand)] hover:bg-white/[0.03] titlebar-no-drag",
                 isSidebarPinned && "text-[var(--brand)] bg-[var(--brand)]/10"
               )}
               title={isSidebarPinned ? "Unlock Sidebar" : "Lock Sidebar"}
             >
               <Pin size={15} className={cn("transition-transform duration-300", !isSidebarPinned && "rotate-45")} />
             </button>
-            <div className="w-5 h-5 bg-[var(--brand)] rounded flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
-              <Terminal size={12} className="text-black" />
-            </div>
-            <span className="text-[10px] font-black tracking-widest uppercase">Gimay</span>
+            <button
+              onClick={() => {
+                if (!isElectron()) {
+                  window.history.pushState(null, '', '/');
+                }
+                setLandingSkipped(false);
+              }}
+              className="flex items-center gap-2 hover:opacity-80 transition-all cursor-pointer focus:outline-none titlebar-no-drag"
+              title="Return to Landing Page"
+            >
+              <div className="w-5 h-5 bg-[var(--brand)] rounded flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
+                <Terminal size={12} className="text-black" />
+              </div>
+              <span className="text-[10px] font-black tracking-widest uppercase">Gimay</span>
+            </button>
           </div>
           
           <div className="h-4 w-px bg-[#222222]" />
 
           {/* Workspace selector dropdown */}
-          <div ref={workspaceMenuRef} className="relative">
+          <div ref={workspaceMenuRef} className="relative titlebar-no-drag">
             <button
               onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
               className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
@@ -405,7 +420,7 @@ export const RootLayout: React.FC = () => {
           <div className="h-4 w-px bg-[#222222]" />
 
           {/* Environment Selector Dropdown */}
-          <div ref={environmentMenuRef} className="relative">
+          <div ref={environmentMenuRef} className="relative titlebar-no-drag">
             <button
               onClick={() => setIsEnvironmentMenuOpen((open) => !open)}
               className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
@@ -495,7 +510,7 @@ export const RootLayout: React.FC = () => {
 
         {/* Right side options */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full titlebar-no-drag">
             {syncStatus === 'saving' ? (
               <>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -517,7 +532,7 @@ export const RootLayout: React.FC = () => {
           </div>
 
           {/* Theme & Accent Custom Popover */}
-          <div ref={themeMenuRef} className="relative">
+          <div ref={themeMenuRef} className="relative titlebar-no-drag">
             <button
               onClick={() => setIsThemeMenuOpen((open) => !open)}
               className="p-1.5 rounded-lg text-[#555555] hover:text-white hover:bg-[#1A1A1A] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
@@ -604,14 +619,14 @@ export const RootLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 titlebar-no-drag">
              <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
           </div>
 
           {isElectron() && (
             <>
               <div className="h-4 w-px bg-[#222222]" />
-              <div className="flex items-center gap-0.5 ml-1">
+              <div className="flex items-center gap-0.5 ml-1 titlebar-no-drag">
                 <button 
                   onClick={() => (window as any).electron?.minimize()} 
                   className="p-1.5 rounded hover:bg-white/5 text-[#555555] hover:text-[var(--text-main)] transition-colors flex items-center justify-center"

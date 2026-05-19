@@ -103,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `putman-settings-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `gimay-settings-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
   };
 

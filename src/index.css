@@ -446,3 +446,13 @@ body {
   color: #2563EB !important; /* Premium cobalt blue */
 }
 
+/* Electron Borderless Titlebar drag region classes */
+.titlebar-drag-region {
+  -webkit-app-region: drag;
+}
+
+.titlebar-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+

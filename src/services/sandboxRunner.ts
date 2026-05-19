@@ -335,6 +335,7 @@ const WORKER_SOURCE = `
     
     // Compat aliases
     const pm = gmy;
+    const gimay = gmy;
     const putman = gmy;
     const console = consoleMock;
     

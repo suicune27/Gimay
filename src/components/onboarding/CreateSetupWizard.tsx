@@ -374,7 +374,7 @@ export const CreateSetupWizard: React.FC = () => {
     const element = document.createElement('a');
     const file = new Blob([EXECUTE_SQL_FUNCTION], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `putman-execute-sql-fn-${new Date().toISOString().split('T')[0]}.sql`;
+    element.download = `gimay-execute-sql-fn-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
         document.body.appendChild(element);
@@ -400,7 +400,7 @@ export const CreateSetupWizard: React.FC = () => {
     const element = document.createElement('a');
     const file = new Blob([previewScript], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
-    element.download = `putman-init-${new Date().toISOString().split('T')[0]}.sql`;
+    element.download = `gimay-init-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
         document.body.appendChild(element);

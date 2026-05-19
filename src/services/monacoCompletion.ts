@@ -1,12 +1,12 @@
-// Completion provider for new gmy.* namespace, pm.*, and putman.* APIs
+// Completion provider for new gmy.* namespace, pm.*, gimay.*, and putman.* APIs
 
-export const registerPutmanCompletions = (monaco: any) => {
+export const registerGimayCompletions = (monaco: any) => {
   if (monaco.__gmy_completions_registered) {
     return [];
   }
   monaco.__gmy_completions_registered = true;
 
-  const namespaces = ['gmy', 'pm', 'putman'];
+  const namespaces = ['gmy', 'pm', 'gimay', 'putman'];
 
   const completionProvider = monaco.languages.registerCompletionItemProvider('javascript', {
     provideCompletionItems: (model, position) => {
@@ -216,3 +216,5 @@ export const registerPutmanCompletions = (monaco: any) => {
 
   return [completionProvider, hoverProvider];
 };
+
+export const registerPutmanCompletions = registerGimayCompletions;
