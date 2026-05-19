@@ -68,7 +68,7 @@ function createWindow() {
       preload: path.join(app.getAppPath(), 'electron/preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: true,
+      webSecurity: false,
     },
   });
 

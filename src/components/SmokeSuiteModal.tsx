@@ -905,7 +905,7 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
           <div className="flex-1 flex flex-col overflow-hidden bg-[#050507]">
             
             {/* Top configuration options */}
-            <div className="p-6 border-b border-[#151518] bg-[#070709] grid grid-cols-8 gap-4">
+            <div className="p-6 border-b border-[#151518] bg-[#070709] grid grid-cols-9 gap-4">
               
               {/* Environment selector dropdown option */}
               <div className="space-y-1.5 col-span-2">
@@ -956,6 +956,17 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
                   disabled={isRunning}
                   value={delay}
                   onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                />
+              </div>
+
+              <div className="space-y-1.5 col-span-1">
+                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Timeout (ms)</label>
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  value={timeoutMs}
+                  onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
                   className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
                 />
               </div>
