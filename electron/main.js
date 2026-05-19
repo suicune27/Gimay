@@ -112,12 +112,16 @@ function createWindow() {
 
 function createTray() {
   try {
-    // Generate a simple template icon or use product icon if exists
-    const trayIconPath = path.join(app.getAppPath(), 'public/favicon.ico');
+    let trayIconPath = path.join(app.getAppPath(), 'public/favicon.ico');
+    if (!fs.existsSync(trayIconPath)) {
+      trayIconPath = path.join(app.getAppPath(), 'dist/favicon.ico');
+    }
+
     if (fs.existsSync(trayIconPath)) {
       tray = new Tray(trayIconPath);
     } else {
-      tray = new Tray(path.join(app.getAppPath(), 'electron/preload.cjs')); // fallback
+      console.log('[Electron Tray] Favicon icon not found, skipping tray creation.');
+      return;
     }
 
     const contextMenu = Menu.buildFromTemplate([
@@ -181,6 +185,7 @@ async function checkForUpdates() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   createWindow();
   createTray();
 
