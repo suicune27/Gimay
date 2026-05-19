@@ -1,7 +1,7 @@
 {
   "name": "gimay",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Gimay API Management Suite Client",
   "author": "Gimay Development Team",
   "type": "module",
@@ -138,13 +138,6 @@
       "category": "public.app-category.developer-tools",
       "target": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
           "target": "zip",
           "arch": [
             "x64",
@@ -153,8 +146,9 @@
         }
       ],
       "icon": "icon.icns",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
     },
     "dmg": {
       "sign": false
