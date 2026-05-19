@@ -116,7 +116,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
               Boot Environment
             </button>
             <a 
-              href="https://github.com/suicune27/Gimay/releases/tag/release"
+              href="https://github.com/suicune27/Gimay/releases"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3 bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 hover:bg-[#3ECF8E]/25 rounded font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all cursor-pointer text-[#3ECF8E] hover:scale-[1.02] active:scale-[0.98] shadow-[0_0_15px_rgba(62,207,142,0.1)]"
