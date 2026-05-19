@@ -444,6 +444,36 @@ export class SandboxRunner {
           if (action === 'request') {
             try {
               const requestOpts = typeof data === 'string' ? { url: data, method: 'GET' } : { ...data };
+              
+              // 1. Postman compatibility: map singular 'header' object to 'headers' array
+              if (requestOpts.header && typeof requestOpts.header === 'object') {
+                requestOpts.headers = Object.entries(requestOpts.header).map(([key, value]) => ({
+                  key,
+                  value: String(value),
+                  active: true
+                }));
+              }
+              
+              // 2. Postman compatibility: map body.mode or body.type to flat bodyType
+              if (requestOpts.body && typeof requestOpts.body === 'object') {
+                const mode = requestOpts.body.mode || requestOpts.body.type || 'raw';
+                requestOpts.bodyType = mode;
+                
+                // Ensure items are active by default unless explicitly disabled
+                if (mode === 'urlencoded' && Array.isArray(requestOpts.body.urlencoded)) {
+                  requestOpts.body.urlencoded = requestOpts.body.urlencoded.map((item: any) => ({
+                    ...item,
+                    active: item.active !== false
+                  }));
+                }
+                if (mode === 'form-data' && Array.isArray(requestOpts.body.formData)) {
+                  requestOpts.body.formData = requestOpts.body.formData.map((item: any) => ({
+                    ...item,
+                    active: item.active !== false
+                  }));
+                }
+              }
+
               if (requestOpts.data !== undefined && requestOpts.body === undefined) {
                 requestOpts.body = requestOpts.data;
                 requestOpts.bodyType = requestOpts.bodyType || 'raw';

@@ -271,7 +271,7 @@ export class RequestService {
     if (type === 'form-data') {
       const formData = new FormData();
       (body.formData || []).forEach((item: any) => {
-        if (!item || !item.active || !item.key) return;
+        if (!item || item.active === false || !item.key) return;
         if (item.type === 'file' && item.file) {
           formData.append(item.key, item.file);
         } else {
@@ -284,7 +284,7 @@ export class RequestService {
     if (type === 'urlencoded') {
       const params = new URLSearchParams();
       (body.urlencoded || []).forEach((item: any) => {
-        if (item && item.active && item.key) {
+        if (item && item.active !== false && item.key) {
           params.append(item.key, VariableService.resolve(item.value || '', context));
         }
       });
