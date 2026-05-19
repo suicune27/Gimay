@@ -31,9 +31,11 @@ import {
   Upload,
   RotateCcw,
   Github,
-  CloudDownload
+  CloudDownload,
+  ShieldAlert
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { DatabaseMigrationModal } from './DatabaseMigrationModal';
 import { cn } from '../lib/utils';
 import { AppSettings } from '../types';
 import { isElectron } from '../lib/platform';
@@ -44,12 +46,13 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Experimental' | 'Diagnostics' | 'About';
+type SettingsSection = 'General' | 'Themes' | 'Proxy' | 'SSL/TLS' | 'Cookies' | 'Response & Network' | 'Migration' | 'Experimental' | 'Diagnostics' | 'About';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { settings, updateSettings, resetSettings, activeWorkspaceId, profile, addToast } = useStore();
   const [activeSection, setActiveSection] = useState<SettingsSection>('General');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMigrationOpen, setIsMigrationOpen] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
 
   const handleUpdate = (path: string, value: any) => {
@@ -74,6 +77,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     { id: 'SSL/TLS', icon: Shield, label: 'SSL / TLS' },
     { id: 'Cookies', icon: Database, label: 'Cookies' },
     { id: 'Response & Network', icon: Zap, label: 'Network' },
+    { id: 'Migration', icon: Database, label: 'Migration' },
     { id: 'Experimental', icon: FlaskConical, label: 'Experimental' },
     { id: 'Diagnostics', icon: Activity, label: 'Diagnostics' },
     { id: 'About', icon: Info, label: 'About' },
@@ -779,6 +783,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </motion.div>
               )}
 
+              {activeSection === 'Migration' && (
+                <motion.div
+                  key="migration"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-6"
+                >
+                  <Section title="Database Migration Uplink">
+                    <div className="space-y-4 text-left">
+                      <div className="text-[10px] text-[var(--text-dim)] uppercase tracking-widest leading-relaxed">
+                        Clone all active workspaces, teams, member rosters, folders, requests, scripts, and environments from your current database node directly into another target project database.
+                      </div>
+                      
+                      <div className="p-4 rounded-xl bg-amber-500/[0.03] border border-amber-500/10 flex gap-3 text-amber-500/80">
+                        <ShieldAlert size={18} className="shrink-0 mt-0.5" />
+                        <div className="text-[9px] uppercase tracking-wide leading-relaxed font-semibold">
+                          <span className="font-black text-amber-400">Security Note:</span> You must supply the target project's <span className="font-black text-amber-400">Service Role API Key</span> (service_role) to bypass Row-Level Security (RLS) constraints and perform migration successfully.
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setIsMigrationOpen(true);
+                        }}
+                        className="px-5 py-3 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-black text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-[var(--brand-muted)] cursor-pointer flex items-center gap-2"
+                      >
+                        <Database size={14} /> Open Migration Console
+                      </button>
+                    </div>
+                  </Section>
+                </motion.div>
+              )}
+
               {activeSection === 'About' && (
                 <motion.div
                   key="about"
@@ -853,6 +891,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
         </div>
       </motion.div>
+      <DatabaseMigrationModal
+        isOpen={isMigrationOpen}
+        onClose={() => setIsMigrationOpen(false)}
+        userId={profile?.id}
+        addToast={addToast}
+      />
     </div>,
     document.body
   );
