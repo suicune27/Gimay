@@ -1,8 +1,10 @@
 import { RequestService } from './RequestService';
 import { useScriptStore } from '../store/scriptStore';
+import { useStore } from '../store/useStore';
 
 export interface SandboxContext {
   variables: Record<string, any>;
+  environmentVariables?: Record<string, any>;
   request?: {
     method: string;
     url: string;
@@ -23,6 +25,7 @@ export interface SandboxResult {
   logs: Array<{ level: 'log' | 'info' | 'warn' | 'error' | 'success'; message: string; timestamp?: string }>;
   testResults: Array<{ name: string; status: 'pass' | 'fail'; message?: string }>;
   changedVariables: Record<string, any>;
+  changedEnvironment?: Record<string, any>;
   changedRequest?: {
     method?: string;
     url?: string;
@@ -42,6 +45,7 @@ const WORKER_SOURCE = `
   let logs = [];
   let testResults = [];
   let changedVariables = {};
+  let changedEnvironment = {};
   
   const consoleMock = {
     log: (...args) => {
@@ -59,10 +63,15 @@ const WORKER_SOURCE = `
   };
 
   self.onmessage = async (e) => {
+    if (e.data && e.data.type === 'coordination_response') {
+      return;
+    }
     const { code, context } = e.data;
+    if (!context) return;
     
     // Setup variables maps
-    const vars = { ...context.variables };
+    const vars = { ...context.variables || {} };
+    const envVars = { ...context.environmentVariables || {} };
     
     const variableStore = {
       get: (key) => vars[key],
@@ -82,8 +91,31 @@ const WORKER_SOURCE = `
         Object.keys(vars).forEach(k => delete vars[k]);
       }
     };
+
+    const environmentStore = {
+      get: (key) => envVars[key],
+      set: (key, value) => {
+        envVars[key] = value;
+        changedEnvironment[key] = value;
+        vars[key] = value; // Sync to standard vars for active inline resolution inside scripts
+      },
+      has: (key) => key in envVars,
+      unset: (key) => {
+        delete envVars[key];
+        changedEnvironment[key] = null;
+        delete vars[key];
+      },
+      clear: () => {
+        for (const k in envVars) {
+          changedEnvironment[k] = null;
+          delete vars[k];
+        }
+        Object.keys(envVars).forEach(k => delete envVars[k]);
+      }
+    };
     
     // coordination map for async requests
+    let activeAsyncRequests = 0;
     let messageId = 0;
     const pendingResolvers = new Map();
     
@@ -150,12 +182,13 @@ const WORKER_SOURCE = `
     };
 
     const gmy = {
-      environment: variableStore,
+      environment: environmentStore,
       collectionVariables: variableStore,
       globals: variableStore,
       variables: variableStore,
       request: requestFunc,
       sendRequest: (opts, callback) => {
+        activeAsyncRequests++;
         sendToMain('request', opts)
           .then((res) => {
             const compatResponse = {
@@ -174,10 +207,22 @@ const WORKER_SOURCE = `
               text: () => typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body),
               toString: () => typeof res.body === 'object' ? JSON.stringify(res.body) : String(res.body)
             };
-            if (callback) callback(null, compatResponse);
+            try {
+              if (callback) callback(null, compatResponse);
+            } catch (err) {
+              consoleMock.error("Callback error: " + err.message);
+            } finally {
+              activeAsyncRequests--;
+            }
           })
           .catch((err) => {
-            if (callback) callback(err, null);
+            try {
+              if (callback) callback(err, null);
+            } catch (cbErr) {
+              consoleMock.error("Callback error: " + cbErr.message);
+            } finally {
+              activeAsyncRequests--;
+            }
           });
       },
       import: async (identifier) => {
@@ -314,6 +359,13 @@ const WORKER_SOURCE = `
       
       await eval(asyncScript);
       
+      // Wait for any async callbacks or pending gmy.sendRequest calls
+      let waitTime = 0;
+      while (activeAsyncRequests > 0 && waitTime < 10000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        waitTime += 50;
+      }
+      
       // Resolve any async tests
       const resolvedTests = [];
       for (const t of testResults) {
@@ -329,6 +381,7 @@ const WORKER_SOURCE = `
         logs,
         testResults: resolvedTests,
         changedVariables,
+        changedEnvironment,
         changedRequest: {
           method: requestFunc.method,
           url: requestFunc.url,
@@ -343,6 +396,7 @@ const WORKER_SOURCE = `
         logs,
         testResults: [],
         changedVariables,
+        changedEnvironment,
         changedRequest: {
           method: requestFunc.method,
           url: requestFunc.url,
@@ -384,7 +438,7 @@ export class SandboxRunner {
 
       // 3. Set up communication channel
       worker.onmessage = async (e) => {
-        const { type, action, id, data, logs, testResults, changedVariables, changedRequest, error } = e.data;
+        const { type, action, id, data, logs, testResults, changedVariables, changedEnvironment, changedRequest, error } = e.data;
         
         if (type === 'coordination') {
           if (action === 'request') {
@@ -397,9 +451,15 @@ export class SandboxRunner {
               if (typeof requestOpts.body === 'string' && !requestOpts.bodyType) {
                 requestOpts.bodyType = 'raw';
               }
+              const state = useStore.getState();
               const response = await RequestService.execute(
                 requestOpts as any,
-                { variables: {} } as any
+                {
+                  collections: state.collections || [],
+                  environments: state.environments || [],
+                  activeEnvId: state.activeEnvId,
+                  variables: {}
+                } as any
               );
               worker.postMessage({
                 type: 'coordination_response',
@@ -451,6 +511,7 @@ export class SandboxRunner {
             logs: logs || [],
             testResults: testResults || [],
             changedVariables: changedVariables || {},
+            changedEnvironment: changedEnvironment || {},
             changedRequest,
             error
           });

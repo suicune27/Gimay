@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Globe, Plus, Trash2, Save, Download, Upload, Shield, Lock, Search, Code2, BookOpen } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -30,6 +30,18 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
   const [isLoading, setIsLoading] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [bulkModalInitialMode, setBulkModalInitialMode] = useState<'edit' | 'import'>('edit');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(isGlobal ? 'Globals' : (environment?.name || ''));
+      setVariables(isGlobal ? (globalVariables || []) : (environment?.variables || []));
+      setPreRequestScript(environment?.pre_request_script || '');
+      setTestScript(environment?.test_script || '');
+      setDocumentation(environment?.documentation || '');
+      setActiveTab('variables');
+      setSearchQuery('');
+    }
+  }, [isOpen, environment, isGlobal, globalVariables]);
 
   const filteredVariables = useMemo(() => {
     if (!variables) return [];
@@ -287,7 +299,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                       value={preRequestScript}
                       onChange={(e) => setPreRequestScript(e.target.value)}
                       className="w-full h-64 bg-[#0A0A0A] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-[#E0E0E0] outline-none focus:border-[#3ECF8E]/30 resize-none"
-                      placeholder="pm.environment.set('timestamp', Date.now());"
+                      placeholder="gmy.environment.set('timestamp', Date.now());"
                     />
                   </div>
                   <div className="space-y-2">
@@ -299,7 +311,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                       value={testScript}
                       onChange={(e) => setTestScript(e.target.value)}
                       className="w-full h-64 bg-[#0A0A0A] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-[#E0E0E0] outline-none focus:border-[#3ECF8E]/30 resize-none"
-                      placeholder="pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                      placeholder="gmy.test('Status is 200', () => gmy.response.to.have.status(200));"
                     />
                   </div>
                </div>
@@ -308,7 +320,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                    <Code2 size={14} /> Security Notice
                  </p>
                  <p className="text-[9px] text-[#888888] leading-relaxed">
-                   Environment scripts run in a sandboxed runtime. They have access to the <code className="text-amber-500">pm.*</code> API for variable manipulation and testing. Changes made via <code className="text-amber-500">pm.environment.set()</code> only persist during the active session unless committed manually.
+                   Environment scripts run in a sandboxed runtime. They have access to the <code className="text-amber-500">gmy.*</code> API for variable manipulation and testing. Changes made via <code className="text-amber-500">gmy.environment.set()</code> only persist during the active session unless committed manually.
                  </p>
                </div>
             </div>

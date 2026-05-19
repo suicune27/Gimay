@@ -94,17 +94,11 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between border-b border-[#222222] pb-2 mb-2 px-1">
-        <div className="flex flex-1">
-          <div className="w-8" />
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Variable</div>
-          {isVariableEditor && (
-             <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Initial Value</div>
-          )}
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
-          <div className="w-8" />
+      {/* Action / Header Bar */}
+      <div className="flex items-center justify-between px-1 pb-1 mb-1">
+        <div className="text-[10px] font-black text-[#555555] uppercase tracking-widest">
+          {isBulkEdit ? 'Bulk Edit Mode' : ''}
         </div>
-        
         <button 
           onClick={isBulkEdit ? saveBulkEdit : startBulkEdit}
           className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-black text-[#666666] hover:text-[#3ECF8E] transition-all uppercase tracking-widest bg-[#1A1A1A] border border-[#222222] rounded"
@@ -116,6 +110,19 @@ export const KVEditor: React.FC<KVEditorProps> = ({
           )}
         </button>
       </div>
+
+      {/* Header Row (aligned with body columns) */}
+      {!isBulkEdit && (
+        <div className="flex items-center gap-1 border-b border-[#222222] pb-2 mb-2 px-1">
+          <div className="w-8 flex justify-center shrink-0" />
+          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Variable</div>
+          {isVariableEditor && (
+             <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Initial Value</div>
+          )}
+          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
+          <div className="w-8 flex justify-center shrink-0" />
+        </div>
+      )}
 
       {isBulkEdit ? (
         <div className="px-1">

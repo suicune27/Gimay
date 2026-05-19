@@ -21,6 +21,7 @@ import {
   Clock
 } from 'lucide-react';
 const Editor = React.lazy(() => import('@monaco-editor/react'));
+import { registerPutmanCompletions } from '../../services/monacoCompletion';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../../lib/utils';
 import { AuthEditor } from '../../components/AuthEditor';
@@ -337,8 +338,9 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                         language="javascript"
                         theme="vs-dark"
                         value={collection.pre_request_script || ''}
-                        onMount={(editor) => {
+                        onMount={(editor, monaco) => {
                           editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                          registerPutmanCompletions(monaco);
                         }}
                         onChange={(val) => handleUpdate({ pre_request_script: val || '' })}
                         options={{
@@ -369,8 +371,9 @@ export const CollectionEditor: React.FC<CollectionEditorProps> = ({ collectionId
                         language="javascript"
                         theme="vs-dark"
                         value={collection.test_script || ''}
-                        onMount={(editor) => {
+                        onMount={(editor, monaco) => {
                           editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                          registerPutmanCompletions(monaco);
                         }}
                         onChange={(val) => handleUpdate({ test_script: val || '' })}
                         options={{

@@ -207,7 +207,7 @@ export const RootLayout: React.FC = () => {
       fetchEnvironments(activeWorkspaceId);
       fetchHistory(activeWorkspaceId);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, profile?.id]);
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -288,7 +288,7 @@ export const RootLayout: React.FC = () => {
             <div className="w-5 h-5 bg-[var(--brand)] rounded flex items-center justify-center shadow-[0_0_15px_var(--brand-muted)]">
               <Terminal size={12} className="text-black" />
             </div>
-            <span className="text-[10px] font-black tracking-widest uppercase">Putman</span>
+            <span className="text-[10px] font-black tracking-widest uppercase">Gimay</span>
           </div>
           
           <div className="h-4 w-px bg-[#222222]" />

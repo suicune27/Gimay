@@ -7,6 +7,7 @@ import { KVEditor } from '../../components/KVEditor';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { EnvironmentBulkModal } from '../../components/EnvironmentBulkModal';
 import { cn } from '../../lib/utils';
+import { registerPutmanCompletions } from '../../services/monacoCompletion';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Globe,
@@ -404,8 +405,9 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                           language="javascript"
                           theme="vs-dark"
                           value={selectedEnvironment.pre_request_script || ''}
-                          onMount={(editor) => {
+                          onMount={(editor, monaco) => {
                             editor.onDidFocusEditorText(() => setActiveScriptTarget('pre_request_script'));
+                            registerPutmanCompletions(monaco);
                           }}
                           onChange={(val) => updateEnvironment(selectedEnvironment.id, { pre_request_script: val || '' })}
                           options={{
@@ -434,8 +436,9 @@ export const EnvironmentEditor: React.FC<EnvironmentEditorProps> = ({ tabId }) =
                           language="javascript"
                           theme="vs-dark"
                           value={selectedEnvironment.test_script || ''}
-                          onMount={(editor) => {
+                          onMount={(editor, monaco) => {
                             editor.onDidFocusEditorText(() => setActiveScriptTarget('test_script'));
+                            registerPutmanCompletions(monaco);
                           }}
                           onChange={(val) => updateEnvironment(selectedEnvironment.id, { test_script: val || '' })}
                           options={{

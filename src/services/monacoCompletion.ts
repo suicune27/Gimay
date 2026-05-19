@@ -1,6 +1,11 @@
 // Completion provider for new gmy.* namespace, pm.*, and putman.* APIs
 
 export const registerPutmanCompletions = (monaco: any) => {
+  if (monaco.__gmy_completions_registered) {
+    return [];
+  }
+  monaco.__gmy_completions_registered = true;
+
   const namespaces = ['gmy', 'pm', 'putman'];
 
   const completionProvider = monaco.languages.registerCompletionItemProvider('javascript', {

@@ -8,12 +8,25 @@ export class ScriptService {
 
     const variablesMap = { ...(context.variables || {}) };
 
+    const activeEnv = context.activeEnvId && context.environments
+      ? context.environments.find((env: any) => env.id === context.activeEnvId)
+      : null;
+    const environmentVariablesMap: Record<string, any> = {};
+    if (activeEnv && activeEnv.variables) {
+      activeEnv.variables.forEach((v: any) => {
+        if (v.active) environmentVariablesMap[v.key] = v.value;
+      });
+    }
+
+    const environmentMutations: Record<string, any> = {};
+
     for (const script of scriptsToRun) {
       if (!script) continue;
       
       try {
         const result = await SandboxRunner.run(script, {
           variables: variablesMap,
+          environmentVariables: environmentVariablesMap,
           request: {
             method: request?.method || 'GET',
             url: request?.url || '',
@@ -30,6 +43,18 @@ export class ScriptService {
               delete context.variables[key];
             } else {
               context.variables[key] = value;
+            }
+          }
+        }
+
+        // Sync environment modifications back
+        if (result.changedEnvironment) {
+          Object.assign(environmentMutations, result.changedEnvironment);
+          for (const [key, value] of Object.entries(result.changedEnvironment)) {
+            if (value === null) {
+              delete environmentVariablesMap[key];
+            } else {
+              environmentVariablesMap[key] = value;
             }
           }
         }
@@ -66,7 +91,7 @@ export class ScriptService {
       }
     }
 
-    return { request, logs };
+    return { request, logs, environmentMutations };
   }
 
   static async executeTests(scripts: string | string[], response: ResponseData, request: any, context: any) {
@@ -76,12 +101,25 @@ export class ScriptService {
 
     const variablesMap = { ...(context.variables || {}) };
 
+    const activeEnv = context.activeEnvId && context.environments
+      ? context.environments.find((env: any) => env.id === context.activeEnvId)
+      : null;
+    const environmentVariablesMap: Record<string, any> = {};
+    if (activeEnv && activeEnv.variables) {
+      activeEnv.variables.forEach((v: any) => {
+        if (v.active) environmentVariablesMap[v.key] = v.value;
+      });
+    }
+
+    const environmentMutations: Record<string, any> = {};
+
     for (const script of scriptsToRun) {
       if (!script) continue;
       
       try {
         const result = await SandboxRunner.run(script, {
           variables: variablesMap,
+          environmentVariables: environmentVariablesMap,
           request: {
             method: request?.method || 'GET',
             url: request?.url || '',
@@ -106,6 +144,18 @@ export class ScriptService {
               delete context.variables[key];
             } else {
               context.variables[key] = value;
+            }
+          }
+        }
+
+        // Sync environment modifications back
+        if (result.changedEnvironment) {
+          Object.assign(environmentMutations, result.changedEnvironment);
+          for (const [key, value] of Object.entries(result.changedEnvironment)) {
+            if (value === null) {
+              delete environmentVariablesMap[key];
+            } else {
+              environmentVariablesMap[key] = value;
             }
           }
         }
@@ -136,6 +186,6 @@ export class ScriptService {
       }
     }
 
-    return { results, logs };
+    return { results, logs, environmentMutations };
   }
 }

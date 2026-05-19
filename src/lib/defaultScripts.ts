@@ -11,11 +11,11 @@ export const defaultScripts = [
     description: 'Automatically injects a bearer token from the environment into the request headers.',
     categoryName: 'Authentication',
     content: `// Retrieve the token from environment variables
-const token = pm.environment.get('BEARER_TOKEN');
+const token = gmy.environment.get('BEARER_TOKEN');
 
 if (token) {
   // Inject the authorization header
-  pm.request.headers.push({
+  gmy.request.headers.push({
     key: 'Authorization',
     value: \`Bearer \${token}\`
   });
@@ -31,12 +31,12 @@ if (token) {
     name: 'Response Status Checker',
     description: 'Basic assertions to ensure the response status is 200 OK.',
     categoryName: 'Validation',
-    content: `pm.test("Status code is 200", function () {
-    pm.expect(pm.response.code).to.equal(200);
+    content: `gmy.test("Status code is 200", function () {
+    gmy.expect(gmy.response.code).to.equal(200);
 });
 
-pm.test("Response time is less than 500ms", function () {
-    pm.expect(pm.response.responseTime).to.be.below(500);
+gmy.test("Response time is less than 500ms", function () {
+    gmy.expect(gmy.response.responseTime).to.be.below(500);
 });`,
     variables_used: [],
     version: '1.0.0',
@@ -50,7 +50,7 @@ pm.test("Response time is less than 500ms", function () {
 const newId = crypto.randomUUID();
 
 // Save it to environment for use in the body or URL (e.g., {{random_id}})
-pm.environment.set('random_id', newId);
+gmy.environment.set('random_id', newId);
 
 console.log('Generated new UUID: ' + newId);`,
     variables_used: ['random_id'],
@@ -71,10 +71,10 @@ async function generateHmac(secret, payload) {
   return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-const secret = pm.environment.get('API_SECRET');
-if (secret && pm.request.body) {
-  const sig = await generateHmac(secret, pm.request.body);
-  pm.request.headers.push({ key: 'X-Signature', value: sig });
+const secret = gmy.environment.get('API_SECRET');
+if (secret && gmy.request.body) {
+  const sig = await generateHmac(secret, gmy.request.body);
+  gmy.request.headers.push({ key: 'X-Signature', value: sig });
   console.log('Signature generated:', sig);
 }`,
     variables_used: ['API_SECRET'],
@@ -85,7 +85,8 @@ if (secret && pm.request.body) {
     name: 'APIdog HMAC Auth Flow',
     description: 'Complex auth flow with token fetching and HMAC signature calculation (APIdog reference).',
     categoryName: 'Authentication',
-    content: `var partnerId = "";
+    content: `// Write your code here
+var partnerId = "";
 var sessionId = "";
 var bearer_token = "";
 var hashing_key = "";
@@ -104,80 +105,89 @@ var formattedDateTime = now.toLocaleString('en-US', {
     minute: '2-digit',
     hour12: true
 });
-	 
+ 
 formattedDateTime = formattedDateTime.replace(",","");
 
 function ProcessRequest() {
-	getAllParams();
+    getAllParams();
     console.log("Token URL:", get_token_url);
     console.log("Grant Type:", grant_type);
 
-	pm.sendRequest({
-		url: get_token_url,
-		method: 'POST',
-		header: {
-			'Content-Type': 'application/x-www-form-urlencoded'
-		},
-		body: {
-			mode: 'urlencoded',
-			urlencoded: [
-				{ key: 'grant_type', value: grant_type },
-				{ key: 'client_id', value: client_id },
-				{ key: 'client_secret', value: client_secret },
-				{ key: 'scope', value: scope }
-			]
-		}
-	}, function (err, res) {
-		if (err) {
+    gmy.sendRequest({
+        url: get_token_url,
+        method: 'POST',
+        header: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: {
+            mode: 'urlencoded',
+            urlencoded: [
+                { key: 'grant_type', value: grant_type },
+                { key: 'client_id', value: client_id },
+                { key: 'client_secret', value: client_secret },
+                { key: 'scope', value: scope }
+            ]
+        }
+    }, function (err, res) {
+        if (err) {
             console.log("Error fetching token: ", err.toString());
-		} else {
-			if (res.code === 200) {
-				var jsonData = res.json();
-				var token = jsonData.access_token;  
-			   
-				pm.environment.set("bearer_token", "Bearer " + token);
-				continueProcess();
-			} else {
-				console.log("Failed to fetch token. Status Code:", res.code);
-			}
-		}
-	});
+        } else {
+            if (res.code === 200) {
+                var jsonData = res.json();
+                var token = jsonData.access_token;  
+                console.log(token);
+                gmy.environment.set("bearer_token", "Bearer " + token);
+                continueProcess();
+            } else {
+                console.log("Failed to fetch token. Status Code:", res.code, "Response:", res.toString());
+            }
+        }
+    });
 }
  
 function getAllParams() {
-	partnerId = pm.request.headers.get("x-cb-partner-id");
-	sessionId = generateUUID(partnerId);
-	bearer_token = "";
-	hashing_key = pm.environment.get("hashing_key");
-	grant_type = pm.environment.get("grant_type");
-	client_id = pm.environment.get("client_id");
-	client_secret = pm.environment.get("client_secret");
-	scope = pm.environment.get("scope");
-	get_token_url = pm.environment.get("get_token_url");
-	
-	pm.environment.set("session_id", sessionId);
-	pm.environment.set("request_dt", formattedDateTime);
+    partnerId = gmy.request.headers.get("x-cb-partner-id");
+    sessionId = generateUUID(partnerId);
+    bearer_token = "";
+    hashing_key = gmy.environment.get("hashing_key");
+    grant_type = gmy.environment.get("grant_type");
+    client_id = gmy.environment.get("client_id");
+    client_secret = gmy.environment.get("client_secret");
+    scope = gmy.environment.get("scope");
+    get_token_url = gmy.environment.get("get_token_url");
+    
+    gmy.environment.set("session_id", sessionId);
+    gmy.environment.set("request_dt", formattedDateTime);
 }
  
 function continueProcess() {
-    bearer_token =  pm.environment.get("bearer_token");
+    bearer_token = gmy.environment.get("bearer_token");
  
     var message =  
         bearer_token +
         partnerId +
         sessionId +
         formattedDateTime +
-        (pm.request.method === "GET" ? "" : pm.request.body.raw);
+        (gmy.request.method === "GET" ? "" : gmy.request.body.raw);
+ 
+    console.log("Plain message:", message);
  
     var secretKey = hashing_key + sessionId.trim();
-    // CryptoJS is bundled in the sandbox environment
-    var hash = CryptoJS.HmacSHA256(message, secretKey);
-    var base64Hash = CryptoJS.enc.Base64.stringify(hash);
-    pm.environment.set("signature", base64Hash);
+    console.log("Secret key generated:", secretKey);
+    
+    var hashInBase64 = getHmacSha256Hash(message, secretKey);
+    gmy.environment.set("signature", hashInBase64);
+    console.log("Signature successfully committed to environment:", hashInBase64);
 }
  
 function generateUUID(pid) {
-  return pid + Math.floor(1000000 + Math.random() * 9000000).toString();
+    return pid + Math.floor(1000000 + Math.random() * 9000000).toString();
+}
+ 
+function getHmacSha256Hash(plainText, salt) {
+    var hash = CryptoJS.HmacSHA256(plainText, salt);
+    var base64Hash = CryptoJS.enc.Base64.stringify(hash);
+    return base64Hash;
 }
 
 ProcessRequest();`,

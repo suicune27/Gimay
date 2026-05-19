@@ -29,6 +29,7 @@ import { ScriptLibraryService } from '../../services/ScriptLibraryService';
 import { RequestData, Collection, EnvironmentTab, KeyValue, BodyType, RequestBody } from '../../types';
 import { RequestUtils } from '../../utils/RequestUtils';
 import { KVEditor } from '../../components/KVEditor';
+import { HeaderEditor } from '../../components/HeaderEditor';
 import { NameModal } from '../../components/NameModal';
 import { ScriptService } from '../../services/ScriptService';
 import { AuthEditor } from '../../components/AuthEditor';
@@ -40,6 +41,7 @@ import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { VariableService } from '../../services/VariableService';
 import { ScriptLibraryModal } from '../scripts/ScriptLibraryModal';
 import { parseCurl } from '../../lib/curlParser';
+import { registerPutmanCompletions } from '../../services/monacoCompletion';
 const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 const parseUrlParams = (url: string): Array<{ key: string; value: string }> => {
@@ -164,7 +166,8 @@ export const RequestEditor: React.FC = () => {
     pendingSyncIds,
     syncResource,
     layoutOrientation,
-    setLayoutOrientation
+    setLayoutOrientation,
+    updateEnvironment
   } = useStore();
 
   const [activeSection, setActiveSection] = useState<'Parameters' | 'Authorization' | 'Headers' | 'Body' | 'Scripts' | 'Settings'>('Parameters');
@@ -298,6 +301,49 @@ export const RequestEditor: React.FC = () => {
         activeRequest.pre_request_script
       ].filter(Boolean) as string[];
 
+      const applyEnvironmentMutations = (mutations: Record<string, any>) => {
+        if (!activeEnvId || !mutations || Object.keys(mutations).length === 0) return;
+        const activeEnv = environments.find(e => e.id === activeEnvId);
+        if (!activeEnv) return;
+
+        let updatedVariables = [...(activeEnv.variables || [])];
+        let hasChanges = false;
+
+        for (const [key, value] of Object.entries(mutations)) {
+          const index = updatedVariables.findIndex(v => v.key === key);
+          if (value === null) {
+            // Unset/remove
+            if (index >= 0) {
+              updatedVariables.splice(index, 1);
+              hasChanges = true;
+            }
+          } else {
+            // Set/update
+            if (index >= 0) {
+              if (updatedVariables[index].value !== String(value)) {
+                updatedVariables[index] = {
+                  ...updatedVariables[index],
+                  value: String(value)
+                };
+                hasChanges = true;
+              }
+            } else {
+              updatedVariables.push({
+                id: Math.random().toString(36).substr(2, 9),
+                key,
+                value: String(value),
+                active: true
+              });
+              hasChanges = true;
+            }
+          }
+        }
+
+        if (hasChanges) {
+          updateEnvironment(activeEnvId, { variables: updatedVariables });
+        }
+      };
+
       const preRequestOut = await ScriptService.executePreRequest(
         preScripts,
         requestToExecute,
@@ -305,6 +351,9 @@ export const RequestEditor: React.FC = () => {
       );
       requestToExecute = preRequestOut.request;
       let executionLogs = preRequestOut.logs || [];
+      if (preRequestOut.environmentMutations) {
+        applyEnvironmentMutations(preRequestOut.environmentMutations);
+      }
 
       // 2. Execute
       const response = await RequestService.execute(requestToExecute, context);
@@ -324,6 +373,9 @@ export const RequestEditor: React.FC = () => {
 
       const results = testOut.results;
       executionLogs = [...executionLogs, ...(testOut.logs || [])];
+      if (testOut.environmentMutations) {
+        applyEnvironmentMutations(testOut.environmentMutations);
+      }
 
       setLastResponse({
         ...response,
@@ -756,8 +808,8 @@ export const RequestEditor: React.FC = () => {
                 )}
 
                 {activeSection === 'Headers' && (
-                  <KVEditor
-                    items={activeRequest!.headers}
+                  <HeaderEditor
+                    items={activeRequest!.headers || []}
                     onChange={(headers) => updateRequest(activeRequest!.id, { headers })}
                     placeholderKey="HEADER_NAME"
                   />
@@ -1004,6 +1056,7 @@ export const RequestEditor: React.FC = () => {
                             language="javascript"
                             theme={theme === 'light' ? 'vs' : 'vs-dark'}
                             value={activeRequest!.pre_request_script || ''}
+                            onMount={(editor, monaco) => registerPutmanCompletions(monaco)}
                             onChange={(val) => updateRequest(activeRequest!.id, { pre_request_script: val || '' })}
                             options={{
                               minimap: { enabled: false },
@@ -1037,6 +1090,7 @@ export const RequestEditor: React.FC = () => {
                             language="javascript"
                             theme={theme === 'light' ? 'vs' : 'vs-dark'}
                             value={activeRequest!.test_script || ''}
+                            onMount={(editor, monaco) => registerPutmanCompletions(monaco)}
                             onChange={(val) => updateRequest(activeRequest!.id, { test_script: val || '' })}
                             options={{
                               minimap: { enabled: false },

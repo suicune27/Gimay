@@ -861,7 +861,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <Section title="System Trace">
                     <div className="bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg font-mono text-[10px] p-4 text-[var(--text-dim)] space-y-2 max-h-40 overflow-y-auto">
                       <p><span className="text-[var(--brand)]">[SYSTEM]</span> Initializing diagnostics module...</p>
-                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Kernel version: Putman-OS-Core-9</p>
+                      <p><span className="text-[var(--brand)]">[SYSTEM]</span> Kernel version: Gimay-OS-Core-9</p>
                       <p><span className="text-yellow-500">[WARN]</span> High memory latency detected in tab sector B</p>
                       <p><span className="text-[var(--brand)]">[SYSTEM]</span> Sync manager operational (IDLE)</p>
                       <p><span className="text-blue-400">[INFO]</span> Persistence link secured via Supabase-Tunnel-1</p>
@@ -883,7 +883,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       <Terminal size={48} className="text-[var(--brand)]" />
                    </div>
                    <div className="text-center space-y-2">
-                     <h2 className="text-2xl font-black text-[var(--text-main)] tracking-tighter uppercase italic">PUTMAN <span className="text-[var(--brand)]">v0.5.0-ALPHA</span></h2>
+                     <h2 className="text-2xl font-black text-[var(--text-main)] tracking-tighter uppercase italic">GIMAY <span className="text-[var(--brand)]">v0.5.0-ALPHA</span></h2>
                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-dim)]">Cortex API Management Suite</p>
                    </div>
 

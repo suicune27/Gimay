@@ -37,7 +37,7 @@ export const AuthUI: React.FC = () => {
             <Terminal size={28} className="text-[#0A0A0A]" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Putman</h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">Gimay</h1>
             <p className="text-[10px] text-[#3ECF8E] font-mono uppercase tracking-[0.3em] font-bold mt-1">v9.0.0 // PRODUCTION CORE</p>
           </div>
         </div>

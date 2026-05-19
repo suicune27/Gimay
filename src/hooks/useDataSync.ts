@@ -302,7 +302,7 @@ export const useDataSync = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [store.activeWorkspaceId, (store.teams || []).length]);
+  }, [store.activeWorkspaceId, store.profile?.id, (store.teams || []).length]);
 
   return {
     fetchWorkspaces,

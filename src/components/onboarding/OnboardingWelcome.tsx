@@ -27,7 +27,7 @@ export const OnboardingWelcome: React.FC = () => {
 
       {/* Title */}
       <h1 className="text-4xl font-black text-white mb-3 tracking-tight">
-        Welcome to Putman
+        Welcome to Gimay
       </h1>
 
       {/* Subtitle */}

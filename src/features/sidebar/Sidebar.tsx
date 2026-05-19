@@ -1233,7 +1233,7 @@ export const Sidebar: React.FC = () => {
             }}
           >
             <div className="px-4 py-1.5 mb-1 border-b border-white/[0.03]">
-              <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Node actions // Putman</span>
+              <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Node actions // Gimay</span>
             </div>
 
             {/* Collection specific options */}
