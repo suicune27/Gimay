@@ -95,7 +95,13 @@
     "asar": true,
     "compression": "maximum",
     "removePackageScripts": true,
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "suicune27",
+        "repo": "Gimay"
+      }
+    ],
     "win": {
       "icon": "gimay.ico",
       "target": [

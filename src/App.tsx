@@ -14,7 +14,7 @@ import { OnboardingService } from './services/OnboardingService';
 import { ToastContainer } from './components/Toast';
 
 export default function App() {
-  const { setSyncStatus, settings, setProfile, landingSkipped, setLandingSkipped, reset: resetStore } = useStore();
+  const { setSyncStatus, settings, setProfile, landingSkipped, setLandingSkipped, reset: resetStore, addToast } = useStore();
   const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +25,51 @@ export default function App() {
       setLandingSkipped(true);
     }
   }, [landingSkipped, setLandingSkipped]);
+
+  // Electron Auto-Update Setup
+  useEffect(() => {
+    if (!isElectron()) return;
+
+    // Scan for updates 5 seconds after application bootstrap
+    const initialCheckTimer = setTimeout(() => {
+      console.log('[App Auto-Update] Initial scan triggered');
+      (window as any).electron?.checkForUpdates?.();
+    }, 5000);
+
+    const cleanupAvailable = (window as any).electron?.onUpdateAvailable?.((info: any) => {
+      console.log('[App Auto-Update] Update detected:', info);
+      addToast({
+        type: 'info',
+        message: `A new update (v${info.version}) is available. Downloading...`
+      });
+    });
+
+    const cleanupDownloaded = (window as any).electron?.onUpdateDownloaded?.((info: any) => {
+      console.log('[App Auto-Update] Update completed:', info);
+      addToast({
+        type: 'success',
+        message: `Update v${info.version} downloaded successfully! Restart Gimay to apply changes.`
+      });
+    });
+
+    const cleanupError = (window as any).electron?.onUpdateError?.((err: string) => {
+      console.warn('[App Auto-Update] Scan failure:', err);
+      // Suppress dev mock offline environment warning notifications
+      if (err !== 'Offline / local server environment') {
+        addToast({
+          type: 'warning',
+          message: `Update verification interrupted: ${err}`
+        });
+      }
+    });
+
+    return () => {
+      clearTimeout(initialCheckTimer);
+      cleanupAvailable?.();
+      cleanupDownloaded?.();
+      cleanupError?.();
+    };
+  }, [addToast]);
 
   // Sync landingSkipped with URL path on web
   useEffect(() => {
