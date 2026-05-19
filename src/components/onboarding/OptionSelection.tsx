@@ -80,7 +80,7 @@ export const OptionSelection: React.FC = () => {
           </h3>
 
           <p className="text-sm text-[#888888] mb-8 leading-relaxed">
-            The easiest way to collaborate. Just enter your team's temporary code to auto-configure everything and join the workspace.
+            The easiest way to collaborate. Just enter your team invite code to auto-configure everything and join the workspace.
           </p>
 
           <div className="flex items-center text-[#3ECF8E] font-bold text-sm gap-2 group-hover:gap-3 transition-all mt-auto pt-4 border-t border-[#3ECF8E]/20">

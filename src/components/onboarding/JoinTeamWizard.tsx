@@ -29,13 +29,13 @@ export const JoinTeamWizard: React.FC = () => {
     setIsJoining(true);
 
     if (!inviteCode) {
-      setError('Please enter your temporary code.');
+      setError('Please enter your team invite code.');
       setIsJoining(false);
       return;
     }
 
     if (!OnboardingService.isValidInviteCodeFormat(inviteCode)) {
-      setError('Invalid temporary code format. Expected: TEMP-XXXX-XXXX-XXXX');
+      setError('Invalid invite code format. Expected: TEMP-XXXX-XXXX-XXXX');
       setIsJoining(false);
       return;
     }
@@ -52,7 +52,7 @@ export const JoinTeamWizard: React.FC = () => {
       // 1. Fetch connection details from the temporary code
       const validation = await OnboardingService.validateInviteCode(inviteCode);
       if (!validation.success || !validation.invite) {
-        setError(validation.error || 'Invalid temporary code.');
+        setError(validation.error || 'Invalid invite code.');
         setIsJoining(false);
         return;
       }
@@ -61,7 +61,7 @@ export const JoinTeamWizard: React.FC = () => {
       const actualTeamCode = teamCode || teams?.team_code;
 
       if (!actualTeamCode) {
-        setError('Could not determine team code. Please enter it manually or check your temporary code.');
+        setError('Could not determine team code. Please enter it manually or check your invite code.');
         setIsJoining(false);
         return;
       }
@@ -136,13 +136,13 @@ export const JoinTeamWizard: React.FC = () => {
         </div>
 
         <p className="text-sm text-[#888888]">
-          Enter your team's temporary code to automatically configure your workspace.
+          Enter your team invite code to automatically configure your workspace.
         </p>
 
         {/* Temporary Code Input */}
         <div>
           <label className="block text-xs font-black uppercase text-[#888888] mb-2 tracking-widest">
-            Temporary Code
+            Team Invite Code
           </label>
           <input
             type="text"
@@ -171,7 +171,7 @@ export const JoinTeamWizard: React.FC = () => {
             className="w-full px-4 py-3 bg-[#1A1A1A] border border-[#222222] rounded-lg text-white placeholder:text-[#555555] focus:border-[#3ECF8E] focus:outline-none transition-all font-mono tracking-wider text-center"
           />
           <p className="text-[10px] text-[#555555] mt-2 italic text-center">
-            Usually fetched automatically from your temporary code.
+            Usually fetched automatically from your team invite code.
           </p>
         </div>
 

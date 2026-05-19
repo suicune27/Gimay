@@ -44,11 +44,18 @@ export function getSupabaseConfig() {
   const global = getGlobalSupabaseConfig();
   const tenant = getTenantSupabaseConfig();
 
-  // If we have tenant config, it takes priority for the general client
-  return {
+  const config = {
     url: tenant?.url || global.url || null,
     anonKey: tenant?.anonKey || global.anonKey || null,
   };
+
+  console.log('[SUPABASE CLIENT CONFIG]', {
+    source: tenant ? 'Tenant LocalStorage' : 'Global Env',
+    url: config.url,
+    anonKey: config.anonKey ? '***' + config.anonKey.slice(-6) : null
+  });
+
+  return config;
 }
 
 // Create a client that always uses current config (tenant preferred)

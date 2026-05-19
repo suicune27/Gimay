@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { SecureConfigStorage } from '../lib/SecureConfigStorage';
-import { supabase, getSupabaseConfig } from '../lib/supabase';
+import { supabase, getSupabaseConfig, globalSupabase } from '../lib/supabase';
 
 interface RetryOptions {
   attempts?: number;
@@ -771,32 +771,37 @@ export class OnboardingService {
         return { success: false, error: 'Team not found. Please check the team code.' };
       }
 
-      const expectedInviteHash = team.secret_code_hash;
-      if (expectedInviteHash !== hashedCode) {
-        return { success: false, error: 'Temporary code does not match the specified team.' };
+      // Check if this invite code is registered centrally for this team
+      console.log('[OnboardingService] joinTeam: Validating invite code centrally...');
+      const inviteValidation = await this.validateInviteCode(inviteCode);
+      const isRegisteredCentrally = inviteValidation.success && inviteValidation.invite && inviteValidation.invite.team_id === team.id;
+
+      if (!isRegisteredCentrally) {
+        console.log('[OnboardingService] joinTeam: Invite not central. Falling back to legacy secret_code_hash comparison.');
+        const expectedInviteHash = team.secret_code_hash;
+        if (expectedInviteHash !== hashedCode) {
+          return { success: false, error: 'Temporary code does not match the specified team.' };
+        }
+      } else {
+        console.log('[OnboardingService] joinTeam: Centrally validated. Legacy secret_code_hash check bypassed.');
       }
 
-      const { data: existingMember, error: memberQueryError } = await client
-        .from('team_members')
-        .select('*')
-        .eq('team_id', team.id)
-        .eq('user_id', userId)
-        .single();
-
-      if (memberQueryError && !memberQueryError.message.includes('Row not found')) {
-        return { success: false, error: memberQueryError.message };
-      }
-
-      if (existingMember) {
-        return { success: false, error: 'You are already a member of this team.' };
-      }
-
+      // Directly insert to avoid RLS read-permission bootstrap blocks
+      console.log('[OnboardingService] joinTeam: Directly inserting membership...');
       const { error: membershipError } = await client.from('team_members').insert([
         { team_id: team.id, user_id: userId, role: 'member' },
       ]);
 
       if (membershipError) {
-        return { success: false, error: membershipError.message };
+        const msg = membershipError.message || '';
+        const isConflict = membershipError.code === '23505' || msg.includes('duplicate key') || msg.includes('already exists') || msg.includes('Conflict');
+        
+        if (isConflict) {
+          console.log('[OnboardingService] User is already a member of this team. Proceeding...');
+        } else {
+          console.error('[OnboardingService] Failed to insert team membership:', membershipError);
+          return { success: false, error: `Failed to join team: ${membershipError.message}` };
+        }
       }
 
       const { data: workspace, error: workspaceError } = await client
@@ -874,7 +879,7 @@ export class OnboardingService {
         ? new Date(Date.now() + options.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
         : null;
 
-      const { data, error } = await supabase
+      const { data, error } = await globalSupabase
         .from('team_invites')
         .insert([
           {
@@ -898,7 +903,7 @@ export class OnboardingService {
   }
 
   static async listTeamInvites(teamId: string): Promise<any[]> {
-    const { data, error } = await supabase
+    const { data, error } = await globalSupabase
       .from('team_invites')
       .select('*')
       .eq('team_id', teamId)
@@ -910,7 +915,7 @@ export class OnboardingService {
   }
 
   static async revokeTeamInvite(inviteId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await globalSupabase
       .from('team_invites')
       .update({ is_revoked: true })
       .eq('id', inviteId);
@@ -924,37 +929,76 @@ export class OnboardingService {
     error?: string;
   }> {
     try {
-      // We must use the base/default client if there is one, or the one currently configured
-      const { data, error } = await supabase
+      console.log('[OnboardingService] Validating invite code centrally (flat lookup):', code);
+      let { data: invite, error } = await globalSupabase
         .from('team_invites')
-        .select(`
-          *,
-          teams (
-            name,
-            description,
-            team_code
-          )
-        `)
+        .select('*')
         .eq('code', code.trim().toUpperCase())
         .single();
 
-      if (error || !data) {
-        return { success: false, error: 'Temporary code not found or invalid.' };
+      // Fallback to active/local database client if not found centrally
+      if (error || !invite) {
+        console.log('[OnboardingService] Invite not found centrally. Falling back to active database client...');
+        const localResult = await supabase
+          .from('team_invites')
+          .select('*')
+          .eq('code', code.trim().toUpperCase())
+          .single();
+
+        if (!localResult.error && localResult.data) {
+          invite = localResult.data;
+          error = null;
+          console.log('[OnboardingService] Invite successfully resolved from local/active database!');
+        }
       }
 
-      if (data.is_revoked) {
+      if (error || !invite) {
+        console.error('[OnboardingService] Invite lookup failed in both global and local databases:', error);
+        return { success: false, error: 'Team invite code not found or invalid.' };
+      }
+
+      if (invite.is_revoked) {
         return { success: false, error: 'This invite has been revoked.' };
       }
 
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
         return { success: false, error: 'This invite has expired.' };
       }
 
-      if (data.max_uses > 0 && data.use_count >= data.max_uses) {
+      if (invite.max_uses > 0 && invite.use_count >= invite.max_uses) {
         return { success: false, error: 'This invite has reached its maximum number of uses.' };
       }
 
-      return { success: true, invite: data };
+      // Fetch team details dynamically from the target tenant database to bypass global schema constraints
+      try {
+        console.log('[OnboardingService] Fetching team details from target database:', invite.supabase_url);
+        const tenantClient = createClient(invite.supabase_url, invite.supabase_anon_key);
+        const { data: team, error: teamError } = await tenantClient
+          .from('teams')
+          .select('name, description, team_code')
+          .eq('id', invite.team_id)
+          .single();
+
+        if (!teamError && team) {
+          invite.teams = team;
+        } else {
+          console.warn('[OnboardingService] Failed to fetch team info from tenant database:', teamError);
+          invite.teams = {
+            name: 'Shared Team Workspace',
+            description: 'Collaborative environment',
+            team_code: ''
+          };
+        }
+      } catch (teamFetchErr) {
+        console.warn('[OnboardingService] Failed to connect to tenant database for team info:', teamFetchErr);
+        invite.teams = {
+          name: 'Shared Team Workspace',
+          description: 'Collaborative environment',
+          team_code: ''
+        };
+      }
+
+      return { success: true, invite };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -993,7 +1037,7 @@ export class OnboardingService {
     
     if (joinResult.success) {
       // Increment use count
-      await supabase
+      await globalSupabase
         .from('team_invites')
         .update({ use_count: (invite.use_count || 0) + 1 })
         .eq('id', invite.id);
@@ -1031,7 +1075,7 @@ export class OnboardingService {
       });
 
       // Increment use count
-      await supabase
+      await globalSupabase
         .from('team_invites')
         .update({ use_count: (invite.use_count || 0) + 1 })
         .eq('id', invite.id);

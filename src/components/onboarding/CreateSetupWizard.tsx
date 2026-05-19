@@ -581,7 +581,7 @@ export const CreateSetupWizard: React.FC = () => {
   const handleCopyInviteCode = async () => {
     if (!inviteCode) return;
     await navigator.clipboard.writeText(inviteCode);
-    addToast({ type: 'success', message: 'Temporary code copied.' });
+    addToast({ type: 'success', message: 'Team invite code copied.' });
   };
 
   return (
@@ -605,7 +605,7 @@ export const CreateSetupWizard: React.FC = () => {
               ? 'Enter your Supabase credentials and give your team a name to get started.'
               : currentStep === 'sql-setup'
                 ? 'Run the SQL script to provision the schema, then create your team.'
-                : 'Your team is ready. Copy the team code and temporary code to continue to your workspace.'}
+                : 'Your team is ready. Copy the team code and invite code to continue to your workspace.'}
           </p>
         </div>
 
@@ -1074,7 +1074,7 @@ export const CreateSetupWizard: React.FC = () => {
               {inviteCode && (
                 <div className="p-6 rounded-2xl bg-black/40 border border-[#222222] space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black uppercase text-[#888888] tracking-widest">Temporary Invite Code</p>
+                    <p className="text-[10px] font-black uppercase text-[#888888] tracking-widest">Team Invite Code</p>
                     <LinkIcon size={14} className="text-[#3ECF8E]" />
                   </div>
                   <div className="flex items-center gap-3">

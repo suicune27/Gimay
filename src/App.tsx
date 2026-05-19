@@ -10,6 +10,7 @@ import { compareDatabaseStructure, ensureDatabaseSchema } from './services/ensur
 import { isElectron } from './lib/platform';
 import { LandingPage } from './components/LandingPage';
 import { PersistenceService } from './services/PersistenceService';
+import { OnboardingService } from './services/OnboardingService';
 import { ToastContainer } from './components/Toast';
 
 export default function App() {
@@ -115,6 +116,17 @@ export default function App() {
 
     return () => matcher.removeEventListener('change', listener);
   }, [settings.appearance.theme, settings.appearance.accentColor]);
+
+  // Auto-recovery: If local storage has valid configuration but the store is not marked configured, auto-align it.
+  useEffect(() => {
+    if (hasHydrated) {
+      const hasConfig = OnboardingService.hasExistingConfiguration();
+      if (hasConfig && !isConfigured) {
+        console.log('[Onboarding] Found existing configuration in local storage, auto-configuring store.');
+        useOnboardingStore.getState().setIsConfigured(true);
+      }
+    }
+  }, [hasHydrated, isConfigured]);
 
   useEffect(() => {
     if (!hasHydrated) return;

@@ -482,6 +482,7 @@ BEGIN
     DROP POLICY IF EXISTS "History access" ON public.history;
     DROP POLICY IF EXISTS "Tabs manage" ON public.user_tabs;
     DROP POLICY IF EXISTS "Scripts access" ON public.scripts;
+    DROP POLICY IF EXISTS "Team members access" ON public.team_members;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $policies_cleanup$;
 
@@ -492,6 +493,7 @@ DO $p4$ BEGIN CREATE POLICY "Request access" ON public.requests FOR ALL USING (u
 DO $p5$ BEGIN CREATE POLICY "History access" ON public.history FOR ALL USING (user_id = auth.uid()); EXCEPTION WHEN OTHERS THEN NULL; END $p5$;
 DO $p6$ BEGIN CREATE POLICY "Tabs manage" ON public.user_tabs FOR ALL USING (user_id = auth.uid()); EXCEPTION WHEN OTHERS THEN NULL; END $p6$;
 DO $p7$ BEGIN CREATE POLICY "Scripts access" ON public.scripts FOR ALL USING (user_id = auth.uid()); EXCEPTION WHEN OTHERS THEN NULL; END $p7$;
+DO $p8$ BEGIN CREATE POLICY "Team members access" ON public.team_members FOR ALL USING (auth.uid() IS NOT NULL); EXCEPTION WHEN OTHERS THEN NULL; END $p8$;
 
 -- 11. TEAM INVITES & TRIGGERS
 CREATE TABLE IF NOT EXISTS public.team_invites (

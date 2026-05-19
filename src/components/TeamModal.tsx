@@ -24,11 +24,41 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
   const [activeTab, setActiveTab] = useState<'members' | 'invites'>('members');
 
   useEffect(() => {
-    if (team?.id) {
+    if (!team?.id) return;
+
+    fetchMembers();
+    fetchInvites();
+
+    // 1. Real-time Subscription (Instant updates when replication is enabled)
+    const channel = supabase
+      .channel(`team-members-changes-${team.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'team_members',
+          filter: `team_id=eq.${team.id}`,
+        },
+        () => {
+          console.log('[TeamModal] Real-time event detected on team_members. Fetching latest roster...');
+          fetchMembers();
+          fetchInvites();
+        }
+      )
+      .subscribe();
+
+    // 2. Polling Fallback (Updates every 10 seconds as backup)
+    const interval = setInterval(() => {
       fetchMembers();
       fetchInvites();
-    }
-  }, [team]);
+    }, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [team?.id]);
 
   const fetchMembers = async () => {
     const { data, error } = await supabase

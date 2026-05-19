@@ -25,13 +25,13 @@ export const JoinInviteWizard: React.FC = () => {
     setIsJoining(true);
 
     if (!inviteCode) {
-      setError('Please enter a temporary code.');
+      setError('Please enter your team invite code.');
       setIsJoining(false);
       return;
     }
 
     if (!OnboardingService.isValidInviteCodeFormat(inviteCode)) {
-      setError('Invalid temporary code format. Expected: TEMP-XXXX-XXXX-XXXX');
+      setError('Invalid invite code format. Expected: TEMP-XXXX-XXXX-XXXX');
       setIsJoining(false);
       return;
     }
@@ -111,13 +111,13 @@ export const JoinInviteWizard: React.FC = () => {
         </div>
 
         <p className="text-sm text-[#888888]">
-          Enter the secure temporary code provided by your team administrator.
+          Enter the secure team invite code provided by your team administrator.
         </p>
 
         {/* Temporary Code Input */}
         <div>
           <label className="block text-xs font-black uppercase text-[#888888] mb-2 tracking-widest">
-            Temporary Code
+            Team Invite Code
           </label>
           <input
             type="text"
@@ -146,12 +146,12 @@ export const JoinInviteWizard: React.FC = () => {
             {OnboardingService.isValidInviteCodeFormat(inviteCode) ? (
               <>
                 <CheckCircle2 size={16} className="text-green-500" />
-                <p className="text-xs text-green-400">Valid temporary code format</p>
+                <p className="text-xs text-green-400">Valid invite code format</p>
               </>
             ) : (
               <>
                 <AlertCircle size={16} className="text-red-500" />
-                <p className="text-xs text-red-400">Invalid temporary code format</p>
+                <p className="text-xs text-red-400">Invalid invite code format</p>
               </>
             )}
           </motion.div>
