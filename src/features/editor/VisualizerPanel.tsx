@@ -198,10 +198,18 @@ export const VisualizerPanel: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {numericKeys.map((key, i) => {
                       const values = chartData.map((d: any) => d[key]);
-                      const max = Math.max(...values);
-                      const min = Math.min(...values);
+                      let max = 0;
+                      let min = 0;
+                      if (values.length > 0) {
+                        max = values[0];
+                        min = values[0];
+                        for (const val of values) {
+                          if (val > max) max = val;
+                          if (val < min) min = val;
+                        }
+                      }
                       const sum = values.reduce((a: number, b: number) => a + b, 0);
-                      const avg = sum / values.length;
+                      const avg = values.length > 0 ? sum / values.length : 0;
 
                       return (
                         <div key={key} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] p-6 rounded-2xl shadow-lg">

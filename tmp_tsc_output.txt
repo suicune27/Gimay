@@ -1,0 +1,87 @@
+﻿src/components/onboarding/CreateSetupWizard.tsx(1,8): error TS1259: Module '"C:/Users/gamromay/Downloads/PutmanDesktop/Putman_Desktop/node_modules/@types/react/index"' can only be default-imported using the 'esModuleInterop' flag
+src/components/onboarding/CreateSetupWizard.tsx(168,5): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(174,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(175,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(176,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(183,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(192,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(201,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(206,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(208,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(220,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(221,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(222,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(223,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(226,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(234,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(235,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(238,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(248,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(249,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(252,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(253,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(260,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(265,28): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(265,51): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(271,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(276,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(277,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(281,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(287,37): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(294,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(295,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(296,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(297,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(298,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(299,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(301,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(309,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(315,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(316,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(318,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(319,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(320,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(326,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(327,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(328,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(329,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(330,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(335,32): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(335,81): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(337,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(342,19): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(346,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(351,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(352,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(353,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(365,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(370,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(380,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(386,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(395,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(396,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(397,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(398,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(399,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(400,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(401,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(402,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(403,17): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(412,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(417,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(418,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(419,13): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(420,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(421,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(422,15): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(428,7): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(430,11): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(439,9): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/components/onboarding/CreateSetupWizard.tsx(452,49): error TS17004: Cannot use JSX unless the '--jsx' flag is provided.
+src/lib/SecureConfigStorage.ts(1,8): error TS1259: Module '"C:/Users/gamromay/Downloads/PutmanDesktop/Putman_Desktop/node_modules/@types/crypto-js/index"' can only be default-imported using the 'esModuleInterop' flag
+src/lib/supabase.ts(5,25): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.
+src/lib/supabase.ts(5,57): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.
+src/lib/supabase.ts(6,8): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.
+src/lib/supabase.ts(9,29): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.
+src/lib/supabase.ts(9,61): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.
+src/lib/supabase.ts(10,8): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', or 'nodenext'.

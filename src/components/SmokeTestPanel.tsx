@@ -86,6 +86,41 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
   const allSamplesRef = useRef<TestSample[]>([]);
   const isRunningRef = useRef(false);
 
+  // Hover states for dynamic responsive tooltip
+  const [hoveredSample, setHoveredSample] = useState<TestSample | null>(null);
+  const [hoverXPercent, setHoverXPercent] = useState<number | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isRunning || !chartContainerRef.current || samples.length === 0) return;
+    const rect = chartContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    const percent = Math.max(0, Math.min(100, (x / width) * 100));
+    
+    const graphSamples = samples.slice(-300);
+    const index = Math.min(
+      graphSamples.length - 1,
+      Math.max(0, Math.round((percent / 100) * (graphSamples.length - 1)))
+    );
+    const sample = graphSamples[index];
+    setHoveredSample(sample);
+    setHoverXPercent((index / (graphSamples.length - 1 || 1)) * 100);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredSample(null);
+    setHoverXPercent(null);
+  };
+
+  // Clear hovered samples when execution starts to avoid caching/stale values
+  useEffect(() => {
+    if (isRunning) {
+      setHoveredSample(null);
+      setHoverXPercent(null);
+    }
+  }, [isRunning]);
+
   const handleExportJMX = () => {
     if (!activeRequest) return;
     
@@ -227,11 +262,13 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
             actualBody = VariableService.resolve(rawBody, variableContext);
           }
 
+          const isSuspendedRun = true;
+
           capturedRequest = {
             url: VariableService.resolve(requestToExecute.url || '', variableContext),
             method: requestToExecute.method,
-            headers: resolvedHeaders,
-            body: actualBody
+            headers: isSuspendedRun ? {} : resolvedHeaders,
+            body: isSuspendedRun ? '[Detailed payload logging suspended for memory optimization]' : actualBody
           };
 
           // 3. Request Execution using core RequestService pipeline
@@ -240,8 +277,8 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
           capturedResponse = {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers,
-            body: response.body
+            headers: isSuspendedRun ? {} : response.headers,
+            body: isSuspendedRun ? '[Detailed payload logging suspended for memory optimization]' : response.body
           };
 
           // 4. Post-Execution Validation Test Scripts Execution
@@ -349,11 +386,15 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
     };
 
     // Spin up concurrent worker threads
-    const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
-    await Promise.all(workerPromises);
-
-    setIsRunning(false);
-    isRunningRef.current = false;
+    try {
+      const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
+      await Promise.all(workerPromises);
+    } catch (err: any) {
+      console.error('[SmokeTester] Concurrency run failed:', err);
+    } finally {
+      setIsRunning(false);
+      isRunningRef.current = false;
+    }
   };
 
   const stopSmokeTest = () => {
@@ -397,11 +438,19 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Calculate metrics
+    // Calculate metrics safely without stack overflow prone spread operator (...)
     const latencies = dataToExport.map(s => s.latency);
-    const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
-    const min = Math.min(...latencies);
-    const max = Math.max(...latencies);
+    const avg = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : 0;
+    let min = 0;
+    let max = 0;
+    if (latencies.length > 0) {
+      min = latencies[0];
+      max = latencies[0];
+      for (const lat of latencies) {
+        if (lat < min) min = lat;
+        if (lat > max) max = lat;
+      }
+    }
     const succRate = Math.round((dataToExport.filter(s => s.success).length / dataToExport.length) * 100);
 
     const htmlContent = `
@@ -663,6 +712,155 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
     printWindow.document.close();
   };
 
+  const renderLatencyGraph = () => {
+    const graphSamples = samples.slice(-300);
+    const hasData = graphSamples.length > 0;
+    
+    let maxVal = 10;
+    let minVal = 0;
+    if (hasData) {
+      maxVal = graphSamples[0].latency;
+      minVal = graphSamples[0].latency;
+      for (const s of graphSamples) {
+        if (s.latency > maxVal) maxVal = s.latency;
+        if (s.latency < minVal) minVal = s.latency;
+      }
+      if (maxVal < 10) maxVal = 10;
+      if (minVal > 0) minVal = 0;
+    }
+    const range = maxVal - minVal || 1;
+    
+    const points = hasData ? graphSamples.map((s, idx) => {
+      const x = (idx / (graphSamples.length - 1 || 1)) * 100;
+      // Map Y safely to coordinate grid (between 3% and 97%) to avoid line boundary overflow
+      const y = 97 - ((s.latency - minVal) / range) * 94;
+      return { x, y, sample: s };
+    }) : [];
+    
+    const pathD = points.length > 0 
+      ? `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+      : '';
+      
+    const areaD = points.length > 0
+      ? `${pathD} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`
+      : '';
+
+    return (
+      <div className="bg-[#09090D] border border-[#1E1E28]/40 rounded-2xl p-5 space-y-4 relative overflow-hidden shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-black text-[#E1E1E6] uppercase tracking-wider block font-mono">Response Time Telemetry Curve</span>
+            <span className="text-[8px] text-[#888894] font-mono block">Real-time latency fluctuation over the last 300 cycles</span>
+          </div>
+          <span className={`text-[8px] font-mono uppercase font-black px-2.5 py-0.5 rounded border transition-all ${
+            hasData 
+              ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/25 animate-pulse" 
+              : "text-[#555] bg-[#101015] border-[#222]"
+          }`}>
+            {hasData ? 'LIVE Sparkline' : 'STANDBY MODE'}
+          </span>
+        </div>
+        
+        <div 
+          ref={chartContainerRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          className={`relative w-full h-[180px] bg-[#030305] rounded-xl overflow-hidden border border-[#1C1C25]/50 flex items-center justify-center select-none transition-all ${
+            isRunning ? 'cursor-not-allowed opacity-90' : 'cursor-crosshair'
+          }`}
+        >
+          {!hasData ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[0.5px] z-10 space-y-1">
+              <span className="text-[9px] font-black tracking-widest text-[#444] font-mono uppercase">Telemetry stand-by</span>
+              <span className="text-[7px] text-[#333] font-mono">Real-time response curves populate here on suite execution</span>
+            </div>
+          ) : (
+            <>
+              {/* SVG containing the graph line curve */}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGradientTest" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3ECF8E" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#3ECF8E" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                
+                {/* Horizontal grid lines */}
+                <line x1="0" y1="3" x2="100" y2="3" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                <line x1="0" y1="97" x2="100" y2="97" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                
+                {areaD && <path d={areaD} fill="url(#chartGradientTest)" />}
+                
+                {pathD && (
+                  <path 
+                    d={pathD} 
+                    fill="none" 
+                    stroke="#3ECF8E" 
+                    strokeWidth="1.8" 
+                    vectorEffect="non-scaling-stroke"
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    className="drop-shadow-[0_0_8px_rgba(62,207,142,0.5)]" 
+                  />
+                )}
+              </svg>
+
+              {/* Float HTML axis labels - ALWAYS fully visible & crisp */}
+              <div className="absolute top-2 left-3 text-[9px] text-[#88888F] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#1C1C25]/40 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Max: {Math.round(maxVal)}ms
+              </div>
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 text-[9px] text-[#66666D] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#1C1C25]/40 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Mid: {Math.round(minVal + range / 2)}ms
+              </div>
+              <div className="absolute bottom-2 left-3 text-[9px] text-[#3ECF8E] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#3ECF8E]/20 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Min: {Math.round(minVal)}ms
+              </div>
+
+              {/* Interactive Vertical Crosshair Line */}
+              {hoverXPercent !== null && (
+                <div 
+                  className="absolute top-0 bottom-0 w-[1px] bg-gradient-to-b from-[#3ECF8E]/40 via-[#3ECF8E]/20 to-transparent pointer-events-none z-10"
+                  style={{ left: `${hoverXPercent}%` }}
+                />
+              )}
+
+              {/* Floating Modern Interactive Tooltip */}
+              {hoveredSample && hoverXPercent !== null && (
+                <div 
+                  className="absolute bottom-4 bg-[#09090F]/95 border border-[#1E1E28]/80 rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.8)] z-30 pointer-events-none font-mono space-y-1.5 text-left min-w-[140px] backdrop-blur-md transition-all duration-75"
+                  style={{ 
+                    left: `${hoverXPercent}%`, 
+                    transform: `translateX(${hoverXPercent > 70 ? '-112%' : '12%'})`
+                  }}
+                >
+                  <div className="flex items-center justify-between border-b border-[#1C1C25] pb-1">
+                    <span className="text-[8px] text-[#666] font-bold">SAMPLE #{hoveredSample.id}</span>
+                    <span className={`text-[7px] font-black uppercase tracking-wider px-1 rounded ${
+                      hoveredSample.success ? "text-[#3ECF8E] bg-[#3ECF8E]/10" : "text-red-400 bg-red-400/10"
+                    }`}>
+                      {hoveredSample.success ? 'PASS' : 'FAIL'}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] text-[#888] block uppercase tracking-tight">Latency</span>
+                    <span className="text-xs font-black text-white block">{hoveredSample.latency} ms</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] text-[#888] block uppercase tracking-tight font-black">Code / Status</span>
+                    <span className={`text-[9px] font-bold block ${hoveredSample.success ? 'text-[#3ECF8E]' : 'text-red-400'}`}>
+                      {hoveredSample.status}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 p-1">
       {/* Immersive Blocking Overlay while running */}
@@ -869,91 +1067,21 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
             </div>
           </div>
 
-          {/* Test Outcomes Log */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest">Test Outcomes Sample Log</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={exportCSV}
-                  className="px-2.5 py-1 bg-[var(--bg-deep)] border border-[var(--border-subtle)] hover:border-[#3ECF8E]/30 rounded-lg text-[8px] font-black text-[var(--text-dim)] hover:text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
-                >
-                  <Download size={10} />
-                  Export Excel (CSV)
-                </button>
-                <button
-                  onClick={exportPDF}
-                  className="px-2.5 py-1 bg-[var(--bg-deep)] border border-[var(--border-subtle)] hover:border-[#3ECF8E]/30 rounded-lg text-[8px] font-black text-[var(--text-dim)] hover:text-[#3ECF8E] uppercase tracking-widest flex items-center gap-1.5 transition-all"
-                >
-                  <Download size={10} />
-                  Export PDF Report
-                </button>
-              </div>
+          <div className="bg-[#0D0D12]/60 border border-[#1C1C25]/60 rounded-xl p-3.5 flex items-start gap-3 select-none">
+            <Activity size={14} className="text-[#3ECF8E] shrink-0 mt-0.5 animate-pulse" />
+            <div className="space-y-0.5">
+              <h4 className="text-[9px] font-black text-[#3ECF8E] uppercase tracking-wider font-mono">
+                Telemetry Graph Optimization Active
+              </h4>
+              <p className="text-[8px] text-[#88888F] font-mono uppercase tracking-tight">
+                Detailed request/response body logging is disabled by default. The test runner is optimized to map response metrics in real-time to preserve memory and platform stability.
+              </p>
             </div>
-            <div className="border border-[var(--border-subtle)] rounded-xl overflow-hidden bg-[var(--bg-deep)]/20 max-h-52 overflow-y-auto custom-scrollbar">
-              <table className="w-full text-left font-mono text-[9px] border-collapse">
-                <thead className="bg-[var(--bg-deep)] text-[8px] font-black uppercase tracking-widest border-b border-[var(--border-subtle)] sticky top-0">
-                  <tr>
-                    <th className="p-2.5 pl-4">Sample ID</th>
-                    <th className="p-2.5">Time</th>
-                    <th className="p-2.5">Latency</th>
-                    <th className="p-2.5">Status Code</th>
-                    <th className="p-2.5 pr-4 text-right">Outcome</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]/50">
-                  <AnimatePresence initial={false}>
-                    {samples.slice(-100).reverse().map((sample) => (
-                      <motion.tr
-                        key={sample.id}
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        onClick={() => {
-                          const fullSample = allSamplesRef.current.find(s => s.id === sample.id);
-                          if (fullSample) {
-                            setSelectedSample(fullSample);
-                          } else {
-                            setSelectedSample(sample);
-                          }
-                          setModalTab('request');
-                        }}
-                        className="hover:bg-white/[0.04] active:bg-white/[0.08] cursor-pointer transition-all border-b border-[var(--border-subtle)]/50"
-                        title="Click to view detailed request/response payload"
-                      >
-                        <td className="p-2.5 pl-4 text-[var(--text-dim)]">#{sample.id}</td>
-                        <td className="p-2.5 text-[var(--text-dim)]">{sample.timestamp}</td>
-                        <td className="p-2.5 font-bold text-white">{sample.latency}ms</td>
-                        <td className="p-2.5 font-bold">
-                          {sample.success ? (
-                            <span className="text-[#3ECF8E]">{sample.status}</span>
-                          ) : (
-                            <div className="flex flex-col">
-                              <span className="text-red-400 flex items-center gap-1">
-                                <AlertCircle size={10} />
-                                {sample.status}
-                              </span>
-                              {sample.error && (
-                                <span className="text-[8px] text-red-400/60 font-normal mt-0.5 max-w-[200px] truncate animate-pulse" title={sample.error}>
-                                  {sample.error}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-2.5 pr-4 text-right flex items-center justify-end gap-2 h-10">
-                          {sample.success ? (
-                            <span className="px-1.5 py-0.5 rounded bg-[#3ECF8E]/10 text-[#3ECF8E] text-[8px] font-black uppercase tracking-widest border border-[#3ECF8E]/20">SUCCESS</span>
-                          ) : (
-                            <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 text-[8px] font-black uppercase tracking-widest border border-red-500/20">FAIL</span>
-                          )}
-                          <span className="text-[8px] font-bold text-[var(--text-dim)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </tbody>
-              </table>
-            </div>
+          </div>
+
+          {/* Real-time telemetry graph rendering */}
+          <div className="mt-2 text-white">
+            {renderLatencyGraph()}
           </div>
         </div>
       )}

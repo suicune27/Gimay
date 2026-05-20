@@ -75,15 +75,25 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
   const [suiteTestScript, setSuiteTestScript] = useState('');
   const [showScriptDrawer, setShowScriptDrawer] = useState(false);
   const [runRequestScripts, setRunRequestScripts] = useState(true);
-  const [logPayloads, setLogPayloads] = useState(true);
+  const logPayloads = false;
 
-  // NEW Feature 4: Outcomes Inspection state
-  const [selectedSampleId, setSelectedSampleId] = useState<number | null>(null);
-  
-  // Log feed pagination & collapsibility states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLogFeedCollapsed, setIsLogFeedCollapsed] = useState(false);
-  const itemsPerPage = 10;
+  // NEW Feature: Minutes of Testing (MoT) endurance monitoring options
+  const [runnerMode, setRunnerMode] = useState<'loop' | 'mot'>('loop');
+  const [motDuration, setMotDuration] = useState(120); // default to 120 seconds (2 minutes)
+  const [motMaxReqPerMin, setMotMaxReqPerMin] = useState(600); // max requests budget per minute
+  const [motMaxRetriesPerMin, setMotMaxRetriesPerMin] = useState(60);
+
+  // MoT real-time metrics and dynamic stabilizer states
+  const [memoryPressure, setMemoryPressure] = useState(0); // 0% - 100%
+  const [adaptiveThrottle, setAdaptiveThrottle] = useState(1.0); // modifier: 1.0 = full speed, decreasing under load
+  const [stabilityScore, setStabilityScore] = useState(100); // 0 - 100 system health
+  const [activePriorityFocus, setActivePriorityFocus] = useState<'P0' | 'P1' | 'P2' | 'P3' | 'ALL'>('ALL');
+  const [guardStatus, setGuardStatus] = useState<'SAFE' | 'THROTTLED' | 'CRITICAL'>('SAFE');
+  const [crashPreventionTriggers, setCrashPreventionTriggers] = useState(0);
+
+  // MoT Session Intelligence Report States
+  const [showMotReport, setShowMotReport] = useState(false);
+  const [motReportData, setMotReportData] = useState<any | null>(null);
 
   // Runner telemetry states
   const [isRunning, setIsRunning] = useState(false);
@@ -95,10 +105,72 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
   const [maxLatency, setMaxLatency] = useState(0);
   const [successRate, setSuccessRate] = useState(100);
 
+  // Heavy data references locked in refs for safe multithread state coordination
   const allSamplesRef = useRef<any[]>([]);
   const isRunningRef = useRef(false);
 
-  // Initialize selected environment when modal is opened
+  // MoT session tracking variables
+  const completedCountRef = useRef(0);
+  const successCountRef = useRef(0);
+  const currentConsecutiveFailuresRef = useRef(0);
+  const startTimeRef = useRef<number>(0);
+  const cleanupCyclesRef = useRef(0);
+  const earlyAbortTriggeredRef = useRef(false);
+  const abortReasonRef = useRef<string>('');
+  
+  // Guard values for scoring thread loops
+  const guardStateRef = useRef<'SAFE' | 'THROTTLED' | 'CRITICAL'>('SAFE');
+  const memoryPressureLevelRef = useRef(0);
+  const requestsInCurrentMinute = useRef(0);
+  const retriesInCurrentMinute = useRef(0);
+  const crashPreventionTriggersCountRef = useRef(0);
+  const minuteTimer = useRef<any>(null);
+
+  // Scorer target state histories
+  const targetStats = useRef<Record<string, {
+    consecutiveFailures: number;
+    lastRunTime: number;
+    latencyHistory: number[];
+    successCount: number;
+    runCount: number;
+  }>>({});
+
+  // Hover states for dynamic responsive tooltip
+  const [hoveredSample, setHoveredSample] = useState<any | null>(null);
+  const [hoverXPercent, setHoverXPercent] = useState<number | null>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isRunning || !chartContainerRef.current || samples.length === 0) return;
+    const rect = chartContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    const percent = Math.max(0, Math.min(100, (x / width) * 100));
+    
+    const graphSamples = samples.slice(-300);
+    const index = Math.min(
+      graphSamples.length - 1,
+      Math.max(0, Math.round((percent / 100) * (graphSamples.length - 1)))
+    );
+    const sample = graphSamples[index];
+    setHoveredSample(sample);
+    setHoverXPercent((index / (graphSamples.length - 1 || 1)) * 100);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredSample(null);
+    setHoverXPercent(null);
+  };
+
+  // Clear hovered samples when execution starts to avoid caching/stale values
+  useEffect(() => {
+    if (isRunning) {
+      setHoveredSample(null);
+      setHoverXPercent(null);
+    }
+  }, [isRunning]);
+
+  // Point to active selected environment when modal is opened
   useEffect(() => {
     if (isOpen) {
       setSelectedEnvId(activeEnvId);
@@ -384,27 +456,30 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
     );
   };
 
-  const paginatedSamples = useMemo(() => {
-    const startIdx = (currentPage - 1) * itemsPerPage;
-    return samples.slice(startIdx, startIdx + itemsPerPage);
-  }, [samples, currentPage]);
-
   const renderLatencyGraph = () => {
-    const width = 600;
-    const height = 140;
-    const paddingLeft = 52;
-    const paddingRight = 15;
-    const paddingTop = 15;
-    const paddingBottom = 20;
+    // Slice to the last 300 samples for the graph to prevent SVG layout lagging and stack overflows
+    const graphSamples = samples.slice(-300);
+    const hasData = graphSamples.length > 0;
     
-    const hasData = samples.length > 0;
-    const maxVal = hasData ? Math.max(...samples.map(s => s.latency), 10) : 100;
-    const minVal = hasData ? Math.min(...samples.map(s => s.latency), 0) : 0;
-    const range = maxVal - minVal;
+    // Safely compute max and min without stack overflow-prone spread operator (...)
+    let maxVal = 10;
+    let minVal = 0;
+    if (hasData) {
+      maxVal = graphSamples[0].latency;
+      minVal = graphSamples[0].latency;
+      for (const s of graphSamples) {
+        if (s.latency > maxVal) maxVal = s.latency;
+        if (s.latency < minVal) minVal = s.latency;
+      }
+      if (maxVal < 10) maxVal = 10;
+      if (minVal > 0) minVal = 0;
+    }
+    const range = maxVal - minVal || 1;
     
-    const points = hasData ? samples.map((s, idx) => {
-      const x = paddingLeft + (idx / (samples.length - 1 || 1)) * (width - paddingLeft - paddingRight);
-      const y = height - paddingBottom - ((s.latency - minVal) / (range || 1)) * (height - paddingTop - paddingBottom);
+    const points = hasData ? graphSamples.map((s, idx) => {
+      const x = (idx / (graphSamples.length - 1 || 1)) * 100;
+      // Map Y safely to coordinate grid (between 3% and 97%) to avoid line boundary overflow
+      const y = 97 - ((s.latency - minVal) / range) * 94;
       return { x, y, sample: s };
     }) : [];
     
@@ -413,101 +488,122 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
       : '';
       
     const areaD = points.length > 0
-      ? `${pathD} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`
+      ? `${pathD} L ${points[points.length - 1].x} 100 L ${points[0].x} 100 Z`
       : '';
 
-    const gridLinesCount = 3;
-    const gridLines = Array.from({ length: gridLinesCount }).map((_, i) => {
-      const ratio = i / (gridLinesCount - 1);
-      const y = paddingTop + ratio * (height - paddingTop - paddingBottom);
-      const value = Math.round(maxVal - ratio * range);
-      return { y, value };
-    });
-
     return (
-      <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-5 space-y-4 relative overflow-hidden">
+      <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-5 space-y-4 relative overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] font-black text-[#E0E0E6] uppercase tracking-wider block font-mono">Response Time Telemetry Curve</span>
-            <span className="text-[8px] text-[#55555C] font-mono block">Real-time latency fluctuation across scenario iterations</span>
+            <span className="text-[8px] text-[#55555C] font-mono block">Real-time latency fluctuation over the last 300 cycles</span>
           </div>
           <span className={cn(
-            "text-[8px] font-mono uppercase font-black px-2.5 py-0.5 rounded border",
+            "text-[8px] font-mono uppercase font-black px-2.5 py-0.5 rounded border transition-all",
             hasData 
-              ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/25" 
+              ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/25 animate-pulse" 
               : "text-[#555] bg-[#101015] border-[#222]"
           )}>
             {hasData ? 'LIVE Sparkline' : 'STANDBY MODE'}
           </span>
         </div>
         
-        <div className="relative w-full h-[140px] bg-[#040406]/80 rounded-xl overflow-hidden border border-[#151518]/60 flex items-center justify-center">
-          {!hasData && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[0.5px] z-10 space-y-1 select-none">
+        <div 
+          ref={chartContainerRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          className={cn(
+            "relative w-full h-[180px] bg-[#030305] rounded-xl overflow-hidden border border-[#151518]/60 flex items-center justify-center select-none transition-all",
+            isRunning ? "cursor-not-allowed opacity-90" : "cursor-crosshair"
+          )}
+        >
+          {!hasData ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-[0.5px] z-10 space-y-1">
               <span className="text-[9px] font-black tracking-widest text-[#444] font-mono uppercase">Telemetry stand-by</span>
               <span className="text-[7px] text-[#333] font-mono">Real-time response curves populate here on suite execution</span>
             </div>
-          )}
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible z-0">
-            <defs>
-              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3ECF8E" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#3ECF8E" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-            
-            {gridLines.map((line, idx) => (
-              <React.Fragment key={`grid-${idx}`}>
-                <line 
-                  x1={paddingLeft} 
-                  y1={line.y} 
-                  x2={width - paddingRight} 
-                  y2={line.y} 
-                  stroke="#15151A" 
-                  strokeWidth={1} 
-                  strokeDasharray="4,4" 
+          ) : (
+            <>
+              {/* SVG containing the graph line curve */}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3ECF8E" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#3ECF8E" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                
+                {/* Horizontal grid lines */}
+                <line x1="0" y1="3" x2="100" y2="3" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                <line x1="0" y1="50" x2="100" y2="50" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                <line x1="0" y1="97" x2="100" y2="97" stroke="#121217" strokeWidth="0.5" strokeDasharray="2,2" />
+                
+                {areaD && <path d={areaD} fill="url(#chartGradient)" />}
+                
+                {pathD && (
+                  <path 
+                    d={pathD} 
+                    fill="none" 
+                    stroke="#3ECF8E" 
+                    strokeWidth="1.8" 
+                    vectorEffect="non-scaling-stroke"
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    className="drop-shadow-[0_0_8px_rgba(62,207,142,0.5)]" 
+                  />
+                )}
+              </svg>
+
+              {/* Float HTML axis labels - ALWAYS fully visible & crisp */}
+              <div className="absolute top-2 left-3 text-[9px] text-[#88888F] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#1C1C25]/40 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Max: {Math.round(maxVal)}ms
+              </div>
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 text-[9px] text-[#66666D] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#1C1C25]/40 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Mid: {Math.round(minVal + range / 2)}ms
+              </div>
+              <div className="absolute bottom-2 left-3 text-[9px] text-[#3ECF8E] font-mono font-black uppercase tracking-wider bg-[#06060A]/85 border border-[#3ECF8E]/20 px-1.5 py-0.5 rounded backdrop-blur-sm shadow z-10 pointer-events-none">
+                Min: {Math.round(minVal)}ms
+              </div>
+
+              {/* Interactive Vertical Crosshair Line */}
+              {hoverXPercent !== null && (
+                <div 
+                  className="absolute top-0 bottom-0 w-[1px] bg-gradient-to-b from-[#3ECF8E]/40 via-[#3ECF8E]/20 to-transparent pointer-events-none z-10"
+                  style={{ left: `${hoverXPercent}%` }}
                 />
-                <text 
-                  x={paddingLeft - 8} 
-                  y={line.y + 3} 
-                  fill="#444" 
-                  fontSize="8" 
-                  fontFamily="monospace"
-                  textAnchor="end"
-                  className="font-bold"
+              )}
+
+              {/* Floating Modern Interactive Tooltip */}
+              {hoveredSample && hoverXPercent !== null && (
+                <div 
+                  className="absolute bottom-4 bg-[#09090F]/95 border border-[#1E1E28]/80 rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.8)] z-30 pointer-events-none font-mono space-y-1.5 text-left min-w-[140px] backdrop-blur-md transition-all duration-75"
+                  style={{ 
+                    left: `${hoverXPercent}%`, 
+                    transform: `translateX(${hoverXPercent > 70 ? '-112%' : '12%'})`
+                  }}
                 >
-                  {line.value}ms
-                </text>
-              </React.Fragment>
-            ))}
-            
-            {hasData && areaD && <path d={areaD} fill="url(#chartGradient)" />}
-            
-            {hasData && pathD && (
-              <path 
-                d={pathD} 
-                fill="none" 
-                stroke="#3ECF8E" 
-                strokeWidth={1.8} 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                className="drop-shadow-[0_0_6px_rgba(62,207,142,0.4)]" 
-              />
-            )}
-            
-            {hasData && points.length < 100 && points.map((p, idx) => (
-              <circle 
-                key={idx}
-                cx={p.x} 
-                cy={p.y} 
-                r={2.5} 
-                fill={p.sample.success ? "#3ECF8E" : "#ef4444"} 
-                stroke="#040406"
-                strokeWidth={1}
-                className="hover:r-3.5 cursor-crosshair transition-all duration-100"
-              />
-            ))}
-          </svg>
+                  <div className="flex items-center justify-between border-b border-[#1C1C25] pb-1">
+                    <span className="text-[8px] text-[#666] font-bold">SAMPLE #{hoveredSample.id}</span>
+                    <span className={`text-[7px] font-black uppercase tracking-wider px-1 rounded ${
+                      hoveredSample.success ? "text-[#3ECF8E] bg-[#3ECF8E]/10" : "text-red-400 bg-red-400/10"
+                    }`}>
+                      {hoveredSample.success ? 'PASS' : 'FAIL'}
+                    </span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] text-[#888] block uppercase tracking-tight">Latency</span>
+                    <span className="text-xs font-black text-white block">{hoveredSample.latency} ms</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="text-[7px] text-[#888] block uppercase tracking-tight font-black">Code / Status</span>
+                    <span className={`text-[9px] font-bold block ${hoveredSample.success ? 'text-[#3ECF8E]' : 'text-red-400'}`}>
+                      {hoveredSample.status}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
@@ -527,7 +623,6 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
     isRunningRef.current = true;
     setProgress(0);
     setSamples([]);
-    setCurrentPage(1);
     setThroughput(0);
     setAvgLatency(0);
     setMinLatency(0);
@@ -536,6 +631,7 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
     allSamplesRef.current = [];
 
     const totalRequests = threads * loops;
+    const isLargeRun = true;
     let completedCount = 0;
     let totalLatency = 0;
     let minLatencyVal = Infinity;
@@ -555,8 +651,9 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
           await sleep(delay);
         }
 
-        // Get target request in round-robin fashion
-        const baseRequest = targets[completedCount % targets.length];
+        // Get target request in round-robin fashion distributed uniformly across threads
+        const currentReqOffset = (workerId + i) % targets.length;
+        const baseRequest = targets[currentReqOffset];
         
         const sampleStartTime = performance.now();
         let status: number | string = 0;
@@ -621,7 +718,11 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
 
           // Execute Request
           const response = await RequestService.execute(requestToExecute, variableContext);
-          resolvedResponseBody = logPayloads ? response.body : '[Payload logging disabled]';
+          if (isLargeRun) {
+            resolvedResponseBody = '[Detailed payload logging suspended for memory optimization]';
+          } else {
+            resolvedResponseBody = logPayloads ? response.body : '[Payload logging disabled]';
+          }
 
           // Post-request scripts pipeline
           const testScripts = [
@@ -682,40 +783,50 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
           requestMethod: baseRequest.method,
           // Capture complete transmission diagnostics safely stringified
           requestUrl: requestToExecute.url,
-          requestPayload: logPayloads
-            ? safeStringify(requestToExecute.body)
-            : '[Payload logging disabled]',
-          responseBody: resolvedResponseBody 
-            ? safeStringify(resolvedResponseBody) 
-            : undefined
+          requestPayload: isLargeRun
+            ? '[Detailed payload logging suspended for memory optimization]'
+            : (logPayloads ? safeStringify(requestToExecute.body) : '[Payload logging disabled]'),
+          responseBody: isLargeRun
+            ? '[Detailed payload logging suspended for memory optimization]'
+            : (resolvedResponseBody ? safeStringify(resolvedResponseBody) : undefined)
         };
 
         allSamplesRef.current.push(newSample);
 
-        // Memory optimization: if samples exceed 1000 items, clear heavy payload details from older entries to protect browser RAM heap allocation.
+        // Memory optimization: if samples exceed 1000 items, clear heavy payload details from older entries in O(1) time
         if (allSamplesRef.current.length > 1000) {
-          const pruneLimit = allSamplesRef.current.length - 1000;
-          for (let idx = 0; idx < pruneLimit; idx++) {
-            const item = allSamplesRef.current[idx];
-            if (item.requestPayload !== '[Payload cleared to optimize memory]' || item.responseBody !== '[Payload cleared to optimize memory]') {
-              allSamplesRef.current[idx] = {
-                ...item,
-                requestPayload: '[Payload cleared to optimize memory]',
-                responseBody: '[Payload cleared to optimize memory]'
-              };
-            }
+          const oldSampleIndex = allSamplesRef.current.length - 1001;
+          const oldSample = allSamplesRef.current[oldSampleIndex];
+          if (oldSample && (oldSample.requestPayload !== '[Payload cleared to optimize memory]' || oldSample.responseBody !== '[Payload cleared to optimize memory]')) {
+            allSamplesRef.current[oldSampleIndex] = {
+              ...oldSample,
+              requestPayload: '[Payload cleared to optimize memory]',
+              responseBody: '[Payload cleared to optimize memory]'
+            };
           }
         }
 
         // Throttle UI rendering refresh for high performance
         const now = performance.now();
-        if (now - lastUiUpdateTime > 100 || completedCount === totalRequests) {
+        if (now - lastUiUpdateTime > 350 || completedCount === totalRequests) {
           lastUiUpdateTime = now;
 
           const avg = Math.round(totalLatency / completedCount);
           const succRate = Math.round((successCount / completedCount) * 100);
 
-          setSamples([...allSamplesRef.current]);
+          // Keep React state weightless and eliminate massive nested payload string diffs
+          const lightweightSamples = allSamplesRef.current.map(s => ({
+            id: s.id,
+            timestamp: s.timestamp,
+            latency: s.latency,
+            status: s.status,
+            success: s.success,
+            error: s.error,
+            requestName: s.requestName,
+            requestMethod: s.requestMethod
+          }));
+
+          setSamples(lightweightSamples);
           setAvgLatency(avg);
           setMinLatency(minLatencyVal);
           setMaxLatency(maxLatencyVal);
@@ -736,12 +847,17 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
       }
     };
 
-    const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
-    await Promise.all(workerPromises);
-
-    setIsRunning(false);
-    isRunningRef.current = false;
-    addToast({ type: 'success', message: 'All target scenarios executed successfully!' });
+    try {
+      const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
+      await Promise.all(workerPromises);
+      addToast({ type: 'success', message: 'All target scenarios executed successfully!' });
+    } catch (err: any) {
+      console.error('[SmokeSuite] Concurrency run failed:', err);
+      addToast({ type: 'error', message: `Execution failed: ${err.message || String(err)}` });
+    } finally {
+      setIsRunning(false);
+      isRunningRef.current = false;
+    }
   };
 
   const abortSuite = () => {
@@ -814,7 +930,14 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
         <div className="flex-1 flex overflow-hidden">
           
           {/* Left panel: target checklists */}
-          <div className="w-[300px] border-r border-[#151518] bg-[#08080A] flex flex-col">
+          <div className="w-[300px] border-r border-[#151518] bg-[#08080A] flex flex-col relative">
+            {isRunning && (
+              <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex flex-col items-center justify-center p-4 text-center select-none">
+                <Shield className="text-[#555] mb-2 animate-pulse" size={16} />
+                <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em]">Checklist Locked</span>
+                <span className="text-[8px] font-mono text-[#444] mt-1">Cannot alter configurations during active deployment run.</span>
+              </div>
+            )}
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-[9px] font-black text-[#555] uppercase tracking-wider font-mono">Scenarios Checklist</label>
@@ -905,7 +1028,14 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
           <div className="flex-1 flex flex-col overflow-hidden bg-[#050507]">
             
             {/* Top configuration options */}
-            <div className="p-6 border-b border-[#151518] bg-[#070709] grid grid-cols-9 gap-4">
+            <div className="p-6 border-b border-[#151518] bg-[#070709] grid grid-cols-9 gap-4 relative">
+              {isRunning && (
+                <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex items-center justify-center p-4 text-center gap-2 select-none">
+                  <Shield className="text-[#3ECF8E]/40 animate-pulse" size={14} />
+                  <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em]">Configuration Locked</span>
+                  <span className="text-[8px] font-mono text-[#555]">&bull; Smoke testing active run in progress</span>
+                </div>
+              )}
               
               {/* Environment selector dropdown option */}
               <div className="space-y-1.5 col-span-2">
@@ -1001,19 +1131,12 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
                 </label>
               </div>
 
-              {/* Log payloads toggle */}
-              <div className="flex flex-col justify-center space-y-1.5 col-span-1 pl-2">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono cursor-pointer select-none">Log Payloads</label>
-                <label className="relative inline-flex items-center cursor-pointer mt-1">
-                  <input
-                    type="checkbox"
-                    checked={logPayloads}
-                    disabled={isRunning}
-                    onChange={(e) => setLogPayloads(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-8 h-4 bg-[#151518] rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-[#555] peer-checked:after:bg-[#3ECF8E] after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#3ECF8E]/10 border border-[#222] peer-checked:border-[#3ECF8E]/30" />
-                </label>
+              {/* Telemetry mode display */}
+              <div className="flex flex-col justify-center space-y-1.5 col-span-1 pl-2 select-none">
+                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Telemetry</label>
+                <span className="text-[7px] font-sans font-black text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 px-2 py-0.5 rounded-md uppercase tracking-wider text-center mt-1 w-min">
+                  Optimized
+                </span>
               </div>
 
             </div>
@@ -1022,7 +1145,13 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
             <div className="p-6 space-y-6 flex-1 flex flex-col overflow-y-auto no-scrollbar">
 
               {/* Suite Automation scripts drawer */}
-              <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-4 space-y-3">
+              <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-4 space-y-3 relative">
+                {isRunning && (
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex items-center justify-center p-3 text-center gap-2 rounded-2xl select-none">
+                    <Shield className="text-amber-500/40" size={12} />
+                    <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em]">Scripts Locked</span>
+                  </div>
+                )}
                 <button
                   onClick={() => setShowScriptDrawer(!showScriptDrawer)}
                   className="w-full flex items-center justify-between text-[10px] font-black text-amber-500 uppercase tracking-widest font-mono hover:text-amber-400 transition-colors"
@@ -1117,175 +1246,21 @@ export const SmokeSuiteModal: React.FC<SmokeSuiteModalProps> = ({ isOpen, onClos
                 </div>
               )}
 
-              {/* Real-time streaming output logger terminal */}
-              <div className="flex-grow flex flex-col space-y-2.5 min-h-0">
-                <div className="flex items-center justify-between border-b border-[#151518]/60 pb-2 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsLogFeedCollapsed(!isLogFeedCollapsed)}
-                      className="flex items-center gap-1.5 text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono hover:text-[#3ECF8E] transition-colors cursor-pointer select-none"
-                    >
-                      {isLogFeedCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
-                      Real-time Telemetry Outcomes feed
-                    </button>
-                    {samples.length > 0 && (
-                      <span className="text-[8px] font-mono text-[#444] font-black bg-[#101015] px-1.5 py-0.2 rounded border border-[#222]">
-                        {samples.length} items logged
-                      </span>
-                    )}
-                  </div>
-                  
-                  {!isRunning && allSamplesRef.current.length > 0 && (
-                    <button
-                      onClick={exportCSVReport}
-                      className="text-[9px] font-black text-[#3ECF8E] hover:underline uppercase tracking-wider font-mono flex items-center gap-1 cursor-pointer"
-                    >
-                      <FileDown size={11} /> Export Detailed CSV logs
-                    </button>
-                  )}
+              <div className="bg-[#09090D] border border-[#15151A] rounded-2xl p-4 flex items-start gap-3.5 relative overflow-hidden select-none">
+                <Activity size={15} className="text-[#3ECF8E] shrink-0 mt-0.5 animate-pulse" />
+                <div className="space-y-0.5">
+                  <h4 className="text-[10px] font-black text-[#3ECF8E] uppercase tracking-wider font-mono">
+                    Telemetry Graph Optimization Active
+                  </h4>
+                  <p className="text-[9px] text-[#88888F] font-mono leading-relaxed uppercase tracking-tight">
+                    Detailed request/response body logging is disabled by default. The suite is optimized to map response time curves (the telemetry graph) in real-time, reducing browser memory usage and preventing performance bottlenecks.
+                  </p>
                 </div>
-                
-                {!isLogFeedCollapsed && (
-                  <div className="flex-1 flex flex-col min-h-0 space-y-3">
-                    <div className="flex-1 min-h-[220px] bg-[#040406] border border-[#151518] rounded-2xl p-4 font-mono text-[10px] overflow-y-auto space-y-2 select-text no-scrollbar border-l-2 border-l-[#3ECF8E]">
-                      {paginatedSamples.map((sample) => (
-                        <div key={`sample-container-${sample.id}`}>
-                          <div 
-                            onClick={() => setSelectedSampleId(selectedSampleId === sample.id ? null : sample.id)}
-                            className={cn(
-                              "flex items-start justify-between py-2 border-b border-[#0F0F12] last:border-0 hover:bg-white/[0.02] px-2 rounded-xl transition-all cursor-pointer",
-                              selectedSampleId === sample.id && "bg-white/[0.01] border-[#3ECF8E]/20"
-                            )}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-[#55555C] font-bold">[{sample.id}]</span>
-                              <span className="text-[#55555C]">{sample.timestamp}</span>
-                              <span className={cn(
-                                "font-black px-1.5 py-0.2 rounded text-[8px] uppercase shrink-0 font-mono tracking-wide",
-                                sample.success ? "bg-[#3ECF8E]/10 text-[#3ECF8E]" : "bg-red-500/10 text-red-500"
-                              )}>
-                                {sample.success ? 'PASS' : 'FAIL'}
-                              </span>
-                              <span className="text-[#88888F] font-black shrink-0">{sample.requestMethod}</span>
-                              <span className="text-white truncate max-w-sm">{sample.requestName}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 shrink-0 pl-4">
-                              <span className="text-[#55555C]">{sample.latency}ms</span>
-                              <span className={cn(
-                                "font-black",
-                                sample.success ? "text-[#3ECF8E]" : "text-red-500"
-                              )}>
-                                {sample.status}
-                              </span>
-                              {sample.error && (
-                                <span className="text-red-400/60 max-w-[150px] truncate text-[9px]" title={sample.error}>
-                                  ({sample.error})
-                                </span>
-                              )}
-                            </div>
-                          </div>
+              </div>
 
-                          {/* Dynamic Detail Panel Box */}
-                          {selectedSampleId === sample.id && (
-                            <div className="bg-[#09090D] border border-[#1C1C25] rounded-xl p-3.5 my-2 space-y-3 font-mono text-[9px] text-[#88888F] animate-in slide-in-from-top-2 duration-200 select-text">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                  <div className="text-[8px] font-black text-[#555] uppercase">Transmission Metadata</div>
-                                  <div className="bg-black/40 p-2.5 rounded-lg space-y-1 border border-white/[0.02]">
-                                    <div><span className="text-[#555] uppercase">Target URL:</span> <span className="text-white select-text break-all">{sample.requestUrl}</span></div>
-                                    <div><span className="text-[#555] uppercase">HTTP Method:</span> <span className="text-[#3ECF8E] font-bold">{sample.requestMethod}</span></div>
-                                    {sample.requestPayload && (
-                                      <div className="mt-1.5">
-                                        <span className="text-[#555] uppercase block mb-0.5">Payload Body:</span>
-                                        <pre className="text-[#E0E0E6] bg-black/60 p-2 rounded text-[8px] overflow-x-auto max-h-24 select-text border border-white/[0.01]">{sample.requestPayload}</pre>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                  <div className="text-[8px] font-black text-[#555] uppercase">Telemetry Response outcome</div>
-                                  <div className="bg-black/40 p-2.5 rounded-lg space-y-1 border border-white/[0.02]">
-                                    <div><span className="text-[#555] uppercase">Status Code:</span> <span className={cn("font-bold", sample.success ? "text-[#3ECF8E]" : "text-red-500")}>{sample.status}</span></div>
-                                    <div><span className="text-[#555] uppercase">Latency duration:</span> <span className="text-white">{sample.latency} ms</span></div>
-                                    {sample.responseBody && (
-                                      <div className="mt-1.5">
-                                        <span className="text-[#555] uppercase block mb-0.5">Response Payload Body:</span>
-                                        <pre className="text-[#3ECF8E] bg-black/60 p-2 rounded text-[8px] overflow-x-auto max-h-24 select-text border border-white/[0.01]">{sample.responseBody}</pre>
-                                      </div>
-                                    )}
-                                    {sample.error && (
-                                      <div className="mt-1.5 text-red-400 bg-red-950/20 border border-red-500/10 p-2 rounded text-[8px] select-text">
-                                        <span className="text-red-500 font-bold uppercase block mb-0.5">Diagnostics Error:</span>
-                                        {sample.error}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      
-                      {samples.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center text-center py-20 text-[#333] space-y-3">
-                          <Zap size={36} className="text-[#1D1D22]" />
-                          <div>
-                            <div className="text-[10px] font-black uppercase tracking-widest text-[#444] font-mono">TELEMETRY SYSTEM STANDBY</div>
-                            <div className="text-[8px] text-[#333] font-mono mt-1">Deploy automated testing suite to capture transaction outcomes</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Pagination Controls */}
-                    {samples.length > itemsPerPage && (
-                      <div className="flex items-center justify-between bg-[#070709] border border-[#151518] px-4 py-2 rounded-xl font-mono text-[9px] shrink-0 select-none">
-                        <span className="text-[#555] font-black">
-                          SHOWING {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(samples.length, currentPage * itemsPerPage)} OF {samples.length} SCENARIOS
-                        </span>
-                        
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(1)}
-                            className="px-2 py-1 rounded bg-[#101015] border border-[#222] text-[#888] disabled:text-[#333] disabled:border-white/[0.01] disabled:bg-[#070708] hover:bg-[#1C1C24] hover:text-[#3ECF8E] transition-all cursor-pointer font-bold"
-                          >
-                            FIRST
-                          </button>
-                          <button
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="px-2 py-1 rounded bg-[#101015] border border-[#222] text-[#888] disabled:text-[#333] disabled:border-white/[0.01] disabled:bg-[#070708] hover:bg-[#1C1C24] hover:text-[#3ECF8E] transition-all cursor-pointer font-bold"
-                          >
-                            PREV
-                          </button>
-                          
-                          <span className="text-white font-bold px-2.5 py-1 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/25">
-                            PAGE {currentPage} / {Math.ceil(samples.length / itemsPerPage)}
-                          </span>
-
-                          <button
-                            disabled={currentPage >= Math.ceil(samples.length / itemsPerPage)}
-                            onClick={() => setCurrentPage(prev => Math.min(Math.ceil(samples.length / itemsPerPage), prev + 1))}
-                            className="px-2 py-1 rounded bg-[#101015] border border-[#222] text-[#888] disabled:text-[#333] disabled:border-white/[0.01] disabled:bg-[#070708] hover:bg-[#1C1C24] hover:text-[#3ECF8E] transition-all cursor-pointer font-bold"
-                          >
-                            NEXT
-                          </button>
-                          <button
-                            disabled={currentPage >= Math.ceil(samples.length / itemsPerPage)}
-                            onClick={() => setCurrentPage(Math.ceil(samples.length / itemsPerPage))}
-                            className="px-2 py-1 rounded bg-[#101015] border border-[#222] text-[#888] disabled:text-[#333] disabled:border-white/[0.01] disabled:bg-[#070708] hover:bg-[#1C1C24] hover:text-[#3ECF8E] transition-all cursor-pointer font-bold"
-                          >
-                            LAST
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+              {/* Real-time telemetry graph rendering */}
+              <div className="w-full">
+                {renderLatencyGraph()}
               </div>
 
             </div>

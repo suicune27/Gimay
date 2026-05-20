@@ -36,9 +36,10 @@ export class ScriptService {
         });
         
         // Sync variables modifications back
-        Object.assign(variablesMap, result.changedVariables);
+        const changedVars = result?.changedVariables || {};
+        Object.assign(variablesMap, changedVars);
         if (context.variables) {
-          for (const [key, value] of Object.entries(result.changedVariables)) {
+          for (const [key, value] of Object.entries(changedVars)) {
             if (value === null) {
               delete context.variables[key];
             } else {
@@ -48,7 +49,7 @@ export class ScriptService {
         }
 
         // Sync environment modifications back
-        if (result.changedEnvironment) {
+        if (result?.changedEnvironment) {
           Object.assign(environmentMutations, result.changedEnvironment);
           for (const [key, value] of Object.entries(result.changedEnvironment)) {
             if (value === null) {
@@ -60,7 +61,7 @@ export class ScriptService {
         }
         
         // Sync request modifications back
-        if (result.changedRequest) {
+        if (result?.changedRequest) {
           if (result.changedRequest.url) request.url = result.changedRequest.url;
           if (result.changedRequest.method) request.method = result.changedRequest.method;
           if (result.changedRequest.headers) request.headers = result.changedRequest.headers;
@@ -75,7 +76,8 @@ export class ScriptService {
         }
         
         // Collect sandbox logs
-        result.logs.forEach(log => {
+        const sLogs = result?.logs || [];
+        sLogs.forEach(log => {
           logs.push({
             level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
             args: [log.message],
@@ -137,9 +139,10 @@ export class ScriptService {
         });
         
         // Sync variables modifications back
-        Object.assign(variablesMap, result.changedVariables);
+        const changedVars = result?.changedVariables || {};
+        Object.assign(variablesMap, changedVars);
         if (context.variables) {
-          for (const [key, value] of Object.entries(result.changedVariables)) {
+          for (const [key, value] of Object.entries(changedVars)) {
             if (value === null) {
               delete context.variables[key];
             } else {
@@ -149,7 +152,7 @@ export class ScriptService {
         }
 
         // Sync environment modifications back
-        if (result.changedEnvironment) {
+        if (result?.changedEnvironment) {
           Object.assign(environmentMutations, result.changedEnvironment);
           for (const [key, value] of Object.entries(result.changedEnvironment)) {
             if (value === null) {
@@ -161,7 +164,8 @@ export class ScriptService {
         }
         
         // Collect sandbox logs
-        result.logs.forEach(log => {
+        const sLogs = result?.logs || [];
+        sLogs.forEach(log => {
           logs.push({
             level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
             args: [log.message],
@@ -170,7 +174,8 @@ export class ScriptService {
         });
 
         // Collect test assertions
-        result.testResults.forEach(tr => {
+        const sResults = result?.testResults || [];
+        sResults.forEach(tr => {
           results.push({
             name: tr.name,
             status: tr.status,
