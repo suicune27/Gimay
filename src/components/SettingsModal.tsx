@@ -176,6 +176,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     a.href = url;
     a.download = `gimay-settings-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleImportSettings = (e: React.ChangeEvent<HTMLInputElement>) => {

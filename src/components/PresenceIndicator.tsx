@@ -21,7 +21,7 @@ export const PresenceIndicator: React.FC<{ requestId?: string; className?: strin
   return (
     <div className={cn("flex -space-x-2 overflow-hidden", className)}>
       <AnimatePresence>
-        {activeHere.slice(0, 5).map((person, _idx) => (
+        {activeHere.slice(0, 5).map((person, idx) => (
           <motion.div
             key={person.id}
             initial={{ opacity: 0, x: -10 }}

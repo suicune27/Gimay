@@ -11,9 +11,9 @@ import { RequestService } from '../services/RequestService';
 import { ScriptService } from '../services/ScriptService';
 import { VariableService } from '../services/VariableService';
 import { SandboxRunner } from '../services/sandboxRunner';
+import { SmokeLogService } from '../services/SmokeLogService';
 import { Collection, RequestData } from '../types';
 import { isElectron } from '../lib/platform';
-import { SampleBuffer, createMetrics, recordSample, RequestPool, maybeGC, PAYLOAD_TRUNCATED } from '../services/SmokeTestPool';
 
 interface SmokeSuitePanelProps {
   isEmbedded?: boolean;
@@ -25,7 +25,7 @@ const safeStringify = (val: any): string => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'string') {
     if (val.length > 50000) {
-      return `${val.substring(0, 50000)  }\n... [truncated due to large size]`;
+      return val.substring(0, 50000) + '\n... [truncated due to large size]';
     }
     return val;
   }
@@ -39,13 +39,13 @@ const safeStringify = (val: any): string => {
         seen.add(value);
       }
       if (typeof value === 'string' && value.length > 10000) {
-        return `${value.substring(0, 10000)  }... [truncated]`;
+        return value.substring(0, 10000) + '... [truncated]';
       }
       return value;
     }, 2);
     
     if (str.length > 100000) {
-      return `${str.substring(0, 100000)  }\n... [truncated due to large size]`;
+      return str.substring(0, 100000) + '\n... [truncated due to large size]';
     }
     return str;
   } catch (e: any) {
@@ -58,6 +58,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     collections, 
     environments, 
     activeEnvId, 
+    activeWorkspaceId,
     addToast 
   } = useStore();
 
@@ -79,7 +80,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [suiteTestScript, setSuiteTestScript] = useState('');
   const [showScriptDrawer, setShowScriptDrawer] = useState(false);
   const [runRequestScripts, setRunRequestScripts] = useState(true);
-  const [sandboxEngine, setSandboxEngine] = useState<'in-thread' | 'worker'>('in-thread');
+  const [saveTempLogs, setSaveTempLogs] = useState(false);
+  const [sandboxEngine, setSandboxEngine] = useState<'in-thread' | 'worker'>('worker');
   const logPayloads = false;
 
   // NEW Feature: Minutes of Testing (MoT) endurance monitoring options
@@ -137,16 +139,79 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [minLatency, setMinLatency] = useState(0);
   const [maxLatency, setMaxLatency] = useState(0);
   const [successRate, setSuccessRate] = useState(100);
+  const [visibleLogType, setVisibleLogType] = useState<'success' | 'failed'>('success');
+  const [selectedLogEntry, setSelectedLogEntry] = useState<any | null>(null);
+  const [logModalTab, setLogModalTab] = useState<'request' | 'response'>('request');
 
   // Heavy data references locked in refs for safe multithread state coordination
-  const sampleBufferRef = useRef<SampleBuffer>(new SampleBuffer(60));
-  const requestPoolRef = useRef<RequestPool>(new RequestPool(20));
   const allSamplesRef = useRef<any[]>([]);
+  const successLogSamplesRef = useRef<any[]>([]);
+  const failedLogSamplesRef = useRef<any[]>([]);
   const isRunningRef = useRef(false);
   const currentRunIdRef = useRef(0);
   const activeAbortControllersRef = useRef<Set<AbortController>>(new Set());
-  const uiIntervalRef = useRef<any>(null);
-  const uiIntervalMoTRef = useRef<any>(null);
+
+  const buildResponsePreview = (body: any): string => {
+    if (body === null || body === undefined) return '';
+    if (typeof body === 'string') return body.slice(0, 2000);
+    try {
+      return JSON.stringify(body).slice(0, 2000);
+    } catch {
+      return '';
+    }
+  };
+
+  const unwrapBodyEnvelope = (value: any, maxDepth = 12): any => {
+    let current = value;
+    for (let i = 0; i < maxDepth; i++) {
+      if (typeof current === 'string') {
+        const trimmed = current.trim();
+        if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) break;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === 'object' && ('content' in parsed || 'type' in parsed)) {
+            current = (parsed as any).content ?? '';
+            continue;
+          }
+        } catch {
+          break;
+        }
+      }
+
+      if (current && typeof current === 'object' && 'content' in current) {
+        current = (current as any).content ?? '';
+        continue;
+      }
+
+      break;
+    }
+    return current;
+  };
+
+  const normalizeRequestBody = (req: any) => {
+    const method = String(req?.method || 'GET').toUpperCase();
+    if (method === 'GET' || method === 'HEAD') {
+      return { type: 'none', content: '' };
+    }
+
+    const sourceBody = req?.body;
+    const sourceType = req?.bodyType || (typeof sourceBody === 'object' && sourceBody?.type ? sourceBody.type : 'raw');
+    const unwrapped = unwrapBodyEnvelope(
+      typeof sourceBody === 'string' ? sourceBody : (sourceBody?.content ?? sourceBody)
+    );
+    const normalizedContent = typeof unwrapped === 'string' ? unwrapped : safeStringify(unwrapped || '');
+
+    if (sourceBody && typeof sourceBody === 'object') {
+      return { ...sourceBody, type: sourceType, content: normalizedContent };
+    }
+
+    return { type: sourceType, content: normalizedContent };
+  };
+
+  const pushBounded = (arr: any[], item: any, max = 50) => {
+    arr.push(item);
+    if (arr.length > max) arr.shift();
+  };
 
   // MoT session tracking variables
   const completedCountRef = useRef(0);
@@ -224,9 +289,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
         clearInterval(minuteTimer.current);
         minuteTimer.current = null;
       }
-      if (uiIntervalRef.current) { clearInterval(uiIntervalRef.current); uiIntervalRef.current = null; }
-      if (uiIntervalMoTRef.current) { clearInterval(uiIntervalMoTRef.current); uiIntervalMoTRef.current = null; }
-      [...activeAbortControllersRef.current].forEach(c => {
+      activeAbortControllersRef.current.forEach(c => {
         try {
           c.abort();
         } catch {}
@@ -537,7 +600,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     isRunningRef.current = false;
 
     // Immediately trigger any outstanding abort signals
-    [...activeAbortControllersRef.current].forEach(c => {
+    activeAbortControllersRef.current.forEach(c => {
       try {
         c.abort();
       } catch {}
@@ -567,7 +630,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     setCleaningStatus('PURGING STALE RUN SAMPLES & LOG BUFFERS...');
     await new Promise(resolve => setTimeout(resolve, 20));
     allSamplesRef.current = [];
-    sampleBufferRef.current.clear();
     setSamples([]);
 
     setCleaningStatus('RELEASING STALE SANDBOX WEB WORKER SESSIONS...');
@@ -580,32 +642,64 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     await new Promise(resolve => setTimeout(resolve, 20));
     if (typeof (window as any).gc === 'function') {
       try { (window as any).gc(); } catch {}
-      maybeGC(1, 1);
     }
 
     setCleaningStatus('PRE-WARMING ISOLATED THREAD POOL & HEAP FOR ENERGIZE RUN...');
     await new Promise(resolve => setTimeout(resolve, 15));
     setIsCleaning(false);
 
+    setIsMemoryCooling(false);
+    isMemoryCoolingRef.current = false;
     setIsRunning(true);
     isRunningRef.current = true;
     setProgress(0);
     setSamples([]);
+    setSelectedLogEntry(null);
     setThroughput(0);
     setAvgLatency(0);
     setMinLatency(0);
     setMaxLatency(0);
     setSuccessRate(100);
     allSamplesRef.current = [];
-    sampleBufferRef.current.clear();
-    setIsMemoryCooling(false);
-    isMemoryCoolingRef.current = false;
+    successLogSamplesRef.current = [];
+    failedLogSamplesRef.current = [];
     setMemoryCoolingCount(0);
 
     const activeCollection = collections.find(c => c.id === targets[0].collection_id);
     const activeEnvironment = environments.find(e => e.id === selectedEnvId);
 
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const persistTemporaryRunLog = async (runLabel: string, durationMs: number) => {
+      const persisted = await SmokeLogService.persistTemporaryRunLog({
+        enabled: saveTempLogs,
+        runLabel,
+        requestId: targets[0]?.id,
+        workspaceId: targets[0]?.workspace_id || activeWorkspaceId,
+        fallbackUserId: targets[0]?.user_id,
+        durationMs,
+        samples: [
+          ...successLogSamplesRef.current,
+          ...failedLogSamplesRef.current
+        ],
+        metadata: {
+          panel: 'smoke-suite',
+          runnerMode,
+          threads,
+          loops,
+          delay,
+          timeoutMs,
+          sandboxEngine,
+          runRequestScripts,
+          stopOnFailure,
+          targetCount: targets.length
+        }
+      });
+
+      if (persisted) {
+        addToast({ type: 'success', message: 'Temporary smoke suite logs saved to database.' });
+      }
+    };
 
     const getRequestPriority = (req: RequestData): 'P0' | 'P1' | 'P2' | 'P3' => {
       const url = (req.url || '').toLowerCase();
@@ -628,53 +722,17 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     // ==========================================
     if (runnerMode === 'loop') {
       const totalRequests = threads * loops;
-      // Pre-clone all targets once to reduce per-iteration deep clone OOM pressure
-      const targetClones = targets.map(t => ({
-        ...t,
-        headers: (t.headers || []).map(h => ({ ...h })),
-        params: (t.params || []).map(p => ({ ...p })),
-        settings: t.settings ? { ...t.settings } : undefined
-      }));
-      const runStats = { completed: 0, totalLatency: 0, successCount: 0, minLatency: Infinity, maxLatency: -Infinity };
+      const isLargeRun = true;
+      let completedCount = 0;
+      let totalLatency = 0;
+      let minLatencyValue = Infinity;
+      let maxLatencyValue = -Infinity;
+      let successCount = 0;
 
       const startTime = performance.now();
-      const uiInterval = setInterval(() => {
-        if (!isRunningRef.current) return;
-        const count = runStats.completed;
-        if (count === 0) return;
-        const avg = Math.round(runStats.totalLatency / count);
-        const succRate = Math.round((runStats.successCount / count) * 100);
-        const computedMin = runStats.minLatency === Infinity ? 0 : runStats.minLatency;
-        const computedMax = runStats.maxLatency === -Infinity ? 0 : runStats.maxLatency;
-        setSamples(sampleBufferRef.current.readLast(100));
-        setAvgLatency(avg);
-        setMinLatency(computedMin);
-        setMaxLatency(computedMax);
-        setSuccessRate(succRate);
-        setMemoryPressure(memoryPressureLevelRef.current);
-        setProgress(Math.round((count / totalRequests) * 100));
-        const elapsedSec = (performance.now() - startTime) / 1000;
-        setThroughput(parseFloat((count / (elapsedSec || 1)).toFixed(1)));
-      }, 350);
-      uiIntervalRef.current = uiInterval;
+      let lastUiUpdateTime = startTime;
 
       const runWorker = async (workerId: number) => {
-        const workerController = new AbortController();
-        activeAbortControllersRef.current.add(workerController);
-        // P1: Pre-compute collection lookup cache
-        const collMap = new Map(collections.map(c => [c.id, c]));
-        // P1: Pre-compute variable maps per unique target collection
-        const varCache = new Map<string, Record<string, string>>();
-        const uniqueColls = new Set(targetClones.map(t => t.collection_id).filter(Boolean));
-        for (const collId of uniqueColls) {
-          if (collId) {
-            const coll = collMap.get(collId) || null;
-            varCache.set(collId, VariableService.getResolvedVariableMap({
-              environments, activeEnvId: selectedEnvId,
-              collection: coll, variables: {}
-            }));
-          }
-        }
         for (let i = 0; i < loops; i++) {
           if (!isRunningRef.current || currentRunId !== currentRunIdRef.current) break;
 
@@ -685,7 +743,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             computedPressureVal = Math.min(100, Math.round((memVal.usedJSHeapSize / memVal.jsHeapSizeLimit) * 100));
           } else {
             // Simulated memory creep if API is unavailable
-            computedPressureVal = Math.min(100, Math.round((sampleBufferRef.current.size * 0.1) + 10));
+            computedPressureVal = Math.min(100, Math.round((allSamplesRef.current.length * 0.1) + 10));
           }
           memoryPressureLevelRef.current = computedPressureVal;
 
@@ -696,6 +754,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             addToast({ type: 'warning', message: `Memory warning level reached (${computedPressureVal}%). Pausing executions for system cleanup...` });
             
             // Eagerly release memory structures in samples history to release references
+            if (allSamplesRef.current.length > 50) {
+              allSamplesRef.current = allSamplesRef.current.slice(-20);
+            }
             if (typeof (window as any).gc === 'function') {
               try {
                 (window as any).gc();
@@ -705,6 +766,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
           while (isMemoryCoolingRef.current && isRunningRef.current) {
             await sleep(500);
+            if (currentRunId !== currentRunIdRef.current) return;
             const checkMem = (window as any).performance?.memory;
             let checkPressure = 0;
             if (checkMem) {
@@ -713,6 +775,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               checkPressure = Math.max(20, memoryPressureLevelRef.current - 15);
             }
             memoryPressureLevelRef.current = checkPressure;
+            setMemoryPressure(checkPressure);
             
             if (checkPressure < 55) {
               isMemoryCoolingRef.current = false;
@@ -726,70 +789,148 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             await sleep(delay);
           }
 
-          const currentReqOffset = (workerId + i) % targetClones.length;
-          const baseRequest = targetClones[currentReqOffset];
+          const currentReqOffset = (workerId + i) % targets.length;
+          const baseRequest = targets[currentReqOffset];
           
           const sampleStartTime = performance.now();
           let status: number | string = 0;
           let success = false;
           let errorMsg = '';
-          let resolvedResponseBody = '';
+          let statusCode: number | null = null;
+          let responsePreview = '';
+          let responseHeaders: Record<string, any> = {};
+          let responseBody: any = null;
+          let resolvedRequestUrl = '';
+          let resolvedRequestHeaders: Record<string, string> = {};
+          let resolvedRequestParams: Record<string, string> = {};
+          let resolvedRequestBody = '';
           let requestToExecute = baseRequest;
 
-          // Using per-worker controller
+          const controller = new AbortController();
+          activeAbortControllersRef.current.add(controller);
 
           try {
-            // P1: Use cached collection + variable map
-            const innerActiveCollection = baseRequest.collection_id ? (collMap.get(baseRequest.collection_id) || null) : null;
-            const threadVariables = (baseRequest.collection_id && varCache.has(baseRequest.collection_id))
-              ? { ...varCache.get(baseRequest.collection_id)! }
-              : {};
+            const innerActiveCollection = collections.find(c => c.id === baseRequest.collection_id);
+            const threadVariables = VariableService.getResolvedVariableMap({
+              environments,
+              activeEnvId: selectedEnvId,
+              collection: innerActiveCollection || null,
+              variables: {}
+            });
             const variableContext = {
               environments,
               activeEnvId: selectedEnvId,
               collections,
               collection: innerActiveCollection || null,
               variables: threadVariables,
-              signal: workerController.signal,
-              useWorker: sandboxEngine === 'worker'
+              signal: controller.signal,
+              useWorker: sandboxEngine === 'worker',
+              suppressScriptLogs: true,
+              skipResponseBody: !runRequestScripts,
+              responseBodyLimitBytes: runRequestScripts ? undefined : 65536
             };
 
             requestToExecute = {
               ...baseRequest,
-              headers: baseRequest.headers?.map(h => ({ ...h })),
-              params: baseRequest.params?.map(p => ({ ...p })),
-              settings: { ...(baseRequest.settings || { followRedirects: true, maxRedirects: 10 }), timeout: timeoutMs }
+              headers: (baseRequest.headers || []).map(h => ({ ...h })),
+              params: (baseRequest.params || []).map(p => ({ ...p })),
+              body: normalizeRequestBody(baseRequest),
+              settings: baseRequest.settings ? { ...baseRequest.settings } : undefined
             };
 
+            requestToExecute.bodyType = (requestToExecute.method === 'GET' || requestToExecute.method === 'HEAD')
+              ? 'none'
+              : requestToExecute.bodyType;
+
+            requestToExecute.settings = {
+              ...(requestToExecute.settings || { followRedirects: true, maxRedirects: 10 }),
+              timeout: timeoutMs
+            };
+
+            const applyPreRequestOutput = (out: any) => {
+              requestToExecute = {
+                ...out.request,
+                headers: (out.request?.headers || []).map((h: any) => ({ ...h })),
+                params: (out.request?.params || []).map((p: any) => ({ ...p })),
+                body: normalizeRequestBody(out.request)
+              };
+
+              requestToExecute.bodyType = (requestToExecute.method === 'GET' || requestToExecute.method === 'HEAD')
+                ? 'none'
+                : requestToExecute.bodyType;
+
+              if (out.environmentMutations) {
+                for (const [key, value] of Object.entries(out.environmentMutations)) {
+                  if (value === null) {
+                    delete threadVariables[key];
+                  } else {
+                    threadVariables[key] = String(value);
+                  }
+                }
+              }
+            };
+
+            // Stage 1 (strict): environment pre-request script always runs first.
+            if (runRequestScripts && activeEnvironment?.pre_request_script?.trim()) {
+              const envPreOut = await ScriptService.executePreRequest(
+                activeEnvironment.pre_request_script,
+                requestToExecute,
+                {
+                  ...variableContext,
+                  throwOnError: true
+                }
+              );
+              if (currentRunId !== currentRunIdRef.current) return;
+              applyPreRequestOutput(envPreOut);
+            }
+
             const preScripts = runRequestScripts ? [
-              activeEnvironment?.pre_request_script,
               innerActiveCollection?.pre_request_script,
               suitePreScript,
               requestToExecute.pre_request_script
             ].filter(Boolean) as string[] : [];
 
-            const preRequestOut = await ScriptService.executePreRequest(
-              preScripts,
-              requestToExecute,
-              variableContext
-            );
-            if (currentRunId !== currentRunIdRef.current) return;
-            requestToExecute = preRequestOut.request;
-
-            if (preRequestOut.environmentMutations) {
-              for (const [key, value] of Object.entries(preRequestOut.environmentMutations)) {
-                if (value === null) {
-                  delete threadVariables[key];
-                } else {
-                  threadVariables[key] = String(value);
+            if (preScripts.length > 0) {
+              const preRequestOut = await ScriptService.executePreRequest(
+                preScripts,
+                requestToExecute,
+                {
+                  ...variableContext,
+                  throwOnError: true
                 }
-              }
+              );
+              if (currentRunId !== currentRunIdRef.current) return;
+              applyPreRequestOutput(preRequestOut);
             }
-            if (currentRunId !== currentRunIdRef.current) return;
+
+            // Resolve final request values after pre-request scripts to reflect actual transmitted data.
+            resolvedRequestUrl = VariableService.resolve(requestToExecute.url || '', variableContext);
+            resolvedRequestHeaders = (requestToExecute.headers || []).reduce((acc: Record<string, string>, h: any) => {
+              if (h?.active === false || !h?.key) return acc;
+              const k = VariableService.resolve(String(h.key), variableContext);
+              const v = VariableService.resolve(String(h.value ?? ''), variableContext);
+              acc[k] = v;
+              return acc;
+            }, {});
+            resolvedRequestParams = (requestToExecute.params || []).reduce((acc: Record<string, string>, p: any) => {
+              if (p?.active === false || !p?.key) return acc;
+              const k = VariableService.resolve(String(p.key), variableContext);
+              const v = VariableService.resolve(String(p.value ?? ''), variableContext);
+              acc[k] = v;
+              return acc;
+            }, {});
+
+            if (requestToExecute.method === 'GET' || requestToExecute.method === 'HEAD' || requestToExecute.bodyType === 'none') {
+              resolvedRequestBody = '';
+            } else {
+              const rawBody = typeof requestToExecute.body === 'string'
+                ? requestToExecute.body
+                : (requestToExecute.body as any)?.content ?? requestToExecute.body;
+              resolvedRequestBody = VariableService.resolve(String(rawBody ?? ''), variableContext);
+            }
 
             const response = await RequestService.execute(requestToExecute, variableContext);
             if (currentRunId !== currentRunIdRef.current) return;
-            resolvedResponseBody = PAYLOAD_TRUNCATED;
 
             const testScripts = runRequestScripts ? [
               activeEnvironment?.test_script,
@@ -807,6 +948,10 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             if (currentRunId !== currentRunIdRef.current) return;
 
             status = response.status;
+            statusCode = response.status;
+            responsePreview = buildResponsePreview(response.body);
+            responseHeaders = response.headers || {};
+            responseBody = response.body;
             success = response.status >= 200 && response.status < 300;
 
             if (response.status === 0) {
@@ -828,25 +973,86 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             success = false;
             status = err.name === 'AbortError' ? 'Timeout' : 'Execution Error';
             errorMsg = err.message || String(err);
+            responseHeaders = err?.response?.headers || {};
+            responseBody = err?.response?.data;
+          } finally {
+            activeAbortControllersRef.current.delete(controller);
           }
 
           const sampleEndTime = performance.now();
           const duration = Math.round(sampleEndTime - sampleStartTime);
 
-          runStats.completed++;
-          runStats.totalLatency += duration;
-          if (duration < runStats.minLatency) runStats.minLatency = duration;
-          if (duration > runStats.maxLatency) runStats.maxLatency = duration;
-          if (success) runStats.successCount++;
+          completedCount++;
+          totalLatency += duration;
+          if (duration < minLatencyValue) minLatencyValue = duration;
+          if (duration > maxLatencyValue) maxLatencyValue = duration;
+          if (success) successCount++;
 
-          sampleBufferRef.current.writeSample(
-            runStats.completed, new Date().toLocaleTimeString(), duration,
-            status, success, errorMsg || undefined,
-            baseRequest.name, baseRequest.method,
-            requestToExecute.url
-          );
+          const newSample = {
+            id: completedCount,
+            timestamp: new Date().toLocaleTimeString(),
+            latency: duration,
+            status,
+            success,
+            error: errorMsg || undefined,
+            requestName: baseRequest.name,
+            requestMethod: baseRequest.method
+          };
 
+          allSamplesRef.current.push(newSample);
+          const logSample = {
+            ...newSample,
+            statusCode,
+            responsePreview,
+            requestUrl: resolvedRequestUrl || requestToExecute.url,
+            requestMethod: requestToExecute.method,
+            requestHeaders: resolvedRequestHeaders,
+            requestParams: resolvedRequestParams,
+            requestBody: resolvedRequestBody,
+            responseHeaders,
+            responseBody
+          };
+          if (success) {
+            pushBounded(successLogSamplesRef.current, logSample, 50);
+          } else {
+            pushBounded(failedLogSamplesRef.current, logSample, 50);
+          }
 
+          if (allSamplesRef.current.length > 50) {
+            allSamplesRef.current.shift();
+          }
+
+          const now = performance.now();
+          if (now - lastUiUpdateTime > 350 || completedCount === totalRequests) {
+            lastUiUpdateTime = now;
+
+            const avg = Math.round(totalLatency / completedCount);
+            const succRate = Math.round((successCount / completedCount) * 100);
+
+            const lightweightSamples = allSamplesRef.current.map(s => ({
+              id: s.id,
+              timestamp: s.timestamp,
+              latency: s.latency,
+              status: s.status,
+              success: s.success,
+              error: s.error,
+              requestName: s.requestName,
+              requestMethod: s.requestMethod
+            }));
+
+            setSamples(lightweightSamples);
+            setAvgLatency(avg);
+            setMinLatency(minLatencyValue === Infinity ? 0 : minLatencyValue);
+            setMaxLatency(maxLatencyValue === -Infinity ? 0 : maxLatencyValue);
+            setSuccessRate(succRate);
+            setMemoryPressure(memoryPressureLevelRef.current);
+
+            const percent = Math.round((completedCount / totalRequests) * 100);
+            setProgress(percent);
+
+            const elapsedSec = (now - startTime) / 1000;
+            setThroughput(parseFloat((completedCount / (elapsedSec || 1)).toFixed(1)));
+          }
 
           if (stopOnFailure && !success) {
             isRunningRef.current = false;
@@ -854,20 +1060,12 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             break;
           }
         }
-        activeAbortControllersRef.current.delete(workerController);
       };
 
       try {
-        const MAX_CONCURRENCY = 6;
-        let nextWorkerIndex = 0;
-        const workerRunners = Array.from({ length: Math.min(MAX_CONCURRENCY, threads) }, async () => {
-          while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
-            const id = nextWorkerIndex++;
-            if (id >= threads) break;
-            await runWorker(id);
-          }
-        });
-        await Promise.all(workerRunners);
+        const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
+        await Promise.all(workerPromises);
+        await persistTemporaryRunLog('loops', performance.now() - startTime);
         addToast({ type: 'success', message: 'All target scenarios executed successfully!' });
       } catch (err: any) {
         console.error('[SmokeSuite] Concurrency run failed:', err);
@@ -875,8 +1073,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       } finally {
         setIsRunning(false);
         isRunningRef.current = false;
-        clearInterval(uiInterval);
-        [...activeAbortControllersRef.current].forEach(c => {
+        activeAbortControllersRef.current.forEach(c => {
           try { c.abort(); } catch {}
         });
         activeAbortControllersRef.current.clear();
@@ -893,25 +1090,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       successCountRef.current = 0;
       currentConsecutiveFailuresRef.current = 0;
       startTimeRef.current = performance.now();
-      const uiIntervalMoT = setInterval(() => {
-        if (!isRunningRef.current) return;
-        const count = completedCountRef.current;
-        if (count === 0) return;
-        const avg = Math.round(totalLatency / (count || 1));
-        const succRate = Math.round((successCountRef.current / (count || 1)) * 100);
-        const cMin = minLatencyValue === Infinity ? 0 : minLatencyValue;
-        const cMax = maxLatencyValue === -Infinity ? 0 : maxLatencyValue;
-        setSamples(sampleBufferRef.current.readLast(100));
-        setAvgLatency(avg);
-        setMinLatency(cMin);
-        setMaxLatency(cMax);
-        setSuccessRate(succRate);
-        setMemoryPressure(memoryPressureLevelRef.current);
-        setStabilityScore(stabilityScoreRef.current);
-        setProgress(Math.min(100, Math.round(((performance.now() - startTimeRef.current) / 1000 / motDuration) * 100)));
-        setThroughput(parseFloat((count / ((performance.now() - startTimeRef.current) / 1000 || 1)).toFixed(1)));
-      }, 350);
-      uiIntervalMoTRef.current = uiIntervalMoT;
       cleanupCyclesRef.current = 0;
       earlyAbortTriggeredRef.current = false;
       abortReasonRef.current = '';
@@ -957,30 +1135,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       let totalLatency = 0;
       let minLatencyValue = Infinity;
       let maxLatencyValue = -Infinity;
+      let lastUiUpdateTime = performance.now();
+
       const runWorkerMoT = async (workerId: number) => {
-        const motController = new AbortController();
-        activeAbortControllersRef.current.add(motController);
-        // P1: Pre-compute collection lookup cache
-        const collMapMoT = new Map(collections.map(c => [c.id, c]));
-        // P1: Pre-compute variable maps per unique target collection
-        const varCacheMoT = new Map<string, Record<string, string>>();
-        const uniqueCollsMoT = new Set(targets.map(t => t.collection_id).filter(Boolean));
-        for (const collId of uniqueCollsMoT) {
-          if (collId) {
-            const coll = collMapMoT.get(collId) || null;
-            varCacheMoT.set(collId, VariableService.getResolvedVariableMap({
-              environments, activeEnvId: selectedEnvId,
-              collection: coll, variables: {}
-            }));
-          }
-        }
-        // P1: Pre-clone all MoT targets once (safe from store mutation)
-        const targetTemplates = new Map(targets.map(t => [t.id, {
-          ...t,
-          headers: (t.headers || []).map(h => ({ ...h })),
-          params: (t.params || []).map(p => ({ ...p })),
-          settings: t.settings ? { ...t.settings } : undefined
-        }]));
         let localCounter = 0;
         while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
           // Real-time memory pressure monitoring in MoT loops
@@ -1001,6 +1158,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             addToast({ type: 'warning', message: `Endurance limit danger: Memory is at ${computedPressureVal}%. Commencing emergency buffer flush...` });
             
             // Flush and free references in samples storage to allow speedy GC
+            if (allSamplesRef.current.length > 50) {
+              allSamplesRef.current = allSamplesRef.current.slice(-20);
+            }
             if (typeof (window as any).gc === 'function') {
               try {
                 (window as any).gc();
@@ -1010,6 +1170,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
           while (isMemoryCoolingRef.current && isRunningRef.current) {
             await sleep(500);
+            if (currentRunId !== currentRunIdRef.current) return;
             
             // Re-evaluate memory
             const checkMem = (window as any).performance?.memory;
@@ -1020,6 +1181,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               checkPressure = Math.max(20, memoryPressureLevelRef.current - 15);
             }
             memoryPressureLevelRef.current = checkPressure;
+            setMemoryPressure(checkPressure);
 
             if (checkPressure < 55) {
               isMemoryCoolingRef.current = false;
@@ -1069,7 +1231,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           let status: number | string = 0;
           let success = false;
           let errorMsg = '';
-          let resolvedResponseBody = '';
+          let statusCode: number | null = null;
+          let responsePreview = '';
           let requestToExecute = baseRequest;
           let retryCount = 0;
           let executedSuccessfully = false;
@@ -1079,29 +1242,40 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           while (retryCount <= 3 && !executedSuccessfully && isRunningRef.current) {
             requestsInCurrentMinute.current++;
 
-            // Using motController (per-worker)
+            const controller = new AbortController();
+            activeAbortControllersRef.current.add(controller);
 
             try {
-              // P1: Use cached collection + variable map
-              const innerActiveCollection = baseRequest.collection_id ? (collMapMoT.get(baseRequest.collection_id) || null) : null;
-              const threadVariables = (baseRequest.collection_id && varCacheMoT.has(baseRequest.collection_id))
-                ? { ...varCacheMoT.get(baseRequest.collection_id)! }
-                : {};
+              const innerActiveCollection = collections.find(c => c.id === baseRequest.collection_id);
+              const threadVariables = VariableService.getResolvedVariableMap({
+                environments,
+                activeEnvId: selectedEnvId,
+                collection: innerActiveCollection || null,
+                variables: {}
+              });
               const variableContext = {
                 environments,
                 activeEnvId: selectedEnvId,
                 collections,
                 collection: innerActiveCollection || null,
                 variables: threadVariables,
-                signal: motController.signal,
-                useWorker: sandboxEngine === 'worker'
+                signal: controller.signal,
+                useWorker: sandboxEngine === 'worker',
+                suppressScriptLogs: true,
+                skipResponseBody: !runRequestScripts,
+                responseBodyLimitBytes: runRequestScripts ? undefined : 65536
               };
 
-              // P1: Use pre-cloned target template (headers/params safe from store mutation)
-              const baseTemplate = targetTemplates.get(baseRequest.id) || baseRequest;
               requestToExecute = {
-                ...baseTemplate,
-                settings: { ...(baseTemplate.settings || { followRedirects: true, maxRedirects: 10 }), timeout: timeoutMs }
+                ...baseRequest,
+                headers: (baseRequest.headers || []).map(h => ({ ...h })),
+                params: (baseRequest.params || []).map(p => ({ ...p })),
+                settings: baseRequest.settings ? { ...baseRequest.settings } : undefined
+              };
+
+              requestToExecute.settings = {
+                ...(requestToExecute.settings || { followRedirects: true, maxRedirects: 10 }),
+                timeout: timeoutMs
               };
 
               const preScripts = runRequestScripts ? [
@@ -1128,11 +1302,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                   }
                 }
               }
-              if (currentRunId !== currentRunIdRef.current) return;
 
               const response = await RequestService.execute(requestToExecute, variableContext);
               if (currentRunId !== currentRunIdRef.current) return;
-              resolvedResponseBody = PAYLOAD_TRUNCATED;
 
               const testScripts = runRequestScripts ? [
                 activeEnvironment?.test_script,
@@ -1150,6 +1322,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               if (currentRunId !== currentRunIdRef.current) return;
 
               status = response.status;
+              statusCode = response.status;
+              responsePreview = buildResponsePreview(response.body);
               success = response.status >= 200 && response.status < 300;
 
               if (response.status === 0) {
@@ -1173,10 +1347,24 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 if (retryCount === 0) {
                   retryCount++;
                   completedCountRef.current += 1;
-                  sampleBufferRef.current.writeSample(
-                    completedCountRef.current, new Date().toLocaleTimeString(), 0,
-                    'AUTH_REFRESH', false
-                  );
+                  allSamplesRef.current.push({
+                    id: completedCountRef.current,
+                    status: 'AUTH_REFRESH',
+                    success: false,
+                    latency: 0
+                  });
+                  pushBounded(failedLogSamplesRef.current, {
+                    id: completedCountRef.current,
+                    timestamp: new Date().toLocaleTimeString(),
+                    latency: 0,
+                    status: 'AUTH_REFRESH',
+                    statusCode: 401,
+                    success: false,
+                    error: 'Auth refresh retry',
+                    responsePreview: '',
+                    requestName: baseRequest.name,
+                    requestMethod: baseRequest.method
+                  }, 50);
                   await sleep(150);
                   continue;
                 }
@@ -1204,6 +1392,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               }
 
               executedSuccessfully = true;
+            } finally {
+              activeAbortControllersRef.current.delete(controller);
             }
           }
 
@@ -1234,10 +1424,32 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             }
           }
 
-          sampleBufferRef.current.writeSample(
-            completedCountRef.current, new Date().toLocaleTimeString(), duration,
-            status, success
-          );
+          const newSample = {
+            id: completedCountRef.current,
+            status,
+            success,
+            latency: duration
+          };
+
+          allSamplesRef.current.push(newSample);
+          const logSample = {
+            ...newSample,
+            statusCode,
+            responsePreview,
+            error: errorMsg || undefined,
+            requestName: baseRequest.name,
+            requestMethod: baseRequest.method,
+            timestamp: new Date().toLocaleTimeString()
+          };
+          if (success) {
+            pushBounded(successLogSamplesRef.current, logSample, 50);
+          } else {
+            pushBounded(failedLogSamplesRef.current, logSample, 50);
+          }
+
+          if (allSamplesRef.current.length > 50) {
+            allSamplesRef.current.shift();
+          }
 
           // Performance resource and memory pressure monitor
           const mem = (window as any).performance?.memory;
@@ -1251,9 +1463,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           memoryPressureLevelRef.current = computedPressure;
 
           // Stability Score Calculation
-          const recentSamples = sampleBufferRef.current.readLast(20);
+          const recentSamples = allSamplesRef.current.slice(-20);
           let passedRecent = 0;
-          const latencyHistoryArray: number[] = [];
+          let latencyHistoryArray: number[] = [];
           recentSamples.forEach(rs => {
             if (rs.success) passedRecent++;
             latencyHistoryArray.push(rs.latency);
@@ -1293,10 +1505,14 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
           if (newGuardState !== guardStateRef.current) {
             guardStateRef.current = newGuardState;
+            setGuardStatus(newGuardState);
+            setAdaptiveThrottle(throttleCoeff);
             adaptiveThrottleRef.current = throttleCoeff;
+            setActivePriorityFocus(activePrio);
             activePriorityFocusRef.current = activePrio;
             
             crashPreventionTriggersCountRef.current++;
+            setCrashPreventionTriggers(crashPreventionTriggersCountRef.current);
           }
 
           if (computedPressure > 88) {
@@ -1312,10 +1528,29 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             break;
           }
 
+          const now = performance.now();
+          if (now - lastUiUpdateTime > 350) {
+            lastUiUpdateTime = now;
+
+            const avg = Math.round(totalLatency / (completedCountRef.current || 1));
+            const succRate = Math.round((successCountRef.current / (completedCountRef.current || 1)) * 100);
+
+            setSamples([...allSamplesRef.current]);
+            setAvgLatency(avg);
+            setMinLatency(minLatencyValue === Infinity ? 0 : minLatencyValue);
+            setMaxLatency(maxLatencyValue === -Infinity ? 0 : maxLatencyValue);
+            setSuccessRate(succRate);
+            setMemoryPressure(memoryPressureLevelRef.current);
+            setStabilityScore(stabilityScoreRef.current);
+
+            const pct = Math.min(100, Math.round((elapsedSec / motDuration) * 100));
+            setProgress(pct);
+
+            setThroughput(parseFloat((completedCountRef.current / (elapsedSec || 1)).toFixed(1)));
+            
             memoryHistoryTimeline.current.push({ time: Math.round(elapsedSec), value: computedPressure });
-            if (memoryHistoryTimeline.current.length > 1000) memoryHistoryTimeline.current.shift();
             stabilityHistoryTimeline.current.push({ time: Math.round(elapsedSec), value: score });
-            if (stabilityHistoryTimeline.current.length > 1000) stabilityHistoryTimeline.current.shift();
+          }
 
           if (completedCountRef.current % 50 === 0) {
             cleanupCyclesRef.current++;
@@ -1329,18 +1564,11 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       };
 
       try {
-        const MAX_CONCURRENCY = 6;
-        let nextWorkerIndex = 0;
-        const workerRunners = Array.from({ length: Math.min(MAX_CONCURRENCY, threads) }, async () => {
-          while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
-            const id = nextWorkerIndex++;
-            if (id >= threads) break;
-            await runWorkerMoT(id);
-          }
-        });
-        await Promise.all(workerRunners);
+        const workerPromises = Array.from({ length: threads }).map((_, id) => runWorkerMoT(id));
+        await Promise.all(workerPromises);
 
         const totalElapsed = (performance.now() - startTimeRef.current) / 1000;
+        await persistTemporaryRunLog('mot', totalElapsed * 1000);
 
         // Compile Intelligence Report hotspots
         const hotspotsList = targets.map(t => {
@@ -1400,12 +1628,11 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       } finally {
         setIsRunning(false);
         isRunningRef.current = false;
-        clearInterval(uiIntervalMoT);
         if (minuteTimer.current) {
           clearInterval(minuteTimer.current);
           minuteTimer.current = null;
         }
-        [...activeAbortControllersRef.current].forEach(c => {
+        activeAbortControllersRef.current.forEach(c => {
           try { c.abort(); } catch {}
         });
         activeAbortControllersRef.current.clear();
@@ -1420,7 +1647,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     currentRunIdRef.current++;
     isRunningRef.current = false;
     setIsRunning(false);
-    [...activeAbortControllersRef.current].forEach(c => {
+    activeAbortControllersRef.current.forEach(c => {
       try {
         c.abort();
       } catch {}
@@ -1438,23 +1665,20 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
   // CSV Report with detailed transmission log fields
   const exportCSVReport = () => {
-    const data = sampleBufferRef.current.read() as any[];
+    const data = allSamplesRef.current;
     if (data.length === 0) return;
     const headers = [
-      'ID', 'Timestamp', 'Scenario Target Name', 'Method', 'Resolved URL', 
-      'Latency (ms)', 'HTTP Status', 'Outcome', 'Request Payload', 'Response Payload', 'Diagnostics'
+      'ID', 'Timestamp', 'Scenario Target Name', 'Method',
+      'Latency (ms)', 'HTTP Status', 'Outcome', 'Diagnostics'
     ];
     const rows = data.map(s => [
       s.id,
       s.timestamp || '',
       `"${(s.requestName || '').replace(/"/g, '""')}"`,
       s.requestMethod || '',
-      `"${(s.requestUrl || '').replace(/"/g, '""')}"`,
       s.latency,
       s.status || '',
       s.success ? 'SUCCESS' : 'FAILURE',
-      `"${(s.requestPayload || '').replace(/"/g, '""')}"`,
-      `"${(s.responseBody || '').replace(/"/g, '""')}"`,
       `"${(s.error || '').replace(/"/g, '""')}"`
     ]);
 
@@ -1467,6 +1691,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     addToast({ type: 'success', message: 'Detailed CSV Report downloaded successfully.' });
   };
 
@@ -1491,7 +1716,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     }
 
     return (
-      <div className="bg-[#09090D] border border-white/[0.04] rounded-2xl p-5 space-y-4 relative overflow-hidden shadow-2xl">
+      <div className="bg-[#09090D] border border-white/[0.04] rounded-2xl p-5 space-y-4 relative overflow-visible shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <span className="text-[10px] font-black text-[#E1E1E6] uppercase tracking-wider block font-mono">Real-Time Suite Transmission Activity Grid</span>
@@ -1513,43 +1738,104 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           </div>
         ) : (
           <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Live contributors grid representation */}
-            <div className="bg-[#030305] rounded-xl p-4 border border-white/[0.04]">
-              <div className="flex flex-wrap gap-2 justify-start items-center">
-                {graphSamples.map((s, idx) => {
-                  const isSuccess = s.success;
-                  const latency = s.latency;
-                  const requestName = s.requestName || 'Unknown Scenario';
-                  let colorClass = "bg-red-500 border-red-400/20"; // Failed requests
-                  if (isSuccess) {
-                    if (latency < 200) {
-                      colorClass = "bg-[#3ECF8E] border-[#3ECF8E]/20"; // Fast success
-                    } else if (latency < 600) {
-                      colorClass = "bg-[#10B981] border-[#10B981]/15"; // Medium success
-                    } else {
-                      colorClass = "bg-amber-500 border-amber-400/15"; // Slow success
-                    }
-                  }
-                  return (
-                    <div
-                      key={s.id || idx}
-                      className={`w-3.5 h-3.5 rounded-md cursor-pointer transition-all duration-150 hover:scale-125 border shadow-sm relative group/dot ${colorClass}`}
-                    >
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/95 border border-[#1E1E28] text-white text-[8px] font-mono p-2.5 rounded-lg shadow-2xl opacity-0 scale-0 group-hover/dot:opacity-100 group-hover/dot:scale-100 transition-all z-50 pointer-events-none whitespace-nowrap backdrop-blur-md">
-                        <div className="flex items-center gap-2 border-b border-[#222] pb-1 mb-1">
-                          <span className="font-extrabold text-[#555]">CYCLE #{s.id}</span>
-                          <span className={`text-[6px] font-black px-1.5 py-0.2 rounded uppercase ${
-                            s.success ? "bg-[#3ECF8E]/10 text-[#3ECF8E]" : "bg-red-500/10 text-red-400"
-                          }`}>{s.success ? "PASS" : "FAIL"}</span>
-                        </div>
-                        <p className="text-[9px] font-bold text-white mb-0.5 truncate max-w-xs">{requestName}</p>
-                        <p className="text-[10px] font-bold text-white mb-0.5">{latency}ms Latency</p>
-                        <p className="text-[7px] text-[#888] uppercase tracking-tighter">Status: {s.status || 'N/A'}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="bg-[#030305] rounded-xl p-3 border border-white/[0.04] space-y-2">
+              <div className="h-[300px] sm:h-[320px] w-full rounded-lg bg-[#05050A] border border-[#1C1C25] overflow-hidden">
+                <svg viewBox="0 0 860 300" className="w-full h-full block" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="suiteLatencyArea" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3ECF8E" stopOpacity="0.28" />
+                      <stop offset="100%" stopColor="#3ECF8E" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {[0, 1, 2, 3, 4, 5].map((tick) => {
+                    const y = 24 + tick * 44;
+                    return (
+                      <line
+                        key={`grid-${tick}`}
+                        x1="28"
+                        y1={y}
+                        x2="840"
+                        y2={y}
+                        stroke="#1B1B23"
+                        strokeWidth="1"
+                      />
+                    );
+                  })}
+
+                  {[200, 600].map((threshold) => {
+                    const maxScale = Math.max(maxVal, 600, 1);
+                    const y = 24 + (1 - Math.min(1, threshold / maxScale)) * 220;
+                    const color = threshold === 200 ? '#3ECF8E' : '#F59E0B';
+                    return (
+                      <g key={`threshold-${threshold}`}>
+                        <line
+                          x1="28"
+                          y1={y}
+                          x2="840"
+                          y2={y}
+                          stroke={color}
+                          strokeDasharray="4 5"
+                          strokeOpacity="0.45"
+                          strokeWidth="1"
+                        />
+                        <text x="834" y={y - 3} fill={color} fontSize="8" textAnchor="end" fontFamily="ui-monospace">
+                          {threshold}ms
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {(() => {
+                    const left = 28;
+                    const right = 840;
+                    const top = 24;
+                    const bottom = 244;
+                    const maxScale = Math.max(maxVal, 600, 1);
+                    const points = graphSamples.map((s, i) => {
+                      const x = left + (i / Math.max(1, graphSamples.length - 1)) * (right - left);
+                      const y = top + (1 - Math.min(1, s.latency / maxScale)) * (bottom - top);
+                      return { ...s, x, y };
+                    });
+                    const linePath = points
+                      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+                      .join(' ');
+                    const areaPath = points.length
+                      ? `${linePath} L ${points[points.length - 1].x.toFixed(2)} ${bottom} L ${points[0].x.toFixed(2)} ${bottom} Z`
+                      : '';
+
+                    return (
+                      <>
+                        {areaPath && <path d={areaPath} fill="url(#suiteLatencyArea)" />}
+                        {linePath && (
+                          <path
+                            d={linePath}
+                            fill="none"
+                            stroke="#3ECF8E"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        )}
+                        {points.map((p, idx) => (
+                          <circle
+                            key={`pt-${idx}`}
+                            cx={p.x}
+                            cy={p.y}
+                            r="2"
+                            fill={p.success ? '#3ECF8E' : '#EF4444'}
+                            opacity="0.95"
+                          />
+                        ))}
+                      </>
+                    );
+                  })()}
+                </svg>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-[8px] font-mono uppercase tracking-wider text-[#888]">
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#3ECF8E] inline-block" />Pass</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Fail</span>
+                <span>Window: {graphSamples.length} samples</span>
               </div>
             </div>
 
@@ -1708,7 +1994,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           <div className="flex-1 flex flex-col overflow-hidden bg-[#050507]">
             
             {/* Top configuration options */}
-            <div className="p-6 border-b border-[#151518] bg-[#070709] grid grid-cols-10 gap-4 relative">
+            <div className="p-4 border-b border-[#151518] bg-[#070709] grid grid-cols-12 gap-3 relative">
               {isRunning && (
                 <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex items-center justify-center p-4 text-center gap-2 select-none">
                   <Shield className="text-[#3ECF8E]/40 animate-pulse" size={14} />
@@ -1716,121 +2002,162 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                   <span className="text-[8px] font-mono text-[#555]">&bull; Smoke testing active run in progress</span>
                 </div>
               )}
-              
-              {/* Environment selector dropdown option */}
-              <div className="space-y-1.5 col-span-2">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono block">Environment</label>
-                <select
-                  disabled={isRunning}
-                  value={selectedEnvId || ''}
-                  onChange={(e) => setSelectedEnvId(e.target.value || null)}
-                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
-                >
-                  <option value="">No Active Environment</option>
-                  {environments.map(env => (
-                    <option key={env.id} value={env.id}>{env.name}</option>
-                  ))}
-                </select>
-              </div>
+              <div className="col-span-12 grid grid-cols-12 gap-3">
+                <div className="col-span-12 xl:col-span-8 bg-[#09090B]/60 border border-[#151518] rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[9px] font-black text-white uppercase tracking-wider font-mono">Execution Profile</h4>
+                    <span className="text-[7px] font-black text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 px-2 py-0.5 rounded-md uppercase tracking-wider font-mono">Optimized</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono block">Environment</label>
+                      <select
+                        disabled={isRunning}
+                        value={selectedEnvId || ''}
+                        onChange={(e) => setSelectedEnvId(e.target.value || null)}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
+                      >
+                        <option value="">No Active Environment</option>
+                        {environments.map(env => (
+                          <option key={env.id} value={env.id}>{env.name}</option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div className="space-y-1.5 col-span-1">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Threads</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  disabled={isRunning}
-                  value={threads}
-                  onChange={(e) => setThreads(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                />
-              </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Threads</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        disabled={isRunning}
+                        value={threads}
+                        onChange={(e) => setThreads(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                      />
+                    </div>
 
-              <div className="space-y-1.5 col-span-1">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Loops</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  disabled={isRunning}
-                  value={loops}
-                  onChange={(e) => setLoops(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                />
-              </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Loops</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        disabled={isRunning}
+                        value={loops}
+                        onChange={(e) => setLoops(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                      />
+                    </div>
 
-              <div className="space-y-1.5 col-span-1">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Delay (ms)</label>
-                <input
-                  type="number"
-                  disabled={isRunning}
-                  value={delay}
-                  onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
-                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                />
-              </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Delay (ms)</label>
+                      <input
+                        type="number"
+                        disabled={isRunning}
+                        value={delay}
+                        onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                      />
+                    </div>
 
-              <div className="space-y-1.5 col-span-1">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Timeout (ms)</label>
-                <input
-                  type="number"
-                  disabled={isRunning}
-                  value={timeoutMs}
-                  onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
-                  className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                />
-              </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Timeout (ms)</label>
+                      <input
+                        type="number"
+                        disabled={isRunning}
+                        value={timeoutMs}
+                        onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                      />
+                    </div>
 
-              {/* Abort on Fail toggle */}
-              <div className="flex flex-col justify-center space-y-1.5 col-span-1 pl-2">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono cursor-pointer select-none">Abort Fail</label>
-                <label className="relative inline-flex items-center cursor-pointer mt-1">
-                  <input
-                    type="checkbox"
-                    checked={stopOnFailure}
-                    disabled={isRunning}
-                    onChange={(e) => setStopOnFailure(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-8 h-4 bg-[#151518] rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-[#555] peer-checked:after:bg-[#3ECF8E] after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#3ECF8E]/10 border border-[#222] peer-checked:border-[#3ECF8E]/30" />
-                </label>
-              </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono block">Engine</label>
+                      <select
+                        disabled={isRunning}
+                        value={sandboxEngine}
+                        onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
+                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
+                      >
+                        <option value="in-thread">In-Thread</option>
+                        <option value="worker">Isolated Worker</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
-              {/* Use request scripts toggle */}
-              <div className="flex flex-col justify-center space-y-1.5 col-span-1 pl-2">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono cursor-pointer select-none">Run Scripts</label>
-                <label className="relative inline-flex items-center cursor-pointer mt-1">
-                  <input
-                    type="checkbox"
-                    checked={runRequestScripts}
-                    disabled={isRunning}
-                    onChange={(e) => setRunRequestScripts(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-8 h-4 bg-[#151518] rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-[#555] peer-checked:after:bg-[#3ECF8E] after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#3ECF8E]/10 border border-[#222] peer-checked:border-[#3ECF8E]/30" />
-                </label>
-              </div>
+                <div className="col-span-12 xl:col-span-4 bg-[#09090B]/60 border border-[#151518] rounded-2xl p-3.5 space-y-2.5">
+                  <h4 className="text-[9px] font-black text-white uppercase tracking-wider font-mono">Reliability & Integrations</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
+                      Abort on Fail
+                      <input
+                        type="checkbox"
+                        checked={stopOnFailure}
+                        disabled={isRunning}
+                        onChange={(e) => setStopOnFailure(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
+                      />
+                    </label>
 
-              {/* Sandbox Engine Selector */}
-              <div className="space-y-1.5 col-span-1 pl-1">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono block">Engine</label>
-                <select
-                  disabled={isRunning}
-                  value={sandboxEngine}
-                  onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
-                  className="w-full bg-[#050508] border border-[#151518] px-2.5 py-1.5 rounded-xl text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
-                >
-                  <option value="in-thread">💨 IN-THREAD</option>
-                  <option value="worker">🔒 ISOLATED</option>
-                </select>
-              </div>
+                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
+                      Run Scripts
+                      <input
+                        type="checkbox"
+                        checked={runRequestScripts}
+                        disabled={isRunning}
+                        onChange={(e) => setRunRequestScripts(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
+                      />
+                    </label>
 
-              {/* Telemetry mode display */}
-              <div className="flex flex-col justify-center space-y-1.5 col-span-1 pl-2 select-none">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-wider font-mono">Telemetry</label>
-                <span className="text-[7px] font-sans font-black text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 px-2 py-0.5 rounded-md uppercase tracking-wider text-center mt-1 w-min">
-                  Optimized
-                </span>
+                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
+                      Save Temp DB Logs
+                      <input
+                        type="checkbox"
+                        checked={saveTempLogs}
+                        disabled={isRunning}
+                        onChange={(e) => setSaveTempLogs(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
+                      Virtual MSW
+                      <input
+                        type="checkbox"
+                        checked={mswEnabled}
+                        disabled={isRunning}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setMswEnabled(val);
+                          syncMswConfig({ enabled: val });
+                        }}
+                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isRunning}
+                      onClick={() => setShowMswConfigPanel((prev) => !prev)}
+                      className="h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#888] hover:text-purple-400 hover:border-purple-500/20 uppercase tracking-wider font-mono transition-all cursor-pointer"
+                    >
+                      {showMswConfigPanel ? 'Hide MSW Config' : 'Open MSW Config'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isRunning}
+                      onClick={() => setShowScriptDrawer((prev) => !prev)}
+                      className="h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#888] hover:text-amber-400 hover:border-amber-500/20 uppercase tracking-wider font-mono transition-all cursor-pointer"
+                    >
+                      {showScriptDrawer ? 'Hide Dynamic Suite-Level' : 'Open Dynamic Suite-Level'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
             </div>
@@ -2203,6 +2530,73 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
               {renderLatencyGraph()}
 
+              <div className="bg-[#09090B]/40 border border-[#1C1C25]/50 rounded-xl p-3 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <h4 className="text-[9px] font-black text-white uppercase tracking-widest font-mono">Execution Logs</h4>
+                  <div className="flex items-center gap-1 p-1 rounded-lg bg-[#0D0D12] border border-[#1C1C25] w-full sm:w-auto">
+                    <button
+                      onClick={() => setVisibleLogType('success')}
+                      className={`flex-1 sm:flex-initial px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider font-mono transition-colors whitespace-nowrap ${
+                        visibleLogType === 'success'
+                          ? 'bg-[#3ECF8E]/15 text-[#3ECF8E] border border-[#3ECF8E]/25'
+                          : 'text-[#777] hover:text-[#AAA]'
+                      }`}
+                    >
+                      Success ({successLogSamplesRef.current.length})
+                    </button>
+                    <button
+                      onClick={() => setVisibleLogType('failed')}
+                      className={`flex-1 sm:flex-initial px-2.5 py-1 rounded text-[8px] font-black uppercase tracking-wider font-mono transition-colors whitespace-nowrap ${
+                        visibleLogType === 'failed'
+                          ? 'bg-red-500/15 text-red-400 border border-red-500/25'
+                          : 'text-[#777] hover:text-[#AAA]'
+                      }`}
+                    >
+                      Failed ({failedLogSamplesRef.current.length})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-64 overflow-y-auto overflow-x-hidden space-y-2 pr-1">
+                  {(visibleLogType === 'success' ? successLogSamplesRef.current : failedLogSamplesRef.current)
+                    .slice()
+                    .reverse()
+                    .map((log, idx) => (
+                      <div
+                        key={`${log.id || idx}-${idx}`}
+                        onClick={() => {
+                          setSelectedLogEntry(log);
+                          setLogModalTab('request');
+                        }}
+                        className="bg-[#0D0D12] border border-[#1C1C25] rounded-lg p-2.5 space-y-1.5 cursor-pointer hover:border-[#3ECF8E]/30 transition-colors"
+                      >
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 text-[8px] font-mono uppercase tracking-wide">
+                          <span className="text-[#AAA]">#{log.id}</span>
+                          <span className="text-[#888]">{log.timestamp || '-'}</span>
+                          <span className={`${log.success ? 'text-[#3ECF8E]' : 'text-red-400'} font-black truncate`}>
+                            {log.success ? 'SUCCESS' : 'FAILED'}
+                          </span>
+                          <span className="text-white truncate">Status: {log.statusCode ?? log.status ?? '-'}</span>
+                          <span className="text-[#888] truncate">Latency: {log.latency ?? 0}ms</span>
+                        </div>
+                        {log.error && (
+                          <p className="text-[8px] text-red-300 font-mono break-words leading-tight">{log.error}</p>
+                        )}
+                        <div className="text-[8px] text-[#B9BAC4] bg-black/30 border border-[#1C1C25] rounded p-2 overflow-auto whitespace-pre-wrap break-words font-mono leading-tight max-h-24">
+                          {log.responsePreview || '[no response preview]'}
+                        </div>
+                        <div className="text-[7px] text-[#777] font-mono uppercase tracking-wider">Click to open full request/response details</div>
+                      </div>
+                    ))}
+
+                  {(visibleLogType === 'success' ? successLogSamplesRef.current.length : failedLogSamplesRef.current.length) === 0 && (
+                    <div className="text-[8px] text-[#777] font-mono uppercase tracking-wider py-4 text-center border border-dashed border-[#1C1C25] rounded-lg">
+                      No logs yet for this bucket.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Metrics Dashboards */}
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-4 space-y-1.5 relative overflow-hidden">
@@ -2360,6 +2754,108 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       ) : (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm select-none p-4 animate-in fade-in duration-200">
           {mainCard}
+        </div>
+      )}
+
+      {selectedLogEntry && (
+        <div className="fixed inset-0 z-[99990] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-6xl max-h-[88vh] bg-[#09090C] border border-[#1C1C22] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="px-5 py-3.5 border-b border-[#1C1C22] bg-[#0C0C10] flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h3 className="text-[11px] font-black text-white uppercase tracking-wider font-mono">
+                  Smoke Suite Log Detail #{selectedLogEntry.id}
+                </h3>
+                <p className="text-[8px] text-[#70707A] font-mono uppercase">
+                  {selectedLogEntry.requestMethod || '-'} {selectedLogEntry.requestName || '-'} • Status {selectedLogEntry.statusCode ?? selectedLogEntry.status ?? '-'} • {selectedLogEntry.latency ?? 0}ms
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedLogEntry(null)}
+                className="p-1.5 rounded-lg hover:bg-white/[0.05] text-[#55555C] hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="px-5 py-2 border-b border-[#1C1C22] bg-[#0A0A0F] flex items-center gap-2">
+              <button
+                onClick={() => setLogModalTab('request')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider font-mono border transition-colors',
+                  logModalTab === 'request'
+                    ? 'bg-[#3ECF8E]/10 text-[#3ECF8E] border-[#3ECF8E]/25'
+                    : 'bg-transparent text-[#777] border-[#1C1C22] hover:text-[#AAA]'
+                )}
+              >
+                Request
+              </button>
+              <button
+                onClick={() => setLogModalTab('response')}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider font-mono border transition-colors',
+                  logModalTab === 'response'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
+                    : 'bg-transparent text-[#777] border-[#1C1C22] hover:text-[#AAA]'
+                )}
+              >
+                Response
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-[#050508] select-text">
+              {logModalTab === 'request' ? (
+                <>
+                  <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                    <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Request Line</div>
+                    <div className="text-[10px] font-mono text-white break-all">{selectedLogEntry.requestMethod || '-'} {selectedLogEntry.requestUrl || '-'}</div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                      <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Headers</div>
+                      <pre className="text-[9px] text-[#E0E0E6] bg-black/30 border border-[#1C1C25] rounded p-3 overflow-auto max-h-[42vh] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                        {safeStringify(selectedLogEntry.requestHeaders || {}) || '{}'}
+                      </pre>
+                    </div>
+                    <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                      <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Query Params</div>
+                      <pre className="text-[9px] text-[#E0E0E6] bg-black/30 border border-[#1C1C25] rounded p-3 overflow-auto max-h-[42vh] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                        {safeStringify(selectedLogEntry.requestParams || {}) || '{}'}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                    <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Body</div>
+                    <pre className="text-[9px] text-[#E0E0E6] bg-black/30 border border-[#1C1C25] rounded p-3 overflow-auto max-h-[46vh] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                      {safeStringify(selectedLogEntry.requestBody || '') || '[empty request body]'}
+                    </pre>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                    <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Response Status</div>
+                    <div className="text-[10px] font-mono text-white">{selectedLogEntry.statusCode ?? selectedLogEntry.status ?? '-'} • {selectedLogEntry.latency ?? 0}ms</div>
+                  </div>
+
+                  <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                    <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Headers</div>
+                    <pre className="text-[9px] text-[#E0E0E6] bg-black/30 border border-[#1C1C25] rounded p-3 overflow-auto max-h-[38vh] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                      {safeStringify(selectedLogEntry.responseHeaders || {}) || '{}'}
+                    </pre>
+                  </div>
+
+                  <div className="bg-[#0D0D12] border border-[#1C1C25] rounded-xl p-3 space-y-1.5">
+                    <div className="text-[8px] text-[#666] font-black uppercase tracking-wider font-mono">Body</div>
+                    <pre className="text-[9px] text-[#E0E0E6] bg-black/30 border border-[#1C1C25] rounded p-3 overflow-auto max-h-[46vh] whitespace-pre-wrap break-words font-mono leading-relaxed">
+                      {safeStringify(selectedLogEntry.responseBody || selectedLogEntry.responsePreview || '') || '[empty response body]'}
+                    </pre>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

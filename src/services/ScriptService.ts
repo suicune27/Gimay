@@ -2,6 +2,34 @@ import { ResponseData } from '../types';
 import { SandboxRunner } from './sandboxRunner';
 
 export class ScriptService {
+  private static unwrapBodyEnvelope(value: any, maxDepth = 12): string {
+    let current = value;
+    for (let i = 0; i < maxDepth; i++) {
+      if (typeof current === 'string') {
+        const trimmed = current.trim();
+        if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) break;
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === 'object' && ('content' in parsed || 'type' in parsed)) {
+            current = (parsed as any).content ?? '';
+            continue;
+          }
+        } catch {
+          break;
+        }
+      }
+
+      if (current && typeof current === 'object' && 'content' in current) {
+        current = (current as any).content ?? '';
+        continue;
+      }
+
+      break;
+    }
+
+    return typeof current === 'string' ? current : String(current || '');
+  }
+
   static async executePreRequest(scripts: string | string[], request: any, context: any) {
     const scriptsToRun = (Array.isArray(scripts) ? scripts : [scripts])
       .map(s => s ? s.trim() : '')
@@ -31,6 +59,7 @@ export class ScriptService {
         const result = await SandboxRunner.run(bundledScript, {
           variables: variablesMap,
           environmentVariables: environmentVariablesMap,
+          captureLogs: !context.suppressScriptLogs,
           signal: context.signal,
           request: {
             method: request?.method || 'GET',
@@ -71,30 +100,48 @@ export class ScriptService {
           if (result.changedRequest.method) request.method = result.changedRequest.method;
           if (result.changedRequest.headers) request.headers = result.changedRequest.headers;
           if (result.changedRequest.body !== undefined) {
-             if (typeof request.body === 'object' && request.body !== null) {
-                 if ('content' in request.body) request.body.content = result.changedRequest.body;
-                 else request.body = result.changedRequest.body;
-             } else {
-                 request.body = result.changedRequest.body;
-             }
+            const method = String(request.method || 'GET').toUpperCase();
+            if (method === 'GET' || method === 'HEAD') {
+              if (typeof request.body === 'object' && request.body !== null && 'content' in request.body) {
+                request.body.content = '';
+                if ('type' in request.body) request.body.type = 'none';
+              } else {
+                request.body = '';
+              }
+            } else if (typeof request.body === 'object' && request.body !== null) {
+              if ('content' in request.body) {
+                request.body.content = ScriptService.unwrapBodyEnvelope(result.changedRequest.body);
+              } else {
+                request.body = result.changedRequest.body;
+              }
+            } else {
+              request.body = ScriptService.unwrapBodyEnvelope(result.changedRequest.body);
+            }
           }
         }
         
-        // Collect sandbox logs
-        const sLogs = result?.logs || [];
-        sLogs.forEach(log => {
+        if (!context.suppressScriptLogs) {
+          // Collect sandbox logs only when script logging is explicitly enabled.
+          const sLogs = result?.logs || [];
+          sLogs.forEach(log => {
+            logs.push({
+              level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
+              args: [log.message],
+              timestamp: new Date().toISOString()
+            });
+          });
+        }
+      } catch (error: any) {
+        if (context?.throwOnError) {
+          throw error;
+        }
+        if (!context.suppressScriptLogs) {
           logs.push({
-            level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
-            args: [log.message],
+            level: 'error',
+            args: ['Pre-request execution error: ' + error.message],
             timestamp: new Date().toISOString()
           });
-        });
-      } catch (error: any) {
-        logs.push({
-          level: 'error',
-          args: [`Pre-request execution error: ${  error.message}`],
-          timestamp: new Date().toISOString()
-        });
+        }
       }
     }
 
@@ -131,6 +178,7 @@ export class ScriptService {
         const result = await SandboxRunner.run(bundledScript, {
           variables: variablesMap,
           environmentVariables: environmentVariablesMap,
+          captureLogs: !context.suppressScriptLogs,
           signal: context.signal,
           request: {
             method: request?.method || 'GET',
@@ -173,15 +221,17 @@ export class ScriptService {
           }
         }
         
-        // Collect sandbox logs
-        const sLogs = result?.logs || [];
-        sLogs.forEach(log => {
-          logs.push({
-            level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
-            args: [log.message],
-            timestamp: new Date().toISOString()
+        if (!context.suppressScriptLogs) {
+          // Collect sandbox logs only when script logging is explicitly enabled.
+          const sLogs = result?.logs || [];
+          sLogs.forEach(log => {
+            logs.push({
+              level: log.level === 'log' ? 'log' : log.level === 'warn' ? 'warn' : log.level === 'error' ? 'error' : 'info',
+              args: [log.message],
+              timestamp: new Date().toISOString()
+            });
           });
-        });
+        }
 
         // Collect test assertions
         const sResults = result?.testResults || [];
@@ -193,11 +243,13 @@ export class ScriptService {
           });
         });
       } catch (error: any) {
-        logs.push({
-          level: 'error',
-          args: [`Test execution error: ${  error.message}`],
-          timestamp: new Date().toISOString()
-        });
+        if (!context.suppressScriptLogs) {
+          logs.push({
+            level: 'error',
+            args: ['Test execution error: ' + error.message],
+            timestamp: new Date().toISOString()
+          });
+        }
       }
     }
 

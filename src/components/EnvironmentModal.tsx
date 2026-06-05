@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { X, Globe, Download, Upload, Search, Code2, BookOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Globe, Plus, Trash2, Save, Download, Upload, Shield, Lock, Search, Code2, BookOpen } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useDataSync } from '../hooks/useDataSync';
 import { PersistenceService } from '../services/PersistenceService';
@@ -29,7 +29,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [_bulkModalInitialMode, setBulkModalInitialMode] = useState<'edit' | 'import'>('edit');
+  const [bulkModalInitialMode, setBulkModalInitialMode] = useState<'edit' | 'import'>('edit');
 
   useEffect(() => {
     if (isOpen) {
@@ -43,7 +43,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, environment, isGlobal, globalVariables]);
 
-  const _filteredVariables = useMemo(() => {
+  const filteredVariables = useMemo(() => {
     if (!variables) return [];
     if (!searchQuery) return variables;
     const query = searchQuery.toLowerCase();

@@ -69,7 +69,7 @@ export const useDataSync = () => {
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     try {
       const tryFetch = async (useCollaborators: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
-        const relations = [];
+        let relations = [];
         if (useRequests) relations.push('requests(*)');
         if (useFolders) relations.push('folders(*)');
         if (useCollaborators) relations.push('collection_collaborators(*)');
@@ -202,10 +202,10 @@ export const useDataSync = () => {
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     const { data, error } = await supabase
       .from('history')
-      .select('*')
+      .select('id,workspace_id,user_id,request_id,request_name,method,url,status,time,size,request_data,created_at')
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(20);
     
     if (data) {
       if (workspaceId !== store.activeWorkspaceId) return;

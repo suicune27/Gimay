@@ -47,7 +47,7 @@ export class DatabaseMigrationService {
       }
       
       // D. Workspaces
-      const workspaces: any[] = [];
+      let workspaces: any[] = [];
       
       // Personal workspaces
       const { data: personalWorkspaces } = await globalSupabase.from('workspaces').select('*').eq('user_id', currentUserId);

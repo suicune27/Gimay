@@ -63,7 +63,30 @@ export class ScriptLibraryService {
     duration: number;
     variables_changed: Record<string, any>;
   }) {
-    const { error } = await supabase.from('script_execution_logs').insert([logData]);
+    const compactLogs = (logData.logs || []).slice(-100).map((l: any) => ({
+      level: l?.level || 'info',
+      args: Array.isArray(l?.args)
+        ? l.args.map((a: any) => (typeof a === 'string' ? a.slice(0, 2048) : String(a).slice(0, 2048))).slice(0, 5)
+        : [String(l?.message || '').slice(0, 2048)],
+      timestamp: l?.timestamp || new Date().toISOString()
+    }));
+
+    const compactErrors = (logData.errors || []).slice(-100).map((e: any) => ({
+      level: e?.level || 'error',
+      args: Array.isArray(e?.args)
+        ? e.args.map((a: any) => (typeof a === 'string' ? a.slice(0, 2048) : String(a).slice(0, 2048))).slice(0, 5)
+        : [String(e?.message || '').slice(0, 2048)],
+      timestamp: e?.timestamp || new Date().toISOString()
+    }));
+
+    const safeData = {
+      ...logData,
+      logs: compactLogs,
+      errors: compactErrors,
+      variables_changed: logData.variables_changed || {}
+    };
+
+    const { error } = await supabase.from('script_execution_logs').insert([safeData]);
     if (error) console.error('Error saving execution log:', error);
   }
 

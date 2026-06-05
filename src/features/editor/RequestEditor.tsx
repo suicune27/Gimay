@@ -318,7 +318,7 @@ export const RequestEditor: React.FC = () => {
         const activeEnv = environments.find(e => e.id === activeEnvId);
         if (!activeEnv) return;
 
-        const updatedVariables = [...(activeEnv.variables || [])];
+        let updatedVariables = [...(activeEnv.variables || [])];
         let hasChanges = false;
 
         for (const [key, value] of Object.entries(mutations)) {
@@ -385,6 +385,13 @@ export const RequestEditor: React.FC = () => {
 
       const results = testOut.results;
       executionLogs = [...executionLogs, ...(testOut.logs || [])];
+      const compactExecutionLogs = executionLogs.slice(-100).map((l: any) => ({
+        level: l?.level || 'info',
+        args: Array.isArray(l?.args)
+          ? l.args.map((a: any) => (typeof a === 'string' ? a.slice(0, 2048) : String(a).slice(0, 2048))).slice(0, 5)
+          : [String(l?.message || '').slice(0, 2048)],
+        timestamp: l?.timestamp || new Date().toISOString()
+      }));
       if (testOut.environmentMutations) {
         applyEnvironmentMutations(testOut.environmentMutations);
       }
@@ -392,7 +399,7 @@ export const RequestEditor: React.FC = () => {
       setLastResponse({
         ...response,
         testResults: results,
-        consoleLogs: executionLogs
+        consoleLogs: compactExecutionLogs
       });
 
       addToast({
@@ -416,19 +423,19 @@ export const RequestEditor: React.FC = () => {
           status: response.status,
           statusText: response.statusText,
           headers: response.headers,
-          body: response.body,
+          body_preview: typeof response.body === 'string' ? response.body.slice(0, 2048) : '[omitted]',
           time: response.time,
           size: response.size
         }
       });
 
-      if (executionLogs.length > 0 && activeWorkspaceId) {
+      if (compactExecutionLogs.length > 0 && activeWorkspaceId) {
         ScriptLibraryService.logExecution({
           request_id: activeRequest.id,
           workspace_id: activeWorkspaceId,
           user_id: profile.id,
-          logs: executionLogs,
-          errors: executionLogs.filter(l => l.level === 'error'),
+          logs: compactExecutionLogs,
+          errors: compactExecutionLogs.filter((l: any) => l.level === 'error'),
           duration: response.time,
           variables_changed: {}
         });
@@ -595,7 +602,7 @@ export const RequestEditor: React.FC = () => {
                       // Auto-size: sync width to content
                       const el = e.target as HTMLInputElement;
                       el.style.width = '0';
-                      el.style.width = `${Math.min(Math.max(el.scrollWidth, 60), 140)  }px`;
+                      el.style.width = Math.min(Math.max(el.scrollWidth, 60), 140) + 'px';
                     }}
                     onClick={(e) => e.stopPropagation()}
                     onBlur={() => handleSaveRequestTabName(tab.id, requestTabNameDraft)}
@@ -603,7 +610,7 @@ export const RequestEditor: React.FC = () => {
                       if (e.key === 'Enter') { e.preventDefault(); handleSaveRequestTabName(tab.id, requestTabNameDraft); }
                       if (e.key === 'Escape') { e.preventDefault(); setEditingRequestTabId(null); setRequestTabNameDraft(''); }
                     }}
-                    style={{ width: `${Math.min(Math.max((requestTabNameDraft.length || 4) * 7, 60), 140)  }px` }}
+                    style={{ width: Math.min(Math.max((requestTabNameDraft.length || 4) * 7, 60), 140) + 'px' }}
                     className="text-[10px] font-bold uppercase tracking-tighter bg-[#0A0A0A] border border-[#3ECF8E]/40 rounded px-1.5 outline-none text-[#3ECF8E] min-w-[60px] max-w-[140px] transition-[width] duration-75"
                   />
                 ) : (

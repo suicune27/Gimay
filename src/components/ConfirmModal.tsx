@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Trash2, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 

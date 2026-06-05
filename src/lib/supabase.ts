@@ -156,7 +156,7 @@ export function getSupabaseConfig() {
   console.log('[SUPABASE CLIENT CONFIG]', {
     source: hasGlobal ? 'Global Env' : (tenant ? 'Tenant LocalStorage' : 'Global Env'),
     url: config.url,
-    anonKey: config.anonKey ? `***${  config.anonKey.slice(-6)}` : null
+    anonKey: config.anonKey ? '***' + config.anonKey.slice(-6) : null
   });
 
   return config;

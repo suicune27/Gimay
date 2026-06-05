@@ -373,7 +373,8 @@ export const CreateSetupWizard: React.FC = () => {
   const handleDownloadSQL = () => {
     const element = document.createElement('a');
     const file = new Blob([EXECUTE_SQL_FUNCTION], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    element.href = objectUrl;
     element.download = `gimay-execute-sql-fn-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
@@ -385,6 +386,8 @@ export const CreateSetupWizard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error during SQL download:', error);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
     }
     addToast({ type: 'success', message: 'SQL script downloaded.' });
   };
@@ -399,7 +402,8 @@ export const CreateSetupWizard: React.FC = () => {
   const handleDownloadPreviewSQL = () => {
     const element = document.createElement('a');
     const file = new Blob([previewScript], { type: 'text/plain' });
-    element.href = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    element.href = objectUrl;
     element.download = `gimay-init-${new Date().toISOString().split('T')[0]}.sql`;
     try {
       if (document.body) {
@@ -409,6 +413,8 @@ export const CreateSetupWizard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error during SQL download:', error);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
     }
     addToast({ type: 'success', message: 'SQL script downloaded.' });
   };

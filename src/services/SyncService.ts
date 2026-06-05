@@ -21,6 +21,42 @@ class SyncManager {
   private MAX_RETRIES = 5;
   private processingKeys: Set<string> = new Set();
   private processingPromises: Map<string, Promise<void>> = new Map();
+  private MAX_PERSISTED_QUEUE_BYTES = 2 * 1024 * 1024;
+
+  private sanitizeQueueData(type: ResourceType, data: any): any {
+    if (!data || typeof data !== 'object') return data;
+
+    const compact: any = { ...data };
+
+    // Drop heavy runtime-only payloads that should never be persisted in offline queue.
+    delete compact.response;
+    delete compact.lastResponse;
+    delete compact.consoleLogs;
+    delete compact.testResults;
+    delete compact.request_data;
+    delete compact.response_data;
+    delete compact.logs;
+    delete compact.errors;
+
+    // Shrink high-risk large text fields.
+    if (typeof compact.pre_request_script === 'string' && compact.pre_request_script.length > 4096) {
+      compact.pre_request_script = compact.pre_request_script.slice(0, 4096);
+    }
+    if (typeof compact.test_script === 'string' && compact.test_script.length > 4096) {
+      compact.test_script = compact.test_script.slice(0, 4096);
+    }
+
+    // Request body can be very large; keep a compact preview in queue.
+    if (type === 'request') {
+      if (typeof compact.body === 'string' && compact.body.length > 4096) {
+        compact.body = compact.body.slice(0, 4096);
+      } else if (compact.body && typeof compact.body === 'object' && typeof compact.body.content === 'string' && compact.body.content.length > 4096) {
+        compact.body = { ...compact.body, content: compact.body.content.slice(0, 4096) };
+      }
+    }
+
+    return compact;
+  }
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -86,7 +122,19 @@ class SyncManager {
   private persistQueue() {
     if (typeof window !== 'undefined') {
       try {
-        const serialized = JSON.stringify(Array.from(this.queue.entries()));
+        let entries = Array.from(this.queue.entries());
+        let serialized = JSON.stringify(entries);
+
+        if (serialized.length > this.MAX_PERSISTED_QUEUE_BYTES) {
+          // Keep newest changes if queue payload is too large for localStorage budget.
+          entries = entries
+            .sort((a, b) => (a[1]?.timestamp || 0) - (b[1]?.timestamp || 0))
+            .slice(Math.floor(entries.length / 2));
+          this.queue = new Map(entries);
+          this.updatePendingIds();
+          serialized = JSON.stringify(entries);
+        }
+
         localStorage.setItem('gimay-offline-sync-queue', serialized);
       } catch (err) {
         console.error('[SyncManager] Failed to persist offline queue:', err);
@@ -123,11 +171,13 @@ class SyncManager {
     }
 
     const existing = this.queue.get(key);
+    const compactData = this.sanitizeQueueData(type, existing ? { ...existing.data, ...data } : data);
+
     this.queue.set(key, {
       type,
       action,
       id,
-      data: existing ? { ...existing.data, ...data } : data,
+      data: compactData,
       timestamp: Date.now()
     });
 
@@ -189,38 +239,32 @@ class SyncManager {
         this.timers.delete(key);
         
         switch (change.action) {
-          case 'create': {
+          case 'create':
             switch (change.type) {
-              case 'collection': {
+              case 'collection':
                 const createdCol = await PersistenceService.createCollectionOnline(change.data.workspace_id, change.data.user_id, change.data.name);
                 this.remapId(change.id, createdCol.id, 'collection');
                 break;
-              }
-              case 'folder': {
+              case 'folder':
                 const createdFolder = await PersistenceService.createFolderOnline(change.data.name, change.data.collection_id, change.data.user_id, change.data.parent_id, change.data.workspace_id);
                 this.remapId(change.id, createdFolder.id, 'folder');
                 break;
-              }
-              case 'request': {
+              case 'request':
                 const createdReq = await PersistenceService.createRequestOnline(change.data);
                 this.remapId(change.id, createdReq.id, 'request');
                 break;
-              }
-              case 'environment': {
+              case 'environment':
                 const createdEnv = await PersistenceService.createEnvironmentOnline(change.data.workspace_id, change.data.user_id, change.data.name, change.data.variables, change.data.is_global, change.data.pre_request_script, change.data.test_script, change.data.documentation);
                 this.remapId(change.id, createdEnv.id, 'environment');
                 break;
-              }
-              case 'workspace': {
+              case 'workspace':
                 const createdWS = await PersistenceService.createWorkspaceOnline(change.data.name, change.data.user_id, change.data.team_id);
                 this.remapId(change.id, createdWS.id, 'workspace');
                 break;
-              }
             }
             break;
-          }
 
-          case 'update': {
+          case 'update':
             switch (change.type) {
               case 'request':
                 await PersistenceService.saveRequestOnline(change.data);
@@ -242,9 +286,8 @@ class SyncManager {
                 break;
             }
             break;
-          }
 
-          case 'delete': {
+          case 'delete':
             switch (change.type) {
               case 'collection':
                 await PersistenceService.deleteCollectionOnline(change.id);
@@ -263,7 +306,6 @@ class SyncManager {
                 break;
             }
             break;
-          }
         }
 
         this.queue.delete(key);

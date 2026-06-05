@@ -118,6 +118,8 @@ export class RequestService {
     workspaceVariables?: KeyValue[];
     variables?: Record<string, any>;
     signal?: AbortSignal;
+    responseBodyLimitBytes?: number;
+    skipResponseBody?: boolean;
   }): Promise<ResponseData> {
     const state = useStore.getState();
     const globalSettings = state.settings;
@@ -136,7 +138,7 @@ export class RequestService {
       const hasProtocol = /^[a-zA-Z]+:\/\//.test(trimmedUrl) || trimmedUrl.startsWith('//');
       const isPathRelative = trimmedUrl.startsWith('/');
       if (!hasProtocol && !isPathRelative) {
-        resolvedUrl = `http://${  trimmedUrl}`;
+        resolvedUrl = 'http://' + trimmedUrl;
       }
     }
 
@@ -147,7 +149,7 @@ export class RequestService {
       }
       const end = Date.now();
       return {
-        id: `msw-${  Math.random().toString(36).substr(2, 9)}`,
+        id: 'msw-' + Math.random().toString(36).substr(2, 9),
         status: RequestService.mswConfig.status,
         statusText: `MSW Intercept: ${RequestService.mswConfig.statusText}`,
         headers: {
@@ -309,6 +311,14 @@ export class RequestService {
         }
         break; // Success! Break loop
       } catch (error: any) {
+        // Abort/cancel signals must not be retried — the run was explicitly stopped.
+        // Retrying an aborted request would zombie-loop for retryCount * retryDelay ms into the next run.
+        const isAborted = error.name === 'AbortError' || error.name === 'CanceledError' ||
+          error.code === 'ERR_CANCELED' || (error.message || '').toLowerCase() === 'canceled';
+        if (isAborted || context.signal?.aborted) {
+          lastError = error;
+          break;
+        }
         // If the error comes from our CORS proxy server, extract the original underlying server message
         if (error.response?.data?.error) {
           lastError = new Error(error.response.data.error);
@@ -335,7 +345,7 @@ export class RequestService {
       const responseHeaders = response.headers;
       const responseData = response.data;
 
-      // Safe size estimation of the payload without doing full JSON.stringify string duplication
+      // Safe size estimation without heavy JSON.stringify duplication for large objects.
       const contentLengthHeader = responseHeaders ? (responseHeaders['content-length'] || responseHeaders['Content-Length']) : null;
       let calculatedSize = 0;
       if (contentLengthHeader) {
@@ -343,13 +353,23 @@ export class RequestService {
       } else if (responseData) {
         if (typeof responseData === 'string') {
           calculatedSize = responseData.length;
+        } else if (responseData instanceof ArrayBuffer) {
+          calculatedSize = responseData.byteLength;
+        } else if (typeof Blob !== 'undefined' && responseData instanceof Blob) {
+          calculatedSize = responseData.size;
         } else {
-          try {
-            // For general objects, estimate or only stringify if reasonable size
-            calculatedSize = JSON.stringify(responseData).length;
-          } catch {
-            calculatedSize = 0;
-          }
+          // Avoid serializing arbitrary objects here; this is a major memory spike source in loop tests.
+          calculatedSize = 0;
+        }
+      }
+
+      let safeBody: any = responseData;
+      if (context.skipResponseBody) {
+        safeBody = '[Response body omitted for smoke stability mode]';
+      } else if (typeof responseData === 'string' && context.responseBodyLimitBytes && context.responseBodyLimitBytes > 0) {
+        const limit = context.responseBodyLimitBytes;
+        if (responseData.length > limit) {
+          safeBody = responseData.slice(0, limit) + `\n... [truncated to ${limit} bytes]`;
         }
       }
 
@@ -363,7 +383,7 @@ export class RequestService {
         status: responseStatus,
         statusText: responseStatusText,
         headers: responseHeaders as any,
-        body: responseData,
+        body: safeBody,
         time: end - start,
         size: calculatedSize,
         contentType: contentTypeValue,
