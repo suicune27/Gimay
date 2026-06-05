@@ -23,6 +23,7 @@ import {
   Zap,
   Users,
   AlertTriangle,
+  ShieldAlert,
   Code
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -225,6 +226,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [deleteScriptCandidateId, setDeleteScriptCandidateId] = useState<string | null>(null);
 
   // Script Loader integration overlays
   const [showInjectPanel, setShowInjectPanel] = useState(false);
@@ -435,9 +437,12 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
   };
 
   // Delete My Script
-  const handleDeleteCustomScript = async (scriptId: string, e: React.MouseEvent) => {
+  const handleDeleteCustomScript = (scriptId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this custom script?')) return;
+    setDeleteScriptCandidateId(scriptId);
+  };
+
+  const handleDeleteCustomScriptConfirmed = async (scriptId: string) => {
     try {
       await PersistenceService.deleteScript(scriptId);
       addToast({ type: 'info', message: 'Custom script removed.' });
@@ -504,6 +509,34 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
         className="relative w-full max-w-6xl h-[85vh] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl overflow-hidden flex flex-col z-10 font-sans"
       >
+        {deleteScriptCandidateId && (
+          <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in duration-200">
+            <ShieldAlert size={40} className="text-red-500 mb-4 animate-[bounce_1s_infinite]" />
+            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-2">Delete Custom Script</h3>
+            <p className="text-[10px] text-gray-400 max-w-sm mb-6 font-mono leading-relaxed uppercase tracking-tight">
+              Are you sure you want to delete this custom script templates? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  const sId = deleteScriptCandidateId;
+                  setDeleteScriptCandidateId(null);
+                  await handleDeleteCustomScriptConfirmed(sId);
+                }}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest text-white rounded-lg transition-all cursor-pointer font-bold"
+              >
+                Delete Script
+              </button>
+              <button
+                onClick={() => setDeleteScriptCandidateId(null)}
+                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Header Rail */}
         <div className="h-14 border-b border-[var(--border-subtle)] flex items-center justify-between px-6 bg-[var(--bg-deep)] shrink-0 select-none">
           <div className="flex items-center gap-3">

@@ -3,7 +3,9 @@ import { SandboxRunner } from './sandboxRunner';
 
 export class ScriptService {
   static async executePreRequest(scripts: string | string[], request: any, context: any) {
-    const scriptsToRun = Array.isArray(scripts) ? scripts : [scripts].filter(Boolean);
+    const scriptsToRun = (Array.isArray(scripts) ? scripts : [scripts])
+      .map(s => s ? s.trim() : '')
+      .filter(Boolean);
     const logs: { level: 'log' | 'info' | 'warn' | 'error'; args: any[]; timestamp: string }[] = [];
 
     const variablesMap = { ...(context.variables || {}) };
@@ -20,20 +22,23 @@ export class ScriptService {
 
     const environmentMutations: Record<string, any> = {};
 
-    for (const script of scriptsToRun) {
-      if (!script) continue;
+    if (scriptsToRun.length > 0) {
+      // Bundling multiple scripts into a single safe block-scoped script runs them inside the same Worker isolate
+      // which avoids thread creation and communication overhead.
+      const bundledScript = scriptsToRun.map(script => `{\n${script}\n}`).join('\n;\n');
       
       try {
-        const result = await SandboxRunner.run(script, {
+        const result = await SandboxRunner.run(bundledScript, {
           variables: variablesMap,
           environmentVariables: environmentVariablesMap,
+          signal: context.signal,
           request: {
             method: request?.method || 'GET',
             url: request?.url || '',
             headers: request?.headers || [],
             body: request?.body || ''
           }
-        });
+        }, 5000, !!context.useWorker);
         
         // Sync variables modifications back
         const changedVars = result?.changedVariables || {};
@@ -97,7 +102,9 @@ export class ScriptService {
   }
 
   static async executeTests(scripts: string | string[], response: ResponseData, request: any, context: any) {
-    const scriptsToRun = Array.isArray(scripts) ? scripts : [scripts].filter(Boolean);
+    const scriptsToRun = (Array.isArray(scripts) ? scripts : [scripts])
+      .map(s => s ? s.trim() : '')
+      .filter(Boolean);
     const results: { name: string; status: 'pass' | 'fail'; message?: string }[] = [];
     const logs: { level: 'log' | 'info' | 'warn' | 'error'; args: any[]; timestamp: string }[] = [];
 
@@ -115,13 +122,16 @@ export class ScriptService {
 
     const environmentMutations: Record<string, any> = {};
 
-    for (const script of scriptsToRun) {
-      if (!script) continue;
+    if (scriptsToRun.length > 0) {
+      // Bundling multiple scripts into a single safe block-scoped script runs them inside the same Worker isolate
+      // which avoids thread creation and communication overhead.
+      const bundledScript = scriptsToRun.map(script => `{\n${script}\n}`).join('\n;\n');
       
       try {
-        const result = await SandboxRunner.run(script, {
+        const result = await SandboxRunner.run(bundledScript, {
           variables: variablesMap,
           environmentVariables: environmentVariablesMap,
+          signal: context.signal,
           request: {
             method: request?.method || 'GET',
             url: request?.url || '',
@@ -136,7 +146,7 @@ export class ScriptService {
             size: response.size,
             body: response.body
           }
-        });
+        }, 5000, !!context.useWorker);
         
         // Sync variables modifications back
         const changedVars = result?.changedVariables || {};

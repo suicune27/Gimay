@@ -29,7 +29,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { RequestService } from '../../services/RequestService';
 import { PersistenceService } from '../../services/PersistenceService';
 import { ScriptLibraryService } from '../../services/ScriptLibraryService';
-import { RequestData, Collection, EnvironmentTab, KeyValue, BodyType, RequestBody } from '../../types';
+import { RequestData, Collection, EnvironmentTab, SmokeTestingTab, KeyValue, BodyType, RequestBody } from '../../types';
 import { RequestUtils } from '../../utils/RequestUtils';
 import { KVEditor } from '../../components/KVEditor';
 import { HeaderEditor } from '../../components/HeaderEditor';
@@ -37,6 +37,7 @@ import { NameModal } from '../../components/NameModal';
 import { ScriptService } from '../../services/ScriptService';
 import { AuthEditor } from '../../components/AuthEditor';
 import { SmokeTestPanel } from '../../components/SmokeTestPanel';
+import { SmokeSuitePanel } from '../../components/SmokeSuitePanel';
 import { ResponseViewer } from './ResponseViewer';
 import { CollectionEditor } from './CollectionEditor';
 import { EnvironmentEditor } from './EnvironmentEditor';
@@ -190,9 +191,10 @@ export const RequestEditor: React.FC = () => {
   const paramUrlSyncSourceRef = useRef<'url' | 'params' | null>(null);
 
   const activeItem = openTabs.find(t => t.id === activeTabId);
+  const isSmokeTestingTab = !!activeItem && 'type' in activeItem && (activeItem as any).type === 'smoke-testing';
   const isEnvironmentTab = !!activeItem && 'type' in activeItem && (activeItem as EnvironmentTab).type === 'environment-manager';
-  const isCollection = !!activeItem && !isEnvironmentTab && 'requests' in activeItem;
-  const activeRequest = isCollection || isEnvironmentTab ? null : (activeItem as RequestData);
+  const isCollection = !!activeItem && !isEnvironmentTab && !isSmokeTestingTab && 'requests' in activeItem;
+  const activeRequest = isCollection || isEnvironmentTab || isSmokeTestingTab ? null : (activeItem as RequestData);
 
   const isPending = !!activeRequest && pendingSyncIds.has(activeRequest.id);
   const showSaveButton = !settings.general.autoSave && isPending;
@@ -495,9 +497,10 @@ export const RequestEditor: React.FC = () => {
       <div className="h-10 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)] flex items-center px-2 shrink-0 overflow-hidden">
         <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth">
           {openTabs.map((tab) => {
+            const isTabSmokeTesting = 'type' in tab && (tab as any).type === 'smoke-testing';
             const isTabEnvironment = 'type' in tab && (tab as EnvironmentTab).type === 'environment-manager';
-            const isTabCollection = !isTabEnvironment && 'requests' in tab;
-            const isEditingThisTab = !isTabCollection && !isTabEnvironment && editingRequestTabId === tab.id;
+            const isTabCollection = !isTabEnvironment && !isTabSmokeTesting && 'requests' in tab;
+            const isEditingThisTab = !isTabCollection && !isTabEnvironment && !isTabSmokeTesting && editingRequestTabId === tab.id;
             return (
               <div
                 key={tab.id}
@@ -512,6 +515,8 @@ export const RequestEditor: React.FC = () => {
                   if (isTabCollection) {
                     setEditingCollectionTabId(tab.id);
                     setCollectionTabNameDraft(tab.name || '');
+                  } else if (isTabSmokeTesting) {
+                    // Stable name; no edit double click
                   } else if (!isTabEnvironment) {
                     setActiveTab(tab.id);
                     setEditingRequestTabId(tab.id);
@@ -526,7 +531,11 @@ export const RequestEditor: React.FC = () => {
                     : "bg-transparent border-transparent text-[var(--text-dim)] hover:bg-[var(--bg-deep)] hover:text-[var(--text-muted)]"
                 )}
               >
-                {!isTabCollection && !isTabEnvironment ? (
+                {isTabSmokeTesting ? (
+                  <div className="text-[10px] mr-2 text-[#3ECF8E]">
+                    <Activity size={10} className="animate-pulse" />
+                  </div>
+                ) : !isTabCollection && !isTabEnvironment ? (
                   <div className={cn(
                     "text-[8px] font-black mr-2 min-w-[32px]",
                     (tab as RequestData).method === 'GET' ? 'text-[var(--brand)]' :
@@ -602,7 +611,7 @@ export const RequestEditor: React.FC = () => {
                     <span className="text-[10px] font-bold truncate flex-1 uppercase tracking-tighter">
                       {tab.name || 'Untitled'}
                     </span>
-                    {!isTabCollection && !isTabEnvironment && (
+                    {!isTabCollection && !isTabEnvironment && !isTabSmokeTesting && (
                       <button
                         title="Double-click or click to rename"
                         onClick={(e) => {
@@ -662,6 +671,8 @@ export const RequestEditor: React.FC = () => {
         <EnvironmentEditor tabId={activeTabId!} />
       ) : isCollection ? (
         <CollectionEditor collectionId={activeTabId!} />
+      ) : isSmokeTestingTab ? (
+        <SmokeSuitePanel isEmbedded={true} />
       ) : (
         <div className={cn(
           "flex-1 flex min-h-0",

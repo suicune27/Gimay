@@ -4,6 +4,7 @@ import { PersistenceService } from '../services/PersistenceService';
 import { syncManager } from '../services/SyncService';
 import { RequestUtils } from '../utils/RequestUtils';
 import { ProxyService } from '../services/ProxyService';
+import { isElectron } from '../lib/platform';
 import { 
   RequestData, 
   Workspace, 
@@ -11,6 +12,7 @@ import {
   CollectionCollaborator,
   Environment, 
   EnvironmentTab,
+  SmokeTestingTab,
   ResponseData, 
   Profile,
   KeyValue,
@@ -43,16 +45,16 @@ interface AppState {
   setWorkspaces: (workspaces: Workspace[]) => void;
   
   // Navigation & Tabs
-  openTabs: (RequestData | Collection | EnvironmentTab)[];
+  openTabs: (RequestData | Collection | EnvironmentTab | SmokeTestingTab)[];
   activeTabId: string | null;
-  addTab: (item: RequestData | Collection | EnvironmentTab) => void;
+  addTab: (item: RequestData | Collection | EnvironmentTab | SmokeTestingTab) => void;
   closeTab: (id: string) => void;
   closeAllTabs: () => void;
   closeOtherTabs: (id: string) => void;
   closeTabsToTheRight: (id: string) => void;
   closeTabsToTheLeft: (id: string) => void;
   setActiveTab: (id: string | null) => void;
-  updateTab: (id: string, data: Partial<RequestData | Collection | EnvironmentTab>) => void;
+  updateTab: (id: string, data: Partial<RequestData | Collection | EnvironmentTab | SmokeTestingTab>) => void;
   updateRequest: (id: string, data: Partial<RequestData>) => void;
   updateCollection: (id: string, data: Partial<Collection>) => void;
   updateEnvironment: (id: string, data: Partial<Environment>) => void;
@@ -122,7 +124,7 @@ interface AppState {
   landingSkipped: boolean;
   setLandingSkipped: (skipped: boolean) => void;
   // Tab Sync
-  setUserTabs: (tabs: (RequestData | Collection | EnvironmentTab)[]) => void;
+  setUserTabs: (tabs: (RequestData | Collection | EnvironmentTab | SmokeTestingTab)[]) => void;
 
   // Sync Status
   syncStatus: 'idle' | 'saving' | 'saved' | 'error' | 'pending' | 'offline';
@@ -146,6 +148,7 @@ interface AppState {
 export const DEFAULT_SETTINGS: AppSettings = {
   general: {
     autoSave: true,
+    checkDatabaseIntegrity: false,
     httpVersion: 'auto',
     requestTimeout: 0,
     maxResponseSize: 100 * 1024 * 1024,
@@ -215,7 +218,7 @@ export const DEFAULT_SYNC_METADATA: SyncMetadata = {
   lastSynced: null,
   lastBackup: null,
   retryCount: 0,
-  isOffline: false,
+  isOffline: typeof window !== 'undefined' ? isElectron() : false,
 };
 
 // Self-healing recovery for origin-wide local storage exhaustion

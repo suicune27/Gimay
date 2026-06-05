@@ -234,6 +234,12 @@ export default function App() {
     // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleAuthChange('INITIAL_SESSION', session);
+      if (isElectron() && !session) {
+        console.log('[App] Desktop environment without session detected. Auto-launching offline sandbox.');
+        setTimeout(() => {
+          handleOfflineMode();
+        }, 150);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -288,6 +294,13 @@ export default function App() {
       return;
     }
 
+    const { settings } = useStore.getState();
+    if (!settings.general.checkDatabaseIntegrity) {
+      console.log('[Schema Bootstrap] Database integrity check on load is disabled in settings. Skipping.');
+      schemaCheckedUserRef.current = session.user.id;
+      return;
+    }
+
     const config = getSupabaseConfig();
     if (!config.url || !config.anonKey) {
       return;
@@ -298,7 +311,8 @@ export default function App() {
     setSchemaBootstrapLoading(true);
 
     // If we are offline, bypass completely (Desktop only)
-    if (isElectron() && typeof navigator !== 'undefined' && !navigator.onLine) {
+    const isAppOffline = useStore.getState().syncMetadata.isOffline || (typeof navigator !== 'undefined' && !navigator.onLine);
+    if (isElectron() && isAppOffline) {
       console.warn('[Schema Bootstrap] Client is offline. Bypassing database schema bootstrap to support offline mode.');
       schemaCheckedUserRef.current = session.user.id;
       setSchemaBootstrapLoading(false);
@@ -320,6 +334,14 @@ export default function App() {
 
       setSchemaBootstrapLoading(false);
       setSchemaBootstrapError(compare.error || 'Failed to compare database structure.');
+      return;
+    }
+
+    // Bypass script updates if table structure is already up-to-date
+    if (compare.upToDate) {
+      console.log('[Schema Bootstrap] Database structure is up-to-date. Skipping statement-by-statement integrity execution on startup.');
+      schemaCheckedUserRef.current = session.user.id;
+      setSchemaBootstrapLoading(false);
       return;
     }
 
@@ -522,7 +544,7 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      {!session && <AuthUI onOfflineMode={isElectron() ? handleOfflineMode : undefined} />}
+      {!session && <AuthUI onOfflineMode={handleOfflineMode} />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}
     </>

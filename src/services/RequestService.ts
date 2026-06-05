@@ -12,7 +12,38 @@ interface NetworkDiagnostic {
   recommendation: string;
 }
 
+export interface MswMockConfig {
+  enabled: boolean;
+  status: number;
+  statusText: string;
+  latency: number;
+  responseType: 'json' | 'text' | 'empty';
+  responseBody: string;
+}
+
 export class RequestService {
+  public static mswConfig: MswMockConfig = (() => {
+    try {
+      const saved = localStorage.getItem('gmy-msw-mock-config');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      enabled: false,
+      status: 200,
+      statusText: 'OK',
+      latency: 10,
+      responseType: 'json',
+      responseBody: '{\n  "status": "success",\n  "msw_mocked": true,\n  "message": "Intercepted successfully by MSW service layer"\n}'
+    };
+  })();
+
+  public static saveMswConfig(config: MswMockConfig) {
+    this.mswConfig = config;
+    try {
+      localStorage.setItem('gmy-msw-mock-config', JSON.stringify(config));
+    } catch {}
+  }
+
   private static diagnoseError(error: any, isWeb: boolean): NetworkDiagnostic {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return {
@@ -86,6 +117,7 @@ export class RequestService {
     collections: Collection[];
     workspaceVariables?: KeyValue[];
     variables?: Record<string, any>;
+    signal?: AbortSignal;
   }): Promise<ResponseData> {
     const state = useStore.getState();
     const globalSettings = state.settings;
@@ -96,7 +128,44 @@ export class RequestService {
     const variableContext = { ...context, collection: activeCollection };
 
     // 3. Resolve variables
-    const resolvedUrl = VariableService.resolve(request.url, variableContext);
+    let resolvedUrl = VariableService.resolve(request.url, variableContext);
+
+    // Normalize URL: prepend protocol if missing and not a relative path
+    if (resolvedUrl) {
+      const trimmedUrl = resolvedUrl.trim();
+      const hasProtocol = /^[a-zA-Z]+:\/\//.test(trimmedUrl) || trimmedUrl.startsWith('//');
+      const isPathRelative = trimmedUrl.startsWith('/');
+      if (!hasProtocol && !isPathRelative) {
+        resolvedUrl = 'http://' + trimmedUrl;
+      }
+    }
+
+    // 3.3. MSW Inspired Virtual Network Interceptor Check
+    if (RequestService.mswConfig.enabled) {
+      if (RequestService.mswConfig.latency > 0) {
+        await new Promise(resolve => setTimeout(resolve, RequestService.mswConfig.latency));
+      }
+      const end = Date.now();
+      return {
+        id: 'msw-' + Math.random().toString(36).substr(2, 9),
+        status: RequestService.mswConfig.status,
+        statusText: `MSW Intercept: ${RequestService.mswConfig.statusText}`,
+        headers: {
+          'content-type': RequestService.mswConfig.responseType === 'json' ? 'application/json' : 'text/plain',
+          'x-gimay-msw-mocked': 'true',
+          'access-control-allow-origin': '*'
+        },
+        body: RequestService.mswConfig.responseBody,
+        time: end - start,
+        size: RequestService.mswConfig.responseBody ? RequestService.mswConfig.responseBody.length : 0,
+        contentType: RequestService.mswConfig.responseType === 'json' ? 'application/json' : 'text/plain',
+        request_config: {
+          runtimeEnv: 'MSW Virtual Service Worker',
+          urlIntercepted: resolvedUrl,
+          method: request.method
+        }
+      };
+    }
     
     // 3.5. Inject Network Chaos Fuzzer
     const isChaosEnabled = (request.settings as any)?.chaosEnabled ?? false;
@@ -151,11 +220,16 @@ export class RequestService {
       ? { type: request.bodyType, content: request.body } as any 
       : request.body;
 
+    const configHeaders = this.mapHeaders(resolvedHeaders);
+    if (!configHeaders['Connection'] && !configHeaders['connection']) {
+      configHeaders['Connection'] = 'close'; // Prompts immediate close of sockets, reducing memory retention
+    }
+
     // 4. Prepare Axios Config
     const config: AxiosRequestConfig = {
       url: resolvedUrl,
       method: request.method,
-      headers: this.mapHeaders(resolvedHeaders),
+      headers: configHeaders,
       params: this.mapParams(resolvedParams),
       data: this.prepareBody(body, request.bodyType, variableContext),
       validateStatus: () => true,
@@ -184,7 +258,19 @@ export class RequestService {
     let lastError: any = null;
     let attempts = 0;
 
-    const useWebProxy = !isElectron(); // In browser, route requests through local CORS proxy server to bypass sandbox CORS restrictions!
+    // Determine local or path-relative environments
+    const originStr = typeof window !== 'undefined' ? window.location.origin : '';
+    const isLocalhost = resolvedUrl ? (
+      resolvedUrl.includes('localhost') || 
+      resolvedUrl.includes('127.0.0.1') || 
+      resolvedUrl.includes('0.0.0.0') || 
+      resolvedUrl.includes('.local') ||
+      resolvedUrl.startsWith('/') ||
+      (originStr && resolvedUrl.startsWith(originStr))
+    ) : false;
+
+    const isFormData = config.data instanceof FormData || (config.data && config.data.constructor?.name === 'FormData');
+    const useWebProxy = !isElectron() && !isFormData && !isLocalhost; // In browser, route external non-form requests through local CORS proxy server to bypass CORS!
 
     while (attempts <= retryCount) {
       try {
@@ -200,7 +286,11 @@ export class RequestService {
             url: config.url,
             headers: config.headers,
             data: requestData,
-            params: config.params
+            params: config.params,
+            timeout: config.timeout
+          }, {
+            signal: context.signal,
+            timeout: config.timeout ? config.timeout + 1500 : undefined
           });
 
           // Map the proxy's server-to-server request response to look exactly like standard AxiosResponse
@@ -214,6 +304,7 @@ export class RequestService {
           } as AxiosResponse;
         } else {
           // In Electron native process, direct axios works perfectly
+          config.signal = context.signal;
           response = await axios(config);
         }
         break; // Success! Break loop
@@ -239,15 +330,43 @@ export class RequestService {
     const end = Date.now();
 
     if (response) {
+      const responseStatus = response.status;
+      const responseStatusText = response.statusText;
+      const responseHeaders = response.headers;
+      const responseData = response.data;
+
+      // Safe size estimation of the payload without doing full JSON.stringify string duplication
+      const contentLengthHeader = responseHeaders ? (responseHeaders['content-length'] || responseHeaders['Content-Length']) : null;
+      let calculatedSize = 0;
+      if (contentLengthHeader) {
+        calculatedSize = parseInt(String(contentLengthHeader), 10) || 0;
+      } else if (responseData) {
+        if (typeof responseData === 'string') {
+          calculatedSize = responseData.length;
+        } else {
+          try {
+            // For general objects, estimate or only stringify if reasonable size
+            calculatedSize = JSON.stringify(responseData).length;
+          } catch {
+            calculatedSize = 0;
+          }
+        }
+      }
+
+      const contentTypeValue = responseHeaders ? String(responseHeaders['content-type'] || responseHeaders['Content-Type'] || 'text/plain') : 'text/plain';
+
+      // Aggressively dereference bulky response objects for garbage collection
+      (response as any) = null;
+
       return {
         id: Math.random().toString(36).substr(2, 9),
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers as any,
-        body: response.data,
+        status: responseStatus,
+        statusText: responseStatusText,
+        headers: responseHeaders as any,
+        body: responseData,
         time: end - start,
-        size: typeof response.data === 'string' ? response.data.length : JSON.stringify(response.data).length,
-        contentType: String(response.headers['content-type'] || 'text/plain'),
+        size: calculatedSize,
+        contentType: contentTypeValue,
         request_config: {
           resolvedProxy,
           runtimeEnv: isElectron() ? 'Electron/Desktop' : 'Web Browser',

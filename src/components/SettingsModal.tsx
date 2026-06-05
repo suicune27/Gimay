@@ -54,6 +54,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [searchQuery, setSearchQuery] = useState('');
   const [isMigrationOpen, setIsMigrationOpen] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Database Integrity States
+  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
+  const [repairingIntegrity, setRepairingIntegrity] = useState(false);
+  const [integrityStatus, setIntegrityStatus] = useState<string | null>(null);
+  const [missingTables, setMissingTables] = useState<string[]>([]);
+
+  const handleVerifyIntegrity = async () => {
+    setCheckingIntegrity(true);
+    setIntegrityStatus('Checking database structure...');
+    setMissingTables([]);
+    try {
+      const { getSupabaseConfig } = await import('../lib/supabase');
+      const { compareDatabaseStructure } = await import('../services/ensureDatabaseSchema');
+      const config = getSupabaseConfig();
+      if (!config.url || !config.anonKey) {
+        setIntegrityStatus('Database connection not configured.');
+        setCheckingIntegrity(false);
+        return;
+      }
+      const res = await compareDatabaseStructure(config.url, config.anonKey);
+      if (res.success) {
+        if (res.upToDate) {
+          setIntegrityStatus('✓ Database structure is fully consistent and up to date.');
+          addToast({ type: 'success', message: 'Database structure verified. No anomalies detected!' });
+        } else {
+          setIntegrityStatus('⚠️ Schema mismatch or missing elements found.');
+          setMissingTables(res.missingTables || []);
+          addToast({ type: 'warning', message: 'Database schema mismatch detected. Tap self-repair to resolve.' });
+        }
+      } else {
+        setIntegrityStatus(`✕ Verification Error: ${res.error}`);
+        addToast({ type: 'error', message: res.error || 'Failed to verify structure.' });
+      }
+    } catch (e: any) {
+      setIntegrityStatus(`✕ Exception: ${e.message || e}`);
+    } finally {
+      setCheckingIntegrity(false);
+    }
+  };
+
+  const handleRepairIntegrity = async () => {
+    setRepairingIntegrity(true);
+    setIntegrityStatus('Initiating database self-repair sequence...');
+    try {
+      const { getSupabaseConfig } = await import('../lib/supabase');
+      const { ensureDatabaseSchema } = await import('../services/ensureDatabaseSchema');
+      const config = getSupabaseConfig();
+      if (!config.url || !config.anonKey) {
+        setIntegrityStatus('Database connection not configured.');
+        setRepairingIntegrity(false);
+        return;
+      }
+      const res = await ensureDatabaseSchema(config.url, config.anonKey, (progressLabel) => {
+        setIntegrityStatus(`Repairing: ${progressLabel}`);
+      });
+      if (res.success) {
+        setIntegrityStatus('✓ Database constraints and schema successfully restored and verified!');
+        setMissingTables([]);
+        addToast({ type: 'success', message: 'Database self-repair successfully executed!' });
+      } else {
+        setIntegrityStatus(`✕ Repair Halted: ${res.error}`);
+        addToast({ type: 'error', message: res.error || 'Failed to apply repair sequence.' });
+      }
+    } catch (e: any) {
+      setIntegrityStatus(`✕ Exception: ${e.message || e}`);
+    } finally {
+      setRepairingIntegrity(false);
+    }
+  };
 
   const handleUpdate = (path: string, value: any) => {
     const parts = path.split('.');
@@ -93,10 +165,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   }, [searchQuery]);
 
   const handleClearCache = () => {
-    if (confirm('Are you sure you want to clear application cache and local storage? This will log you out.')) {
-      localStorage.clear();
-      window.location.reload();
-    }
+    setShowClearConfirm(true);
   };
 
   const handleExportSettings = () => {
@@ -117,9 +186,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       try {
         const imported = JSON.parse(ev.target?.result as string);
         updateSettings(imported);
-        alert('Settings imported successfully.');
+        addToast({ type: 'success', message: 'Settings imported successfully.' });
       } catch (err) {
-        alert('Invalid settings file.');
+        addToast({ type: 'error', message: 'Invalid settings file.' });
       }
     };
     reader.readAsText(file);
@@ -143,6 +212,63 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         className="relative w-full max-w-4xl h-[650px] bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl overflow-hidden shadow-2xl flex"
       >
+        {showClearConfirm && (
+          <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in duration-200">
+            <Trash2 size={40} className="text-red-500 mb-4 animate-[pulse_1.5s_infinite]" />
+            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-2">Purge Application Storage</h3>
+            <p className="text-[10px] text-gray-400 max-w-sm mb-6 font-mono leading-relaxed uppercase tracking-tight">
+              Are you sure you want to clear all locally cached data and settings? This operation is permanent and will sign you out of all sessions.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.clear();
+                  } catch {}
+                  window.location.reload();
+                }}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest text-white rounded-lg transition-all cursor-pointer"
+              >
+                Confirm Purge
+              </button>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showResetConfirm && (
+          <div className="absolute inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in duration-200">
+            <RotateCcw size={40} className="text-yellow-500 mb-4 animate-[spin_4s_linear_infinite]" />
+            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-2">Reset Factory Defaults</h3>
+            <p className="text-[10px] text-gray-400 max-w-sm mb-6 font-mono leading-relaxed uppercase tracking-tight">
+              Are you sure you want to reset all configurations and settings back to default factory parameters?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  resetSettings();
+                  setShowResetConfirm(false);
+                  addToast({ type: 'success', message: 'All configurations have been reset.' });
+                }}
+                className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-[10px] font-black uppercase tracking-widest text-white rounded-lg transition-all cursor-pointer"
+              >
+                Confirm Reset
+              </button>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Sidebar */}
         <div className="w-64 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col">
           <div className="p-6">
@@ -183,7 +309,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           <div className="p-4 border-t border-[var(--border-subtle)] flex flex-col gap-2">
             <button 
               onClick={() => {
-                if(confirm('Reset all settings to default factory values?')) resetSettings();
+                setShowResetConfirm(true);
               }}
               className="flex items-center gap-2 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/5 rounded-lg transition-all"
             >
@@ -226,6 +352,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       enabled={settings.general.autoSave}
                       onChange={(v) => handleUpdate('general.autoSave', v)}
                     />
+                  </Section>
+
+                  <Section title="Database Integrity">
+                    <SettingToggle 
+                      label="Check Database Integrity on Load" 
+                      description="Perform automatic schema comparison and constraints alignment during startup." 
+                      enabled={settings.general.checkDatabaseIntegrity}
+                      onChange={(v) => handleUpdate('general.checkDatabaseIntegrity', v)}
+                    />
+                    
+                    <div className="pt-4 border-t border-[var(--border-subtle)] space-y-4">
+                      <div>
+                        <div className="text-[11px] font-bold text-[var(--text-main)] uppercase tracking-tight">Manual Integrity Diagnostics</div>
+                        <div className="text-[10px] text-[var(--text-dim)] mt-0.5">Perform database structural mapping and verify if any tables or foreign keys are missing.</div>
+                      </div>
+                      
+                      {integrityStatus && (
+                        <div className="p-3 bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg font-mono text-[9px] uppercase tracking-tight space-y-1">
+                          <div className="text-[var(--text-main)]">{integrityStatus}</div>
+                          {missingTables.length > 0 && (
+                            <div className="text-red-400 mt-1">Missing Tables: {missingTables.join(', ')}</div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          disabled={checkingIntegrity}
+                          onClick={handleVerifyIntegrity}
+                          className="px-4 py-2 bg-[var(--bg-deep)] hover:bg-[var(--bg-elevated)] border border-[var(--border-subtle)] text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] rounded-lg transition-all"
+                        >
+                          {checkingIntegrity ? 'Verifying...' : 'Verify Structure'}
+                        </button>
+                        <button
+                          disabled={repairingIntegrity}
+                          onClick={handleRepairIntegrity}
+                          className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand)]/90 text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                        >
+                          {repairingIntegrity ? 'Repairing...' : 'Run Self-Repair'}
+                        </button>
+                      </div>
+                    </div>
                   </Section>
 
                   <Section title="Network Protocol">

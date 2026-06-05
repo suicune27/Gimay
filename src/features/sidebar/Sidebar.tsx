@@ -55,7 +55,6 @@ import { ShareModal } from '../../components/ShareModal';
 import { CollectionImportModal } from '../../components/CollectionImportModal';
 import { ConfirmModal } from '../../components/ConfirmModal';
 import { SettingsModal } from '../../components/SettingsModal';
-import { SmokeSuiteModal } from '../../components/SmokeSuiteModal';
 import { useDataSync } from '../../hooks/useDataSync';
 import { RequestService } from '../../services/RequestService';
 import { ScriptService } from '../../services/ScriptService';
@@ -150,9 +149,6 @@ export const Sidebar: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareCollection, setShareCollection] = useState<Collection | null>(null);
-
-  // Smoke testing modal state
-  const [isSmokeModalOpen, setIsSmokeModalOpen] = useState(false);
 
   // Right Click Context Menu State
   const [contextMenu, setContextMenu] = useState<{
@@ -562,7 +558,12 @@ export const Sidebar: React.FC = () => {
                 <button
                   onClick={() => {
                     if (item.id === 'smoke') {
-                      setIsSmokeModalOpen(true);
+                      addTab({
+                        id: 'tab-smoke-testing',
+                        type: 'smoke-testing',
+                        name: 'Smoke Testing Suite',
+                        workspace_id: activeWorkspaceId || undefined
+                      } as any);
                       return;
                     }
                     setActiveNav(item.id);
@@ -1563,11 +1564,6 @@ export const Sidebar: React.FC = () => {
       <SettingsModal 
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-      />
-
-      <SmokeSuiteModal
-        isOpen={isSmokeModalOpen}
-        onClose={() => setIsSmokeModalOpen(false)}
       />
     </div>
   );

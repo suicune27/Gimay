@@ -10,7 +10,6 @@ export class PersistenceService {
   }
 
   private static isOffline(): boolean {
-    if (!isElectron()) return false;
     if (typeof window !== 'undefined' && !window.navigator.onLine) return true;
     return this.store?.getState()?.syncMetadata?.isOffline ?? false;
   }
@@ -28,10 +27,17 @@ export class PersistenceService {
     offlineAction: () => T,
     enqueueAction: (offlineResult: T) => void
   ): Promise<T> {
-    if (this.isOffline()) {
-      console.log('[PersistenceService] Offline mode active. Using local fallback.');
+    // If running in Desktop/Electron, we ALWAYS prioritize offline-first!
+    // This executes mutations locally with 0ms latency to maximize speed and stability,
+    // and registers syncing as a background, non-blocking queue action.
+    if (isElectron() || this.isOffline()) {
+      console.log('[PersistenceService] Offline-First Priority Active (Desktop/Local Mode). Execution local-first.');
       const result = offlineAction();
-      enqueueAction(result);
+      try {
+        enqueueAction(result);
+      } catch (syncErr) {
+        console.warn('[PersistenceService] Async sync enqueuing failed:', syncErr);
+      }
       return result;
     }
 

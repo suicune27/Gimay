@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, Terminal, Mail, Lock, Eye, EyeOff, Sparkles, ChevronRight } from 'lucide-react';
+import { supabase, getSupabaseConfig, refreshSupabaseClient } from '../lib/supabase';
+import { SecureConfigStorage } from '../lib/SecureConfigStorage';
+import { 
+  LogIn, 
+  UserPlus, 
+  Terminal, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Sparkles, 
+  ChevronRight,
+  Database,
+  RefreshCw
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AuthUIProps {
@@ -14,6 +27,26 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [dbConfig, setDbConfig] = useState(() => {
+    const config = getSupabaseConfig();
+    const tenant = SecureConfigStorage.getSupabaseConfig();
+    return {
+      url: config.url || '',
+      isTenant: Boolean(tenant)
+    };
+  });
+
+  const handleResetToEnvDb = () => {
+    SecureConfigStorage.clearConfiguration();
+    refreshSupabaseClient();
+    const freshConfig = getSupabaseConfig();
+    setDbConfig({
+      url: freshConfig.url || '',
+      isTenant: false
+    });
+    setError(null);
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +224,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
             {onOfflineMode && (
               <div className="pt-4 border-t border-white/[0.04] text-center">
                 <button
+                  type="button"
                   onClick={onOfflineMode}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.04] text-[8px] font-black text-zinc-500 hover:text-zinc-300 uppercase tracking-widest transition-all cursor-pointer active:scale-[0.97]"
                 >
@@ -198,6 +232,43 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
                 </button>
               </div>
             )}
+
+            {/* Database Connection Node status */}
+            <div className="pt-4 border-t border-white/[0.04] space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Database size={11} className={dbConfig.isTenant ? 'text-amber-500' : 'text-[#3ECF8E]'} />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Database Uplink Source</span>
+                </div>
+                <span className={`text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono ${
+                  dbConfig.isTenant ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/20'
+                }`}>
+                  {dbConfig.isTenant ? 'Tenant Override' : 'Global Env'}
+                </span>
+              </div>
+              <div className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center justify-between gap-3 overflow-hidden">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] font-mono text-white truncate" title={dbConfig.url}>
+                    {dbConfig.url || 'http://unconfigured-endpoint.co'}
+                  </div>
+                  <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
+                    {dbConfig.isTenant 
+                      ? 'Local overridden configuration active.' 
+                      : 'Targeting default workspace environment database.'
+                    }
+                  </p>
+                </div>
+                {dbConfig.isTenant && (
+                  <button
+                    type="button"
+                    onClick={handleResetToEnvDb}
+                    className="shrink-0 px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 font-mono font-black text-[7.5px] tracking-widest uppercase transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw size={8} /> Reset to Env
+                  </button>
+                )}
+              </div>
+            </div>
           </motion.div>
         </AnimatePresence>
       </motion.div>

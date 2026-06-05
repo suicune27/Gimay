@@ -148,6 +148,7 @@ export interface AuthConfig {
 export interface AppSettings {
   general: {
     autoSave: boolean;
+    checkDatabaseIntegrity: boolean;
     httpVersion: 'auto' | 'http1.1' | 'http2' | 'http3';
     requestTimeout: number;
     maxResponseSize: number;
@@ -272,6 +273,14 @@ export interface EnvironmentTab {
   type: 'environment-manager';
   name: string;
   environmentId?: string;
+  workspace_id?: string;
+}
+
+export interface SmokeTestingTab {
+  id: string;
+  type: 'smoke-testing';
+  name: string;
+  workspace_id?: string;
 }
 
 export interface Team {

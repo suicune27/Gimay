@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { KeyValue } from '../types';
 import { cn } from '../lib/utils';
+import { useStore } from '../store/useStore';
 
 interface EnvironmentBulkModalProps {
   isOpen: boolean;
@@ -448,7 +449,10 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
       
       setShowPreview(true);
     } catch (e: any) {
-      alert(`Import error: ${e.message || 'Formatting validation failed.'}`);
+      useStore.getState().addToast({ 
+        type: 'error', 
+        message: `Import error: ${e.message || 'Formatting validation failed.'}` 
+      });
     }
   };
 

@@ -27,6 +27,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [activeTab, setActiveTab] = useState<'members' | 'invites'>('members');
   const [activeRoleDropdown, setActiveRoleDropdown] = useState<string | null>(null);
+  const [decommissionCandidateId, setDecommissionCandidateId] = useState<string | null>(null);
 
   // Generate unique visual color gradient based on operator's name/email initials
   const getAvatarGradient = (seedStr: string) => {
@@ -182,8 +183,12 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
     }
   };
 
-  const handleRemove = async (userId: string) => {
-    if (!team?.id || !confirm('Decommission this operator? They will lose real-time access to all shared workspace scenarios.')) return;
+  const handleRemove = (userId: string) => {
+    setDecommissionCandidateId(userId);
+  };
+
+  const handleRemoveConfirmed = async (userId: string) => {
+    if (!team?.id) return;
     try {
       await PersistenceService.removeTeamMember(team.id, userId);
       addToast({ type: 'info', message: 'Operator decommissioned.' });
@@ -215,6 +220,34 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
       >
         {/* Glowing visual accent line */}
         <div className="h-[2px] bg-gradient-to-r from-[#3ECF8E] via-blue-500 to-indigo-600" />
+
+        {decommissionCandidateId && (
+          <div className="absolute inset-0 z-50 bg-[#0A0A0C]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+            <ShieldAlert size={36} className="text-red-500 mb-4 animate-[bounce_1s_infinite]" />
+            <h3 className="text-xs font-black text-white uppercase tracking-widest mb-2">Decommission Operator</h3>
+            <p className="text-[10px] text-gray-400 max-w-xs mb-6 font-mono leading-relaxed uppercase tracking-tight">
+              Are you sure you want to decommission this operator? They will lose real-time access to all shared workspace scenarios.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  const uId = decommissionCandidateId;
+                  setDecommissionCandidateId(null);
+                  await handleRemoveConfirmed(uId);
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-[10px] font-black uppercase tracking-widest text-white rounded-lg transition-all cursor-pointer font-bold"
+              >
+                Decommission
+              </button>
+              <button
+                onClick={() => setDecommissionCandidateId(null)}
+                className="px-4 py-2 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer font-bold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Modal Header */}
         <div className="p-6 border-b border-[#1A1A22]/50 bg-[#0C0C0F] flex items-center justify-between">

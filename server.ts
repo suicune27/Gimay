@@ -3,7 +3,11 @@ import { createServer as createViteServer } from 'vite';
 import axios from 'axios';
 import path from 'path';
 import http from 'http';
+import https from 'https';
 import fs from 'fs';
+
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 150, maxFreeSockets: 10, timeout: 60000 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 150, maxFreeSockets: 10, timeout: 60000 });
 
 async function startServer() {
   const app = express();
@@ -13,10 +17,12 @@ async function startServer() {
 
   // API Proxy Route to bypass CORS
   app.post('/api/proxy', async (req, res) => {
-    const { method, url, headers, data, params } = req.body;
+    const { method, url, headers, data, params, timeout } = req.body;
 
     // Sanitizing forwarded headers to avoid misrouting, incorrect compression, or transport size mismatch
-    const sanitizedHeaders: Record<string, string> = {};
+    const sanitizedHeaders: Record<string, string> = {
+      'Keep-Alive': 'timeout=60'
+    };
     if (headers && typeof headers === 'object') {
       const blocklist = ['host', 'connection', 'content-length', 'origin', 'referer', 'accept-encoding', 'cookie'];
       for (const [key, value] of Object.entries(headers)) {
@@ -27,33 +33,52 @@ async function startServer() {
     }
 
     try {
-      const response = await axios({
+      let response: any = await axios({
         method,
         url,
         headers: sanitizedHeaders,
         data,
         params,
+        httpAgent,
+        httpsAgent,
         validateStatus: () => true, // Return status even if error
-        timeout: 25000, // Safe 25s timeout limit to prevent hanging connections
-        maxContentLength: 50 * 1024 * 1024, // Safe 50MB content length limit to shield against OOM leaks
-        maxBodyLength: 50 * 1024 * 1024,
+        timeout: timeout || 25000, // Enforce client-specified timeout or fallback to 25s
+        maxContentLength: 10 * 1024 * 1024, // Optimized safe 10MB limit to protect against OOM leaks
+        maxBodyLength: 10 * 1024 * 1024,
       });
 
+      const responseStatus = response.status;
+      const responseStatusText = response.statusText;
+      const responseHeaders = response.headers;
+      const responseData = response.data;
+      const responseDuration = response.headers ? (response.headers['request-duration'] || 0) : 0;
+
+      // Eagerly null out massive response tree structure before express JSON stringifies
+      (response as any) = null;
+      (req as any).body = null; 
+
       res.status(200).json({
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        data: response.data,
-        time: response.headers['request-duration'] || 0, // Fallback if needed
+        status: responseStatus,
+        statusText: responseStatusText,
+        headers: responseHeaders,
+        data: responseData,
+        time: responseDuration,
       });
     } catch (error: any) {
+      const errMsg = error.message || 'CORS Proxy Error';
+      const errDetails = error.response?.data || error.stack || 'Target server was unreachable or rejected link';
+      
+      // Clear references
+      (error as any) = null;
+      (req as any).body = null;
+
       res.status(200).json({
         status: 0,
         statusText: 'CORS Proxy Connection Refused / Timeout',
         headers: {},
         data: {
-          error: error.message || 'CORS Proxy Error',
-          details: error.response?.data || error.stack || 'Target server was unreachable or rejected link'
+          error: errMsg,
+          details: errDetails
         }
       });
     }

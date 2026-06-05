@@ -28,7 +28,8 @@ export const StatusBar: React.FC = () => {
     sidebarMode,
     sidebarWidth,
     setSidebarMode,
-    setLayoutOrientation
+    setLayoutOrientation,
+    updateSyncMetadata
   } = useStore();
   const [time, setTime] = useState(new Date());
 
@@ -101,10 +102,36 @@ export const StatusBar: React.FC = () => {
 
       {/* Right Section: Time & Connectivity */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
-          {syncMetadata.isOffline ? <WifiOff size={10} className="text-red-400" /> : <Wifi size={10} className="text-[var(--brand)]" />}
-          <span>{syncMetadata.isOffline ? 'Disconnected' : 'Authenticated'}</span>
-        </div>
+        <button 
+          onClick={async () => {
+            const nextOfflineState = !syncMetadata.isOffline;
+            updateSyncMetadata({ isOffline: nextOfflineState });
+            
+            const { syncManager } = await import('../services/SyncService');
+            if (nextOfflineState) {
+              syncManager.setStatus('offline');
+            } else {
+              syncManager.setStatus('saving');
+              try {
+                await syncManager.flushAll();
+                syncManager.setStatus('saved');
+              } catch (e) {
+                console.error('[Sync] Switch to Online Sync failed:', e);
+                syncManager.setStatus('error');
+              }
+            }
+          }}
+          className={cn(
+            "flex items-center gap-1.5 px-2 py-0.5 rounded transition-colors select-none cursor-pointer text-[9px] font-black uppercase tracking-[0.1em]",
+            syncMetadata.isOffline 
+              ? "text-red-400 hover:bg-red-500/10 border border-red-500/20" 
+              : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)] border border-transparent hover:border-[var(--border-subtle)]"
+          )}
+          title={syncMetadata.isOffline ? "Switch to Online Mode" : "Switch to Local-Only Offline Mode"}
+        >
+          {syncMetadata.isOffline ? <WifiOff size={10} className="text-red-400 animate-pulse" /> : <Wifi size={10} className="text-[var(--brand)]" />}
+          <span>{syncMetadata.isOffline ? 'Disconnected (Local)' : 'Authenticated (Cloud)'}</span>
+        </button>
         
         <div className="flex items-center gap-2">
           <button 

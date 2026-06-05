@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
-import { useDataSync } from '../hooks/useDataSync';
+import { useDataSync, useDataSyncSubscription } from '../hooks/useDataSync';
 import { Sidebar } from '../features/sidebar/Sidebar';
 import { RequestEditor } from '../features/editor/RequestEditor';
 import { ResponseViewer } from '../features/editor/ResponseViewer';
@@ -62,9 +62,12 @@ export const RootLayout: React.FC = () => {
     setIsSidebarPinned,
     isScriptLabOpen,
     setIsScriptLabOpen,
-    setLandingSkipped
+    setLandingSkipped,
+    layoutOrientation,
+    setLayoutOrientation
   } = useStore();
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
+  useDataSyncSubscription();
 
   const [activeAccent, setActiveAccent] = useState<'emerald' | 'sapphire' | 'ruby' | 'amber' | 'amethyst'>(() => {
     return (localStorage.getItem('gmy_theme_accent') as any) || 'emerald';
@@ -167,6 +170,7 @@ export const RootLayout: React.FC = () => {
   const [isEnvironmentMenuOpen, setIsEnvironmentMenuOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [wsToDelete, setWsToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   
   const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const environmentMenuRef = useRef<HTMLDivElement | null>(null);
@@ -286,6 +290,69 @@ export const RootLayout: React.FC = () => {
         confirmText="Decommission"
         variant="danger"
       />
+      <AnimatePresence>
+        {isDisconnectDialogOpen && (
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-2xl p-6 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-[var(--brand)] to-blue-500" />
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
+                    <Plus className="rotate-45" size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest font-mono">Secure Node Handshake Closed</h3>
+                    <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-tight mt-0.5">Desktop Core Terminal Sandbox Instance</p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed font-mono">
+                  You requested to shutdown the active desktop shell. Because you are in secure cloud preview mode, the database uplink remains synchronized. Your active tokens are securely stored in the Supabase network.
+                </p>
+
+                <div className="bg-black/35 border border-[var(--border-subtle)] rounded-xl p-3.5 space-y-2">
+                  <div className="flex justify-between text-[8px] font-mono uppercase tracking-tight">
+                    <span className="text-[var(--text-dim)]">Session Status</span>
+                    <span className="text-[var(--brand)] font-bold">ONLINE (PREVIEW)</span>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-mono uppercase tracking-tight">
+                    <span className="text-[var(--text-dim)]">Active Operator</span>
+                    <span className="text-white font-bold">{profile?.email || 'Guest Developer'}</span>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-mono uppercase tracking-tight">
+                    <span className="text-[var(--text-dim)]">Tenant Registry</span>
+                    <span className="text-blue-400 font-bold">{activeWorkspace?.name || 'Local Sandbox'}</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setIsDisconnectDialogOpen(false)}
+                    className="px-4 py-2 rounded-lg bg-[var(--bg-elevated)] hover:bg-white/5 border border-[var(--border-subtle)] hover:border-[var(--border-strong)] text-[9px] font-black uppercase tracking-widest text-white transition-all cursor-pointer"
+                  >
+                    Keep Session Active
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDisconnectDialogOpen(false);
+                      addToast({ type: 'info', message: 'Secured node session cache refreshed.' });
+                    }}
+                    className="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/15 hover:border-red-500/30 text-[9px] font-black uppercase tracking-widest text-red-400 hover:text-white transition-all cursor-pointer"
+                  >
+                    Refresh Uplink
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {isSettingsModalOpen && (
           <SettingsModal 
@@ -622,37 +689,61 @@ export const RootLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1 titlebar-no-drag">
-             <button className="p-1.5 text-[#555555] hover:text-white transition-all"><Search size={14} /></button>
+             <button className="p-1.5 text-[#555555] hover:text-[#3ECF8E] transition-all"><Search size={14} /></button>
           </div>
 
-          {isElectron() && (
-            <>
-              <div className="h-4 w-px bg-[#222222]" />
-              <div className="flex items-center gap-0.5 ml-1 titlebar-no-drag">
-                <button 
-                  onClick={() => (window as any).electron?.minimize()} 
-                  className="p-1.5 rounded hover:bg-white/5 text-[#555555] hover:text-[var(--text-main)] transition-colors flex items-center justify-center"
-                  title="Minimize Window"
-                >
-                  <span className="w-2.5 h-[1.5px] bg-current rounded-full" />
-                </button>
-                <button 
-                  onClick={() => (window as any).electron?.maximize()} 
-                  className="p-1.5 rounded hover:bg-white/5 text-[#555555] hover:text-[var(--text-main)] transition-colors flex items-center justify-center"
-                  title="Maximize Window"
-                >
-                  <span className="w-2 h-2 border border-current rounded-sm" />
-                </button>
-                <button 
-                  onClick={() => (window as any).electron?.close()} 
-                  className="p-1.5 rounded hover:bg-red-500/15 text-[#555555] hover:text-red-500 transition-colors flex items-center justify-center"
-                  title="Close Window"
-                >
-                  <Plus className="rotate-45" size={14} />
-                </button>
-              </div>
-            </>
-          )}
+          <div className="h-4 w-px bg-[#222222]" />
+
+          {/* Desktop Shell Window System controls */}
+          <div className="flex items-center gap-1 ml-1 titlebar-no-drag">
+            <button 
+              onClick={() => {
+                if (isElectron()) {
+                  (window as any).electron?.minimize();
+                } else {
+                  setConsoleCollapsed(!consoleCollapsed);
+                  addToast({ 
+                    type: 'info', 
+                    message: `[SHELL] Core protocol terminal ${!consoleCollapsed ? 'concealed' : 'engaged'}.` 
+                  });
+                }
+              }} 
+              className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-[var(--brand)] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+              title={isElectron() ? "Minimize Window" : "Toggle Terminal Simulation"}
+            >
+              <span className="w-2.5 h-[2px] bg-current rounded-full" />
+            </button>
+            <button 
+              onClick={() => {
+                if (isElectron()) {
+                  (window as any).electron?.maximize();
+                } else {
+                  setLayoutOrientation(layoutOrientation === 'vertical' ? 'horizontal' : 'vertical');
+                  addToast({ 
+                    type: 'success', 
+                    message: `[SHELL] Sidebar-editor axis rotated dynamically to ${layoutOrientation === 'vertical' ? 'horizontal' : 'vertical'}.` 
+                  });
+                }
+              }} 
+              className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-blue-400 transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+              title={isElectron() ? "Maximize Window" : "Rotate UI Orientation Grid"}
+            >
+              <span className="w-2 h-2 border-2 border-current rounded-xs" />
+            </button>
+            <button 
+              onClick={() => {
+                if (isElectron()) {
+                  (window as any).electron?.close();
+                } else {
+                  setIsDisconnectDialogOpen(true);
+                }
+              }} 
+              className="p-1.5 rounded-lg hover:bg-red-500/10 text-[#55555C] hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-500/20"
+              title="Terminate Secure Session (Close)"
+            >
+              <Plus className="rotate-45" size={14} />
+            </button>
+          </div>
         </div>
       </header>
 

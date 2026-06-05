@@ -16,6 +16,7 @@ import {
   FileJson
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SampleSmokeTester } from './SampleSmokeTester';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -126,44 +127,14 @@ export function LandingPage({ onStart }: LandingPageProps) {
             </a>
           </motion.div>
 
-          {/* Screenshot Preview */}
+          {/* Live Interactive Smoke Tester Sandbox Showpiece */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="mt-20 relative w-full max-w-4xl"
           >
-            <div className="absolute inset-0 bg-[#3ECF8E]/10 blur-[80px] rounded-full opacity-20" />
-            <div className="relative bg-[#0A0A0A] rounded border border-white/5 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden aspect-video">
-              <div className="h-6 bg-[#0F0F0F] border-b border-white/5 flex items-center px-3 gap-1.5 shrink-0">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500/30" />
-                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/30" />
-                <div className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E]/30" />
-                <div className="flex-1 text-[8px] text-center text-[#333333] font-mono tracking-[0.3em] uppercase">Uplink: Terminal.Gimay.Node</div>
-              </div>
-              
-              <div className="p-4 h-full flex gap-4">
-                <div className="w-1/5 space-y-2 opacity-20">
-                  {[1, 2, 3, 4, 5, 6, 7].map(i => (
-                    <div key={i} className="h-1 bg-white/10 rounded-full" style={{ width: `${Math.random() * 40 + 60}%` }} />
-                  ))}
-                </div>
-                <div className="flex-1 space-y-3">
-                  <div className="h-8 bg-white/[0.02] rounded border border-white/[0.03]" />
-                  <div className="h-40 bg-[#3ECF8E]/5 rounded border border-[#3ECF8E]/10 flex flex-col p-3">
-                    <div className="flex justify-between mb-2">
-                       <div className="w-20 h-1.5 bg-[#3ECF8E]/20 rounded" />
-                       <div className="w-10 h-1.5 bg-[#3ECF8E]/20 rounded" />
-                    </div>
-                    <div className="flex-1 space-y-2">
-                       <div className="w-full h-1 bg-[#3ECF8E]/10 rounded" />
-                       <div className="w-4/5 h-1 bg-[#3ECF8E]/10 rounded" />
-                       <div className="w-3/5 h-1 bg-[#3ECF8E]/10 rounded" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SampleSmokeTester />
           </motion.div>
         </div>
       </section>

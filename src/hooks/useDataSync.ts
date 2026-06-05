@@ -8,6 +8,7 @@ export const useDataSync = () => {
   const store = useStore();
 
   const fetchWorkspaces = async (userId: string) => {
+    if (store.syncMetadata.isOffline) return;
     // Fetch workspaces where user is owner OR member via RLS policies
     const { data, error } = await supabase
       .from('workspaces')
@@ -64,6 +65,7 @@ export const useDataSync = () => {
   };
 
   const fetchCollections = async (workspaceId: string) => {
+    if (store.syncMetadata.isOffline) return;
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     try {
       const tryFetch = async (useCollaborators: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
@@ -145,6 +147,7 @@ export const useDataSync = () => {
   };
 
   const fetchEnvironments = async (workspaceId: string) => {
+    if (store.syncMetadata.isOffline) return;
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     const { data, error } = await supabase
       .from('environments')
@@ -159,6 +162,7 @@ export const useDataSync = () => {
   };
 
   const fetchUserTabs = async () => {
+    if (store.syncMetadata.isOffline) return;
     if (!store.profile?.id) return;
     try {
       const data = await PersistenceService.getUserTabs(store.profile.id);
@@ -194,6 +198,7 @@ export const useDataSync = () => {
   };
 
   const fetchHistory = async (workspaceId: string) => {
+    if (store.syncMetadata.isOffline) return;
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     const { data, error } = await supabase
       .from('history')
@@ -209,6 +214,7 @@ export const useDataSync = () => {
   };
 
   const fetchTeams = async (userId: string) => {
+    if (store.syncMetadata.isOffline) return;
     if (!userId) return;
     let { data, error } = await supabase
       .from('teams')
@@ -233,8 +239,35 @@ export const useDataSync = () => {
     if (globals) (store as any).setGlobalVariables?.(globals);
   };
 
+  return {
+    fetchWorkspaces,
+    fetchCollections,
+    fetchEnvironments,
+    fetchHistory,
+    fetchTeams,
+    fetchUserTabs,
+    fetchSavedResponses
+  };
+};
+
+export const useDataSyncSubscription = () => {
+  const store = useStore();
+  const {
+    fetchWorkspaces,
+    fetchCollections,
+    fetchEnvironments,
+    fetchHistory,
+    fetchTeams,
+    fetchUserTabs,
+    fetchSavedResponses
+  } = useDataSync();
+
   // Setup Realtime subscriptions
   useEffect(() => {
+    if (store.syncMetadata.isOffline) {
+      console.log('[Sync] Offline mode active. Skipping Realtime database subscription.');
+      return;
+    }
     if (!store.activeWorkspaceId || store.activeWorkspaceId === 'null' || store.activeWorkspaceId === 'undefined') return;
 
     const channelId = `sync-${store.activeWorkspaceId}-${Math.random().toString(36).substring(7)}`;
@@ -313,12 +346,4 @@ export const useDataSync = () => {
       supabase.removeChannel(channel);
     };
   }, [store.activeWorkspaceId, store.profile?.id, (store.teams || []).length]);
-
-  return {
-    fetchWorkspaces,
-    fetchCollections,
-    fetchEnvironments,
-    fetchHistory,
-    fetchTeams
-  };
 };

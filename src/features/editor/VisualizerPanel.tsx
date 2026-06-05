@@ -132,59 +132,68 @@ export const VisualizerPanel: React.FC = () => {
       <div className="flex-1 overflow-auto p-8 bg-[var(--bg-deep)]">
         <AnimatePresence mode="wait">
           {viewMode === 'chart' && (
-            <div className="h-full space-y-8">
+            <div className="h-full space-y-8 animate-in fade-in duration-200">
               {chartData ? (
-                <div className="h-[400px] w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-xl">
-                  <ResponsiveContainer width="100%" height="100%">
-                    {chartType === 'bar' ? (
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                        <XAxis 
-                          dataKey={stringKeys[0] || 'id'} 
-                          stroke="#555" 
-                          fontSize={10} 
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #222', borderRadius: '8px', fontSize: '10px' }}
-                          cursor={{ fill: 'rgba(62, 207, 142, 0.05)' }}
-                        />
-                        {numericKeys.slice(0, 3).map((key, i) => (
-                           <Bar key={key} dataKey={key} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />
-                        ))}
-                      </BarChart>
-                    ) : chartType === 'line' ? (
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
-                        <XAxis dataKey={stringKeys[0] || 'id'} stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #222', borderRadius: '8px', fontSize: '10px' }} />
-                        {numericKeys.slice(0, 3).map((key, i) => (
-                           <Line key={key} type="monotone" dataKey={key} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={{ r: 3 }} />
-                        ))}
-                      </LineChart>
-                    ) : (
-                      <PieChart>
-                         <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey={numericKeys[0]}
-                            nameKey={stringKeys[0]}
-                          >
-                            {chartData.map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#0A0A0A', border: '1px solid #222', borderRadius: '8px', fontSize: '10px' }} />
-                      </PieChart>
-                    )}
-                  </ResponsiveContainer>
+                <div className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                  {/* Header metadata */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                    <div>
+                      <h4 className="text-[10px] font-black text-white uppercase tracking-widest font-mono flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#3ECF8E] animate-pulse" />
+                        {chartType.toUpperCase()} Telemetry Breakdown
+                      </h4>
+                      <p className="text-[8px] text-[var(--text-dim)] font-mono uppercase tracking-tight mt-1">
+                        Active rendering of first 15 structural points to preserve interface performance
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      {numericKeys.slice(0, 3).map((key, idx) => (
+                        <div key={key} className="flex items-center gap-2 text-[9px] font-mono text-[var(--text-dim)] uppercase bg-[#000]/25 px-2.5 py-1 rounded-md border border-[var(--border-subtle)]/30">
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                          <span className="text-white font-black">{key}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Core Bars Rendering Stage */}
+                  <div className="h-[280px] flex items-end gap-3 border-b border-[var(--border-strong)] pb-2 pt-6 overflow-x-auto no-scrollbar">
+                    {chartData.slice(0, 15).map((node: any, idx: number) => {
+                      const label = String(node[stringKeys[0]] || node['id'] || node['name'] || `Item ${idx + 1}`);
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full min-w-[36px] group relative">
+                          <div className="w-full flex gap-1 justify-center items-end h-[220px]">
+                            {numericKeys.slice(0, 2).map((key, keyIdx) => {
+                              const val = Number(node[key]) || 0;
+                              // Walk correct maximum limit
+                              const maxVal = Math.max(...chartData.map((d: any) => Number(d[key]) || 1)) || 1;
+                              const heightPercent = Math.max(3, Math.min(100, (val / maxVal) * 100));
+                              return (
+                                <div
+                                  key={key}
+                                  className="w-full rounded-t-lg relative group/bar cursor-pointer transition-all duration-300 hover:scale-x-105 hover:brightness-125 shadow-lg"
+                                  style={{
+                                    height: `${heightPercent}%`,
+                                    backgroundColor: COLORS[keyIdx % COLORS.length],
+                                  }}
+                                >
+                                  {/* Hover Floating Tooltip widget */}
+                                  <div className="absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 bg-[#0C0C10]/95 border border-[#1E1E28] text-white text-[8px] font-mono p-3 rounded-lg shadow-2xl opacity-0 translate-y-2 group-hover/bar:opacity-100 group-hover/bar:translate-y-0 transition-all z-50 pointer-events-none whitespace-nowrap backdrop-blur-md">
+                                    <p className="font-bold text-[var(--text-dim)] uppercase text-[7px] tracking-wider mb-0.5">{key}</p>
+                                    <p className="text-white font-black text-[11px]">{val.toLocaleString()}</p>
+                                    <div className="text-[6px] text-gray-500 mt-1 uppercase tracking-tighter">Record: {label}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <span className="text-[8px] font-mono text-[var(--text-dim)] uppercase truncate w-full text-center mt-3 group-hover:text-white transition-colors tracking-tighter">
+                            {label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-[var(--border-subtle)] rounded-3xl opacity-50 bg-[var(--bg-surface)]">
@@ -359,7 +368,18 @@ export const VisualizerPanel: React.FC = () => {
   );
 };
 
-function calculateDepth(obj: any): number {
+function calculateDepth(obj: any, currentDepth = 0): number {
+  if (currentDepth > 10) return 10;
   if (typeof obj !== 'object' || obj === null) return 0;
-  return 1 + Math.max(0, ...Object.values(obj).map(val => calculateDepth(val)));
+  
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return 1;
+    const sample = obj.slice(0, 5);
+    return 1 + Math.max(0, ...sample.map(val => calculateDepth(val, currentDepth + 1)));
+  }
+
+  const keys = Object.keys(obj);
+  if (keys.length === 0) return 1;
+  const maxKeysToCheck = keys.slice(0, 15);
+  return 1 + Math.max(0, ...maxKeysToCheck.map(key => calculateDepth(obj[key], currentDepth + 1)));
 }
