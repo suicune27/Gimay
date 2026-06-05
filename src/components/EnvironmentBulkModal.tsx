@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  X, Globe, FileText, Check, AlertCircle, Eye, EyeOff, ShieldAlert,
-  Settings, Info, Copy, UploadCloud, FileType, Columns, Sparkles, RefreshCw
+  X, FileText, AlertCircle, Eye, EyeOff, ShieldAlert,
+  Settings, Info, UploadCloud, FileType, Columns, Sparkles, RefreshCw
 } from 'lucide-react';
 import { KeyValue } from '../types';
 import { cn } from '../lib/utils';
@@ -254,8 +254,8 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
         if (!Array.isArray(parsed)) {
           throw new Error('JSON structure must be an array of variable objects.');
         }
-        parsed.forEach((item: any, index: number) => {
-          if (!item.key) throw new Error(`Row ${index + 1} is missing a variable "key" name.`);
+        parsed.forEach((item: any, idx: number) => {
+          if (!item.key) throw new Error(`Row ${idx + 1} is missing a variable "key" name.`);
           newVariables.push({
             id: Math.random().toString(36).substr(2, 9),
             key: String(item.key).trim(),

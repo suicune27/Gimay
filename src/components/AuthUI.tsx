@@ -56,7 +56,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
     // Standardize redirection parameter for standard web contexts and Electron local file contexts
     const redirectTo = window.location.origin.startsWith('file:') 
       ? undefined 
-      : window.location.origin + '/app';
+      : `${window.location.origin  }/app`;
 
     const { error: authError } = isLogin 
       ? await supabase.auth.signInWithPassword({ email, password })

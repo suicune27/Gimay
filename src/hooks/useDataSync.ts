@@ -69,7 +69,7 @@ export const useDataSync = () => {
     if (!workspaceId || workspaceId === 'null' || workspaceId === 'undefined') return;
     try {
       const tryFetch = async (useCollaborators: boolean, useRequests: boolean = true, useFolders: boolean = true) => {
-        let relations = [];
+        const relations = [];
         if (useRequests) relations.push('requests(*)');
         if (useFolders) relations.push('folders(*)');
         if (useCollaborators) relations.push('collection_collaborators(*)');

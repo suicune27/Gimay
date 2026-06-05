@@ -136,7 +136,7 @@ export class RequestService {
       const hasProtocol = /^[a-zA-Z]+:\/\//.test(trimmedUrl) || trimmedUrl.startsWith('//');
       const isPathRelative = trimmedUrl.startsWith('/');
       if (!hasProtocol && !isPathRelative) {
-        resolvedUrl = 'http://' + trimmedUrl;
+        resolvedUrl = `http://${  trimmedUrl}`;
       }
     }
 
@@ -147,7 +147,7 @@ export class RequestService {
       }
       const end = Date.now();
       return {
-        id: 'msw-' + Math.random().toString(36).substr(2, 9),
+        id: `msw-${  Math.random().toString(36).substr(2, 9)}`,
         status: RequestService.mswConfig.status,
         statusText: `MSW Intercept: ${RequestService.mswConfig.statusText}`,
         headers: {

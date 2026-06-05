@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'motion/react';
 import { 
   Zap, 
@@ -7,9 +6,6 @@ import {
   Users, 
   Globe, 
   Download, 
-  Play,
-  Github,
-  Monitor,
   Code2,
   Layers,
   WifiOff,
@@ -23,7 +19,7 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onStart }: LandingPageProps) {
-  const handleDownload = (platform: string) => {
+  const _handleDownload = (platform: string) => {
     toast.info(`Preparing ${platform} download...`, {
       description: "Gimay Desktop will start downloading in a few seconds.",
       duration: 5000,

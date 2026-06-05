@@ -48,7 +48,7 @@ export class OnboardingService {
     console.group('[OnboardingService] createAuthenticatedClient');
     console.log('Configuration Parameters:', {
       providedUrl: normalizedUrl,
-      providedAnonKey: anonKey ? '***' + anonKey.slice(-4) : 'MISSING',
+      providedAnonKey: anonKey ? `***${  anonKey.slice(-4)}` : 'MISSING',
       userId
     });
     console.log('Current App Session:', {

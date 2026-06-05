@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
   X, 
   Search, 
@@ -18,9 +18,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
-import { Collection, Folder as FolderType, RequestData } from '../types';
+import { Collection } from '../types';
 import { CollectionExportService, ExportFormat } from '../services/CollectionExportService';
-import { ExportUtils } from '../utils/ExportUtils';
 
 interface ExportModalProps {
   isOpen: boolean;

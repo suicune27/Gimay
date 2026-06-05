@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 interface NameModalProps {
   isOpen: boolean;

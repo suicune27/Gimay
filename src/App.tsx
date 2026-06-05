@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase, globalSupabase, getSupabaseConfig } from './lib/supabase';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase, getSupabaseConfig } from './lib/supabase';
 import { AuthUI } from './components/AuthUI';
 import { RootLayout } from './layouts/RootLayout';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
@@ -15,7 +15,7 @@ import { ToastContainer } from './components/Toast';
 
 export default function App() {
   const { setSyncStatus, settings, setProfile, landingSkipped, setLandingSkipped, reset: resetStore, addToast } = useStore();
-  const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
+  const { isConfigured, resetOnboarding, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 

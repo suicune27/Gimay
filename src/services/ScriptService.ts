@@ -92,7 +92,7 @@ export class ScriptService {
       } catch (error: any) {
         logs.push({
           level: 'error',
-          args: ['Pre-request execution error: ' + error.message],
+          args: [`Pre-request execution error: ${  error.message}`],
           timestamp: new Date().toISOString()
         });
       }
@@ -195,7 +195,7 @@ export class ScriptService {
       } catch (error: any) {
         logs.push({
           level: 'error',
-          args: ['Test execution error: ' + error.message],
+          args: [`Test execution error: ${  error.message}`],
           timestamp: new Date().toISOString()
         });
       }

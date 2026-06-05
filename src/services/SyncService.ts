@@ -189,32 +189,38 @@ class SyncManager {
         this.timers.delete(key);
         
         switch (change.action) {
-          case 'create':
+          case 'create': {
             switch (change.type) {
-              case 'collection':
+              case 'collection': {
                 const createdCol = await PersistenceService.createCollectionOnline(change.data.workspace_id, change.data.user_id, change.data.name);
                 this.remapId(change.id, createdCol.id, 'collection');
                 break;
-              case 'folder':
+              }
+              case 'folder': {
                 const createdFolder = await PersistenceService.createFolderOnline(change.data.name, change.data.collection_id, change.data.user_id, change.data.parent_id, change.data.workspace_id);
                 this.remapId(change.id, createdFolder.id, 'folder');
                 break;
-              case 'request':
+              }
+              case 'request': {
                 const createdReq = await PersistenceService.createRequestOnline(change.data);
                 this.remapId(change.id, createdReq.id, 'request');
                 break;
-              case 'environment':
+              }
+              case 'environment': {
                 const createdEnv = await PersistenceService.createEnvironmentOnline(change.data.workspace_id, change.data.user_id, change.data.name, change.data.variables, change.data.is_global, change.data.pre_request_script, change.data.test_script, change.data.documentation);
                 this.remapId(change.id, createdEnv.id, 'environment');
                 break;
-              case 'workspace':
+              }
+              case 'workspace': {
                 const createdWS = await PersistenceService.createWorkspaceOnline(change.data.name, change.data.user_id, change.data.team_id);
                 this.remapId(change.id, createdWS.id, 'workspace');
                 break;
+              }
             }
             break;
+          }
 
-          case 'update':
+          case 'update': {
             switch (change.type) {
               case 'request':
                 await PersistenceService.saveRequestOnline(change.data);
@@ -236,8 +242,9 @@ class SyncManager {
                 break;
             }
             break;
+          }
 
-          case 'delete':
+          case 'delete': {
             switch (change.type) {
               case 'collection':
                 await PersistenceService.deleteCollectionOnline(change.id);
@@ -256,6 +263,7 @@ class SyncManager {
                 break;
             }
             break;
+          }
         }
 
         this.queue.delete(key);

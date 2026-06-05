@@ -1,20 +1,15 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Upload, 
   ClipboardPaste, 
   FileJson, 
   X, 
-  CheckCircle2, 
   AlertTriangle, 
   Folder, 
-  Terminal, 
   ChevronDown, 
   ChevronRight,
   Sparkles,
-  Files,
-  Database,
-  Code2,
   Check,
   CircleDot
 } from 'lucide-react';

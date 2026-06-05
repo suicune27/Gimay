@@ -13,6 +13,7 @@ import { VariableService } from '../services/VariableService';
 import { SandboxRunner } from '../services/sandboxRunner';
 import { Collection, RequestData } from '../types';
 import { isElectron } from '../lib/platform';
+import { SampleBuffer, createMetrics, recordSample, RequestPool, maybeGC, PAYLOAD_TRUNCATED } from '../services/SmokeTestPool';
 
 interface SmokeSuitePanelProps {
   isEmbedded?: boolean;
@@ -24,7 +25,7 @@ const safeStringify = (val: any): string => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'string') {
     if (val.length > 50000) {
-      return val.substring(0, 50000) + '\n... [truncated due to large size]';
+      return `${val.substring(0, 50000)  }\n... [truncated due to large size]`;
     }
     return val;
   }
@@ -38,13 +39,13 @@ const safeStringify = (val: any): string => {
         seen.add(value);
       }
       if (typeof value === 'string' && value.length > 10000) {
-        return value.substring(0, 10000) + '... [truncated]';
+        return `${value.substring(0, 10000)  }... [truncated]`;
       }
       return value;
     }, 2);
     
     if (str.length > 100000) {
-      return str.substring(0, 100000) + '\n... [truncated due to large size]';
+      return `${str.substring(0, 100000)  }\n... [truncated due to large size]`;
     }
     return str;
   } catch (e: any) {
@@ -78,7 +79,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [suiteTestScript, setSuiteTestScript] = useState('');
   const [showScriptDrawer, setShowScriptDrawer] = useState(false);
   const [runRequestScripts, setRunRequestScripts] = useState(true);
-  const [sandboxEngine, setSandboxEngine] = useState<'in-thread' | 'worker'>('worker');
+  const [sandboxEngine, setSandboxEngine] = useState<'in-thread' | 'worker'>('in-thread');
   const logPayloads = false;
 
   // NEW Feature: Minutes of Testing (MoT) endurance monitoring options
@@ -138,10 +139,14 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [successRate, setSuccessRate] = useState(100);
 
   // Heavy data references locked in refs for safe multithread state coordination
+  const sampleBufferRef = useRef<SampleBuffer>(new SampleBuffer(60));
+  const requestPoolRef = useRef<RequestPool>(new RequestPool(20));
   const allSamplesRef = useRef<any[]>([]);
   const isRunningRef = useRef(false);
   const currentRunIdRef = useRef(0);
   const activeAbortControllersRef = useRef<Set<AbortController>>(new Set());
+  const uiIntervalRef = useRef<any>(null);
+  const uiIntervalMoTRef = useRef<any>(null);
 
   // MoT session tracking variables
   const completedCountRef = useRef(0);
@@ -219,7 +224,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
         clearInterval(minuteTimer.current);
         minuteTimer.current = null;
       }
-      activeAbortControllersRef.current.forEach(c => {
+      if (uiIntervalRef.current) { clearInterval(uiIntervalRef.current); uiIntervalRef.current = null; }
+      if (uiIntervalMoTRef.current) { clearInterval(uiIntervalMoTRef.current); uiIntervalMoTRef.current = null; }
+      [...activeAbortControllersRef.current].forEach(c => {
         try {
           c.abort();
         } catch {}
@@ -530,7 +537,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     isRunningRef.current = false;
 
     // Immediately trigger any outstanding abort signals
-    activeAbortControllersRef.current.forEach(c => {
+    [...activeAbortControllersRef.current].forEach(c => {
       try {
         c.abort();
       } catch {}
@@ -560,6 +567,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     setCleaningStatus('PURGING STALE RUN SAMPLES & LOG BUFFERS...');
     await new Promise(resolve => setTimeout(resolve, 20));
     allSamplesRef.current = [];
+    sampleBufferRef.current.clear();
     setSamples([]);
 
     setCleaningStatus('RELEASING STALE SANDBOX WEB WORKER SESSIONS...');
@@ -572,6 +580,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     await new Promise(resolve => setTimeout(resolve, 20));
     if (typeof (window as any).gc === 'function') {
       try { (window as any).gc(); } catch {}
+      maybeGC(1, 1);
     }
 
     setCleaningStatus('PRE-WARMING ISOLATED THREAD POOL & HEAP FOR ENERGIZE RUN...');
@@ -588,6 +597,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     setMaxLatency(0);
     setSuccessRate(100);
     allSamplesRef.current = [];
+    sampleBufferRef.current.clear();
     setIsMemoryCooling(false);
     isMemoryCoolingRef.current = false;
     setMemoryCoolingCount(0);
@@ -618,17 +628,53 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     // ==========================================
     if (runnerMode === 'loop') {
       const totalRequests = threads * loops;
-      const isLargeRun = true;
-      let completedCount = 0;
-      let totalLatency = 0;
-      let minLatencyValue = Infinity;
-      let maxLatencyValue = -Infinity;
-      let successCount = 0;
+      // Pre-clone all targets once to reduce per-iteration deep clone OOM pressure
+      const targetClones = targets.map(t => ({
+        ...t,
+        headers: (t.headers || []).map(h => ({ ...h })),
+        params: (t.params || []).map(p => ({ ...p })),
+        settings: t.settings ? { ...t.settings } : undefined
+      }));
+      const runStats = { completed: 0, totalLatency: 0, successCount: 0, minLatency: Infinity, maxLatency: -Infinity };
 
       const startTime = performance.now();
-      let lastUiUpdateTime = startTime;
+      const uiInterval = setInterval(() => {
+        if (!isRunningRef.current) return;
+        const count = runStats.completed;
+        if (count === 0) return;
+        const avg = Math.round(runStats.totalLatency / count);
+        const succRate = Math.round((runStats.successCount / count) * 100);
+        const computedMin = runStats.minLatency === Infinity ? 0 : runStats.minLatency;
+        const computedMax = runStats.maxLatency === -Infinity ? 0 : runStats.maxLatency;
+        setSamples(sampleBufferRef.current.readLast(100));
+        setAvgLatency(avg);
+        setMinLatency(computedMin);
+        setMaxLatency(computedMax);
+        setSuccessRate(succRate);
+        setMemoryPressure(memoryPressureLevelRef.current);
+        setProgress(Math.round((count / totalRequests) * 100));
+        const elapsedSec = (performance.now() - startTime) / 1000;
+        setThroughput(parseFloat((count / (elapsedSec || 1)).toFixed(1)));
+      }, 350);
+      uiIntervalRef.current = uiInterval;
 
       const runWorker = async (workerId: number) => {
+        const workerController = new AbortController();
+        activeAbortControllersRef.current.add(workerController);
+        // P1: Pre-compute collection lookup cache
+        const collMap = new Map(collections.map(c => [c.id, c]));
+        // P1: Pre-compute variable maps per unique target collection
+        const varCache = new Map<string, Record<string, string>>();
+        const uniqueColls = new Set(targetClones.map(t => t.collection_id).filter(Boolean));
+        for (const collId of uniqueColls) {
+          if (collId) {
+            const coll = collMap.get(collId) || null;
+            varCache.set(collId, VariableService.getResolvedVariableMap({
+              environments, activeEnvId: selectedEnvId,
+              collection: coll, variables: {}
+            }));
+          }
+        }
         for (let i = 0; i < loops; i++) {
           if (!isRunningRef.current || currentRunId !== currentRunIdRef.current) break;
 
@@ -639,7 +685,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             computedPressureVal = Math.min(100, Math.round((memVal.usedJSHeapSize / memVal.jsHeapSizeLimit) * 100));
           } else {
             // Simulated memory creep if API is unavailable
-            computedPressureVal = Math.min(100, Math.round((allSamplesRef.current.length * 0.1) + 10));
+            computedPressureVal = Math.min(100, Math.round((sampleBufferRef.current.size * 0.1) + 10));
           }
           memoryPressureLevelRef.current = computedPressureVal;
 
@@ -650,9 +696,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             addToast({ type: 'warning', message: `Memory warning level reached (${computedPressureVal}%). Pausing executions for system cleanup...` });
             
             // Eagerly release memory structures in samples history to release references
-            if (allSamplesRef.current.length > 50) {
-              allSamplesRef.current = allSamplesRef.current.slice(-20);
-            }
             if (typeof (window as any).gc === 'function') {
               try {
                 (window as any).gc();
@@ -670,7 +713,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               checkPressure = Math.max(20, memoryPressureLevelRef.current - 15);
             }
             memoryPressureLevelRef.current = checkPressure;
-            setMemoryPressure(checkPressure);
             
             if (checkPressure < 55) {
               isMemoryCoolingRef.current = false;
@@ -684,8 +726,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             await sleep(delay);
           }
 
-          const currentReqOffset = (workerId + i) % targets.length;
-          const baseRequest = targets[currentReqOffset];
+          const currentReqOffset = (workerId + i) % targetClones.length;
+          const baseRequest = targetClones[currentReqOffset];
           
           const sampleStartTime = performance.now();
           let status: number | string = 0;
@@ -694,37 +736,29 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           let resolvedResponseBody = '';
           let requestToExecute = baseRequest;
 
-          const controller = new AbortController();
-          activeAbortControllersRef.current.add(controller);
+          // Using per-worker controller
 
           try {
-            const innerActiveCollection = collections.find(c => c.id === baseRequest.collection_id);
-            const threadVariables = VariableService.getResolvedVariableMap({
-              environments,
-              activeEnvId: selectedEnvId,
-              collection: innerActiveCollection || null,
-              variables: {}
-            });
+            // P1: Use cached collection + variable map
+            const innerActiveCollection = baseRequest.collection_id ? (collMap.get(baseRequest.collection_id) || null) : null;
+            const threadVariables = (baseRequest.collection_id && varCache.has(baseRequest.collection_id))
+              ? { ...varCache.get(baseRequest.collection_id)! }
+              : {};
             const variableContext = {
               environments,
               activeEnvId: selectedEnvId,
               collections,
               collection: innerActiveCollection || null,
               variables: threadVariables,
-              signal: controller.signal,
+              signal: workerController.signal,
               useWorker: sandboxEngine === 'worker'
             };
 
             requestToExecute = {
               ...baseRequest,
-              headers: (baseRequest.headers || []).map(h => ({ ...h })),
-              params: (baseRequest.params || []).map(p => ({ ...p })),
-              settings: baseRequest.settings ? { ...baseRequest.settings } : undefined
-            };
-
-            requestToExecute.settings = {
-              ...(requestToExecute.settings || { followRedirects: true, maxRedirects: 10 }),
-              timeout: timeoutMs
+              headers: baseRequest.headers?.map(h => ({ ...h })),
+              params: baseRequest.params?.map(p => ({ ...p })),
+              settings: { ...(baseRequest.settings || { followRedirects: true, maxRedirects: 10 }), timeout: timeoutMs }
             };
 
             const preScripts = runRequestScripts ? [
@@ -751,10 +785,11 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 }
               }
             }
+            if (currentRunId !== currentRunIdRef.current) return;
 
             const response = await RequestService.execute(requestToExecute, variableContext);
             if (currentRunId !== currentRunIdRef.current) return;
-            resolvedResponseBody = '[Detailed payload logging suspended for memory optimization]';
+            resolvedResponseBody = PAYLOAD_TRUNCATED;
 
             const testScripts = runRequestScripts ? [
               activeEnvironment?.test_script,
@@ -793,70 +828,25 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             success = false;
             status = err.name === 'AbortError' ? 'Timeout' : 'Execution Error';
             errorMsg = err.message || String(err);
-          } finally {
-            activeAbortControllersRef.current.delete(controller);
           }
 
           const sampleEndTime = performance.now();
           const duration = Math.round(sampleEndTime - sampleStartTime);
 
-          completedCount++;
-          totalLatency += duration;
-          if (duration < minLatencyValue) minLatencyValue = duration;
-          if (duration > maxLatencyValue) maxLatencyValue = duration;
-          if (success) successCount++;
+          runStats.completed++;
+          runStats.totalLatency += duration;
+          if (duration < runStats.minLatency) runStats.minLatency = duration;
+          if (duration > runStats.maxLatency) runStats.maxLatency = duration;
+          if (success) runStats.successCount++;
 
-          const newSample = {
-            id: completedCount,
-            timestamp: new Date().toLocaleTimeString(),
-            latency: duration,
-            status,
-            success,
-            error: errorMsg || undefined,
-            requestName: baseRequest.name,
-            requestMethod: baseRequest.method,
-            requestUrl: requestToExecute.url,
-            requestPayload: '[Detailed payload logging suspended for memory optimization]',
-            responseBody: '[Detailed payload logging suspended for memory optimization]'
-          };
+          sampleBufferRef.current.writeSample(
+            runStats.completed, new Date().toLocaleTimeString(), duration,
+            status, success, errorMsg || undefined,
+            baseRequest.name, baseRequest.method,
+            requestToExecute.url
+          );
 
-          allSamplesRef.current.push(newSample);
 
-          if (allSamplesRef.current.length > 50) {
-            allSamplesRef.current.shift();
-          }
-
-          const now = performance.now();
-          if (now - lastUiUpdateTime > 350 || completedCount === totalRequests) {
-            lastUiUpdateTime = now;
-
-            const avg = Math.round(totalLatency / completedCount);
-            const succRate = Math.round((successCount / completedCount) * 100);
-
-            const lightweightSamples = allSamplesRef.current.map(s => ({
-              id: s.id,
-              timestamp: s.timestamp,
-              latency: s.latency,
-              status: s.status,
-              success: s.success,
-              error: s.error,
-              requestName: s.requestName,
-              requestMethod: s.requestMethod
-            }));
-
-            setSamples(lightweightSamples);
-            setAvgLatency(avg);
-            setMinLatency(minLatencyValue === Infinity ? 0 : minLatencyValue);
-            setMaxLatency(maxLatencyValue === -Infinity ? 0 : maxLatencyValue);
-            setSuccessRate(succRate);
-            setMemoryPressure(memoryPressureLevelRef.current);
-
-            const percent = Math.round((completedCount / totalRequests) * 100);
-            setProgress(percent);
-
-            const elapsedSec = (now - startTime) / 1000;
-            setThroughput(parseFloat((completedCount / (elapsedSec || 1)).toFixed(1)));
-          }
 
           if (stopOnFailure && !success) {
             isRunningRef.current = false;
@@ -864,11 +854,20 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             break;
           }
         }
+        activeAbortControllersRef.current.delete(workerController);
       };
 
       try {
-        const workerPromises = Array.from({ length: threads }).map((_, id) => runWorker(id));
-        await Promise.all(workerPromises);
+        const MAX_CONCURRENCY = 6;
+        let nextWorkerIndex = 0;
+        const workerRunners = Array.from({ length: Math.min(MAX_CONCURRENCY, threads) }, async () => {
+          while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
+            const id = nextWorkerIndex++;
+            if (id >= threads) break;
+            await runWorker(id);
+          }
+        });
+        await Promise.all(workerRunners);
         addToast({ type: 'success', message: 'All target scenarios executed successfully!' });
       } catch (err: any) {
         console.error('[SmokeSuite] Concurrency run failed:', err);
@@ -876,7 +875,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       } finally {
         setIsRunning(false);
         isRunningRef.current = false;
-        activeAbortControllersRef.current.forEach(c => {
+        clearInterval(uiInterval);
+        [...activeAbortControllersRef.current].forEach(c => {
           try { c.abort(); } catch {}
         });
         activeAbortControllersRef.current.clear();
@@ -893,6 +893,25 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       successCountRef.current = 0;
       currentConsecutiveFailuresRef.current = 0;
       startTimeRef.current = performance.now();
+      const uiIntervalMoT = setInterval(() => {
+        if (!isRunningRef.current) return;
+        const count = completedCountRef.current;
+        if (count === 0) return;
+        const avg = Math.round(totalLatency / (count || 1));
+        const succRate = Math.round((successCountRef.current / (count || 1)) * 100);
+        const cMin = minLatencyValue === Infinity ? 0 : minLatencyValue;
+        const cMax = maxLatencyValue === -Infinity ? 0 : maxLatencyValue;
+        setSamples(sampleBufferRef.current.readLast(100));
+        setAvgLatency(avg);
+        setMinLatency(cMin);
+        setMaxLatency(cMax);
+        setSuccessRate(succRate);
+        setMemoryPressure(memoryPressureLevelRef.current);
+        setStabilityScore(stabilityScoreRef.current);
+        setProgress(Math.min(100, Math.round(((performance.now() - startTimeRef.current) / 1000 / motDuration) * 100)));
+        setThroughput(parseFloat((count / ((performance.now() - startTimeRef.current) / 1000 || 1)).toFixed(1)));
+      }, 350);
+      uiIntervalMoTRef.current = uiIntervalMoT;
       cleanupCyclesRef.current = 0;
       earlyAbortTriggeredRef.current = false;
       abortReasonRef.current = '';
@@ -938,9 +957,30 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       let totalLatency = 0;
       let minLatencyValue = Infinity;
       let maxLatencyValue = -Infinity;
-      let lastUiUpdateTime = performance.now();
-
       const runWorkerMoT = async (workerId: number) => {
+        const motController = new AbortController();
+        activeAbortControllersRef.current.add(motController);
+        // P1: Pre-compute collection lookup cache
+        const collMapMoT = new Map(collections.map(c => [c.id, c]));
+        // P1: Pre-compute variable maps per unique target collection
+        const varCacheMoT = new Map<string, Record<string, string>>();
+        const uniqueCollsMoT = new Set(targets.map(t => t.collection_id).filter(Boolean));
+        for (const collId of uniqueCollsMoT) {
+          if (collId) {
+            const coll = collMapMoT.get(collId) || null;
+            varCacheMoT.set(collId, VariableService.getResolvedVariableMap({
+              environments, activeEnvId: selectedEnvId,
+              collection: coll, variables: {}
+            }));
+          }
+        }
+        // P1: Pre-clone all MoT targets once (safe from store mutation)
+        const targetTemplates = new Map(targets.map(t => [t.id, {
+          ...t,
+          headers: (t.headers || []).map(h => ({ ...h })),
+          params: (t.params || []).map(p => ({ ...p })),
+          settings: t.settings ? { ...t.settings } : undefined
+        }]));
         let localCounter = 0;
         while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
           // Real-time memory pressure monitoring in MoT loops
@@ -961,9 +1001,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             addToast({ type: 'warning', message: `Endurance limit danger: Memory is at ${computedPressureVal}%. Commencing emergency buffer flush...` });
             
             // Flush and free references in samples storage to allow speedy GC
-            if (allSamplesRef.current.length > 50) {
-              allSamplesRef.current = allSamplesRef.current.slice(-20);
-            }
             if (typeof (window as any).gc === 'function') {
               try {
                 (window as any).gc();
@@ -983,7 +1020,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               checkPressure = Math.max(20, memoryPressureLevelRef.current - 15);
             }
             memoryPressureLevelRef.current = checkPressure;
-            setMemoryPressure(checkPressure);
 
             if (checkPressure < 55) {
               isMemoryCoolingRef.current = false;
@@ -1043,37 +1079,29 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           while (retryCount <= 3 && !executedSuccessfully && isRunningRef.current) {
             requestsInCurrentMinute.current++;
 
-            const controller = new AbortController();
-            activeAbortControllersRef.current.add(controller);
+            // Using motController (per-worker)
 
             try {
-              const innerActiveCollection = collections.find(c => c.id === baseRequest.collection_id);
-              const threadVariables = VariableService.getResolvedVariableMap({
-                environments,
-                activeEnvId: selectedEnvId,
-                collection: innerActiveCollection || null,
-                variables: {}
-              });
+              // P1: Use cached collection + variable map
+              const innerActiveCollection = baseRequest.collection_id ? (collMapMoT.get(baseRequest.collection_id) || null) : null;
+              const threadVariables = (baseRequest.collection_id && varCacheMoT.has(baseRequest.collection_id))
+                ? { ...varCacheMoT.get(baseRequest.collection_id)! }
+                : {};
               const variableContext = {
                 environments,
                 activeEnvId: selectedEnvId,
                 collections,
                 collection: innerActiveCollection || null,
                 variables: threadVariables,
-                signal: controller.signal,
+                signal: motController.signal,
                 useWorker: sandboxEngine === 'worker'
               };
 
+              // P1: Use pre-cloned target template (headers/params safe from store mutation)
+              const baseTemplate = targetTemplates.get(baseRequest.id) || baseRequest;
               requestToExecute = {
-                ...baseRequest,
-                headers: (baseRequest.headers || []).map(h => ({ ...h })),
-                params: (baseRequest.params || []).map(p => ({ ...p })),
-                settings: baseRequest.settings ? { ...baseRequest.settings } : undefined
-              };
-
-              requestToExecute.settings = {
-                ...(requestToExecute.settings || { followRedirects: true, maxRedirects: 10 }),
-                timeout: timeoutMs
+                ...baseTemplate,
+                settings: { ...(baseTemplate.settings || { followRedirects: true, maxRedirects: 10 }), timeout: timeoutMs }
               };
 
               const preScripts = runRequestScripts ? [
@@ -1100,10 +1128,11 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                   }
                 }
               }
+              if (currentRunId !== currentRunIdRef.current) return;
 
               const response = await RequestService.execute(requestToExecute, variableContext);
               if (currentRunId !== currentRunIdRef.current) return;
-              resolvedResponseBody = '[Detailed payload logging suspended for memory optimization]';
+              resolvedResponseBody = PAYLOAD_TRUNCATED;
 
               const testScripts = runRequestScripts ? [
                 activeEnvironment?.test_script,
@@ -1144,12 +1173,10 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 if (retryCount === 0) {
                   retryCount++;
                   completedCountRef.current += 1;
-                  allSamplesRef.current.push({
-                    id: completedCountRef.current,
-                    status: 'AUTH_REFRESH',
-                    success: false,
-                    latency: 0
-                  });
+                  sampleBufferRef.current.writeSample(
+                    completedCountRef.current, new Date().toLocaleTimeString(), 0,
+                    'AUTH_REFRESH', false
+                  );
                   await sleep(150);
                   continue;
                 }
@@ -1177,8 +1204,6 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               }
 
               executedSuccessfully = true;
-            } finally {
-              activeAbortControllersRef.current.delete(controller);
             }
           }
 
@@ -1209,18 +1234,10 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             }
           }
 
-          const newSample = {
-            id: completedCountRef.current,
-            status,
-            success,
-            latency: duration
-          };
-
-          allSamplesRef.current.push(newSample);
-
-          if (allSamplesRef.current.length > 50) {
-            allSamplesRef.current.shift();
-          }
+          sampleBufferRef.current.writeSample(
+            completedCountRef.current, new Date().toLocaleTimeString(), duration,
+            status, success
+          );
 
           // Performance resource and memory pressure monitor
           const mem = (window as any).performance?.memory;
@@ -1234,9 +1251,9 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           memoryPressureLevelRef.current = computedPressure;
 
           // Stability Score Calculation
-          const recentSamples = allSamplesRef.current.slice(-20);
+          const recentSamples = sampleBufferRef.current.readLast(20);
           let passedRecent = 0;
-          let latencyHistoryArray: number[] = [];
+          const latencyHistoryArray: number[] = [];
           recentSamples.forEach(rs => {
             if (rs.success) passedRecent++;
             latencyHistoryArray.push(rs.latency);
@@ -1276,14 +1293,10 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
           if (newGuardState !== guardStateRef.current) {
             guardStateRef.current = newGuardState;
-            setGuardStatus(newGuardState);
-            setAdaptiveThrottle(throttleCoeff);
             adaptiveThrottleRef.current = throttleCoeff;
-            setActivePriorityFocus(activePrio);
             activePriorityFocusRef.current = activePrio;
             
             crashPreventionTriggersCountRef.current++;
-            setCrashPreventionTriggers(crashPreventionTriggersCountRef.current);
           }
 
           if (computedPressure > 88) {
@@ -1299,29 +1312,10 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             break;
           }
 
-          const now = performance.now();
-          if (now - lastUiUpdateTime > 350) {
-            lastUiUpdateTime = now;
-
-            const avg = Math.round(totalLatency / (completedCountRef.current || 1));
-            const succRate = Math.round((successCountRef.current / (completedCountRef.current || 1)) * 100);
-
-            setSamples([...allSamplesRef.current]);
-            setAvgLatency(avg);
-            setMinLatency(minLatencyValue === Infinity ? 0 : minLatencyValue);
-            setMaxLatency(maxLatencyValue === -Infinity ? 0 : maxLatencyValue);
-            setSuccessRate(succRate);
-            setMemoryPressure(memoryPressureLevelRef.current);
-            setStabilityScore(stabilityScoreRef.current);
-
-            const pct = Math.min(100, Math.round((elapsedSec / motDuration) * 100));
-            setProgress(pct);
-
-            setThroughput(parseFloat((completedCountRef.current / (elapsedSec || 1)).toFixed(1)));
-            
             memoryHistoryTimeline.current.push({ time: Math.round(elapsedSec), value: computedPressure });
+            if (memoryHistoryTimeline.current.length > 1000) memoryHistoryTimeline.current.shift();
             stabilityHistoryTimeline.current.push({ time: Math.round(elapsedSec), value: score });
-          }
+            if (stabilityHistoryTimeline.current.length > 1000) stabilityHistoryTimeline.current.shift();
 
           if (completedCountRef.current % 50 === 0) {
             cleanupCyclesRef.current++;
@@ -1335,8 +1329,16 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       };
 
       try {
-        const workerPromises = Array.from({ length: threads }).map((_, id) => runWorkerMoT(id));
-        await Promise.all(workerPromises);
+        const MAX_CONCURRENCY = 6;
+        let nextWorkerIndex = 0;
+        const workerRunners = Array.from({ length: Math.min(MAX_CONCURRENCY, threads) }, async () => {
+          while (isRunningRef.current && currentRunId === currentRunIdRef.current) {
+            const id = nextWorkerIndex++;
+            if (id >= threads) break;
+            await runWorkerMoT(id);
+          }
+        });
+        await Promise.all(workerRunners);
 
         const totalElapsed = (performance.now() - startTimeRef.current) / 1000;
 
@@ -1398,11 +1400,12 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
       } finally {
         setIsRunning(false);
         isRunningRef.current = false;
+        clearInterval(uiIntervalMoT);
         if (minuteTimer.current) {
           clearInterval(minuteTimer.current);
           minuteTimer.current = null;
         }
-        activeAbortControllersRef.current.forEach(c => {
+        [...activeAbortControllersRef.current].forEach(c => {
           try { c.abort(); } catch {}
         });
         activeAbortControllersRef.current.clear();
@@ -1417,7 +1420,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     currentRunIdRef.current++;
     isRunningRef.current = false;
     setIsRunning(false);
-    activeAbortControllersRef.current.forEach(c => {
+    [...activeAbortControllersRef.current].forEach(c => {
       try {
         c.abort();
       } catch {}
@@ -1435,7 +1438,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
 
   // CSV Report with detailed transmission log fields
   const exportCSVReport = () => {
-    const data = allSamplesRef.current;
+    const data = sampleBufferRef.current.read() as any[];
     if (data.length === 0) return;
     const headers = [
       'ID', 'Timestamp', 'Scenario Target Name', 'Method', 'Resolved URL', 

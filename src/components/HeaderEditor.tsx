@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle2, Circle, Edit3, HelpCircle, Variable, ShieldAlert, Sparkles, Check, AlertCircle, ExternalLink } from 'lucide-react';
-import { KeyValue, RequestData } from '../types';
+import { Plus, Trash2, CheckCircle2, Circle, Edit3, Variable, ShieldAlert, Sparkles, Check, AlertCircle, ExternalLink } from 'lucide-react';
+import { KeyValue } from '../types';
 import { cn } from '../lib/utils';
 import { useStore } from '../store/useStore';
 import { VariableService } from '../services/VariableService';
@@ -22,7 +22,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
   const [isBulkEdit, setIsBulkEdit] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [_hoveredRowId, setHoveredRowId] = useState<string | null>(null);
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
 
   // Per-variable hover tooltip state
