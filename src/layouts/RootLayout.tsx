@@ -692,58 +692,42 @@ export const RootLayout: React.FC = () => {
              <button className="p-1.5 text-[#555555] hover:text-[#3ECF8E] transition-all"><Search size={14} /></button>
           </div>
 
-          <div className="h-4 w-px bg-[#222222]" />
+          {isElectron() && (
+            <>
+              <div className="h-4 w-px bg-[#222222]" />
 
-          {/* Desktop Shell Window System controls */}
-          <div className="flex items-center gap-1 ml-1 titlebar-no-drag">
-            <button 
-              onClick={() => {
-                if (isElectron()) {
-                  (window as any).electron?.minimize();
-                } else {
-                  setConsoleCollapsed(!consoleCollapsed);
-                  addToast({ 
-                    type: 'info', 
-                    message: `[SHELL] Core protocol terminal ${!consoleCollapsed ? 'concealed' : 'engaged'}.` 
-                  });
-                }
-              }} 
-              className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-[var(--brand)] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
-              title={isElectron() ? "Minimize Window" : "Toggle Terminal Simulation"}
-            >
-              <span className="w-2.5 h-[2px] bg-current rounded-full" />
-            </button>
-            <button 
-              onClick={() => {
-                if (isElectron()) {
-                  (window as any).electron?.maximize();
-                } else {
-                  setLayoutOrientation(layoutOrientation === 'vertical' ? 'horizontal' : 'vertical');
-                  addToast({ 
-                    type: 'success', 
-                    message: `[SHELL] Sidebar-editor axis rotated dynamically to ${layoutOrientation === 'vertical' ? 'horizontal' : 'vertical'}.` 
-                  });
-                }
-              }} 
-              className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-blue-400 transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
-              title={isElectron() ? "Maximize Window" : "Rotate UI Orientation Grid"}
-            >
-              <span className="w-2 h-2 border-2 border-current rounded-xs" />
-            </button>
-            <button 
-              onClick={() => {
-                if (isElectron()) {
-                  (window as any).electron?.close();
-                } else {
-                  setIsDisconnectDialogOpen(true);
-                }
-              }} 
-              className="p-1.5 rounded-lg hover:bg-red-500/10 text-[#55555C] hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-500/20"
-              title="Terminate Secure Session (Close)"
-            >
-              <Plus className="rotate-45" size={14} />
-            </button>
-          </div>
+              {/* Desktop Shell Window System controls */}
+              <div className="flex items-center gap-1 ml-1 titlebar-no-drag">
+                <button 
+                  onClick={() => {
+                    (window as any).electron?.minimize();
+                  }} 
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-[var(--brand)] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+                  title="Minimize Window"
+                >
+                  <span className="w-2.5 h-[2px] bg-current rounded-full" />
+                </button>
+                <button 
+                  onClick={() => {
+                    (window as any).electron?.maximize();
+                  }} 
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-blue-400 transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+                  title="Maximize Window"
+                >
+                  <span className="w-2 h-2 border-2 border-current rounded-xs" />
+                </button>
+                <button 
+                  onClick={() => {
+                    (window as any).electron?.close();
+                  }} 
+                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-[#55555C] hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-500/20"
+                  title="Terminate Secure Session (Close)"
+                >
+                  <Plus className="rotate-45" size={14} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   X, Play, Square, Activity, FileDown, Clock, Sparkles, CheckCircle2, 
   XCircle, AlertCircle, Database, HelpCircle, Zap, Shield, Search,
-  ChevronDown, ChevronRight, Folder, FolderOpen, Code
+  ChevronDown, ChevronRight, Folder, FolderOpen, Code, SlidersHorizontal
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
@@ -67,7 +67,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [threads, setThreads] = useState(1);
   const [loops, setLoops] = useState(5);
   const [delay, setDelay] = useState(50);
-  const [timeoutMs, setTimeoutMs] = useState(5000);
+  const [timeoutMs, setTimeoutMs] = useState(30000);
   const [stopOnFailure, setStopOnFailure] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
@@ -113,6 +113,8 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
   const [mswResponseType, setMswResponseType] = useState(RequestService.mswConfig.responseType);
   const [mswResponseBody, setMswResponseBody] = useState(RequestService.mswConfig.responseBody);
   const [showMswConfigPanel, setShowMswConfigPanel] = useState(false);
+  const [showSuiteSettings, setShowSuiteSettings] = useState(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'general' | 'scripts' | 'msw'>('general');
 
   const syncMswConfig = (updates: Partial<typeof RequestService.mswConfig>) => {
     const updated = {
@@ -503,17 +505,17 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
     const isSomeChecked = colReqs.some(r => selectedRequestIds.includes(r.id)) && !isAllChecked;
 
     return (
-      <div className="space-y-1 border-b border-[#151518]/30 pb-2 last:border-0">
+      <div className="space-y-1 select-none">
         <div 
-          className="flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-[#09090B]/60 border border-[#151518] hover:border-[#222] cursor-pointer group"
+          className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-white/[0.02] cursor-pointer group transition-colors text-[#88888F] hover:text-white h-9"
           onClick={() => toggleNode(collection.id)}
         >
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[#555] hover:text-[#888] p-0.5">
-              {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+              {isExpanded ? <ChevronDown size={12} className="text-[#3ECF8E]" /> : <ChevronRight size={12} className="text-[#444]" />}
             </span>
-            <Database size={12} className="text-[#3ECF8E]" />
-            <span className="text-[10px] font-mono text-[#E0E0E6] truncate uppercase tracking-widest font-black">
+            <Database size={12} className={isExpanded ? "text-[#3ECF8E]" : "text-[#55555C]"} />
+            <span className="text-[10px] font-mono font-bold tracking-wider uppercase truncate">
               {collection.name}
             </span>
           </div>
@@ -530,12 +532,12 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               handleToggleCollection(collection);
             }}
             onClick={(e) => e.stopPropagation()}
-            className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+            className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer mr-1"
           />
         </div>
 
         {isExpanded && (
-          <div className="space-y-1 pl-2 border-l border-[#151518] ml-4 mt-1.5">
+          <div className="space-y-1 pl-2 border-l border-[#151518]/60 ml-4 mt-1">
             {/* Root-level Requests */}
             {collection.requests?.filter(r => !r.folder_id).map((req: RequestData) => {
               const isChecked = selectedRequestIds.includes(req.id);
@@ -958,10 +960,21 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               success = false;
               status = response.statusText;
               try {
-                const bodyObj = JSON.parse(response.body);
-                errorMsg = bodyObj?.error || bodyObj?.diagnostics?.message || response.statusText;
+                let bodyObj = response.body;
+                if (typeof bodyObj === 'string') {
+                  try {
+                    bodyObj = JSON.parse(bodyObj);
+                  } catch {}
+                }
+                if (bodyObj && typeof bodyObj === 'object') {
+                  errorMsg = bodyObj.error || bodyObj.message || bodyObj.diagnostics?.message || JSON.stringify(bodyObj);
+                } else {
+                  errorMsg = response.body || response.statusText;
+                }
               } catch {
-                errorMsg = response.body || response.statusText;
+                errorMsg = typeof response.body === 'object' && response.body !== null
+                  ? (response.body.error || response.body.message || JSON.stringify(response.body))
+                  : String(response.body || response.statusText);
               }
             } else if (testOut.results.some(r => r.status === 'fail')) {
               success = false;
@@ -988,13 +1001,17 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
           if (duration > maxLatencyValue) maxLatencyValue = duration;
           if (success) successCount++;
 
+          const finalErrorMsg = (typeof errorMsg === 'object' && errorMsg !== null)
+            ? ((errorMsg as any).error || (errorMsg as any).message || JSON.stringify(errorMsg))
+            : (errorMsg ? String(errorMsg) : undefined);
+
           const newSample = {
             id: completedCount,
             timestamp: new Date().toLocaleTimeString(),
             latency: duration,
             status,
             success,
-            error: errorMsg || undefined,
+            error: finalErrorMsg,
             requestName: baseRequest.name,
             requestMethod: baseRequest.method
           };
@@ -1330,10 +1347,21 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 success = false;
                 status = response.statusText;
                 try {
-                  const bodyObj = JSON.parse(response.body);
-                  errorMsg = bodyObj?.error || bodyObj?.diagnostics?.message || response.statusText;
+                  let bodyObj = response.body;
+                  if (typeof bodyObj === 'string') {
+                    try {
+                      bodyObj = JSON.parse(bodyObj);
+                    } catch {}
+                  }
+                  if (bodyObj && typeof bodyObj === 'object') {
+                    errorMsg = bodyObj.error || bodyObj.message || bodyObj.diagnostics?.message || JSON.stringify(bodyObj);
+                  } else {
+                    errorMsg = response.body || response.statusText;
+                  }
                 } catch {
-                  errorMsg = response.body || response.statusText;
+                  errorMsg = typeof response.body === 'object' && response.body !== null
+                    ? (response.body.error || response.body.message || JSON.stringify(response.body))
+                    : String(response.body || response.statusText);
                 }
               } else if (testOut.results.some(r => r.status === 'fail')) {
                 success = false;
@@ -1424,11 +1452,16 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             }
           }
 
+          const finalErrorMsg = (typeof errorMsg === 'object' && errorMsg !== null)
+            ? ((errorMsg as any).error || (errorMsg as any).message || JSON.stringify(errorMsg))
+            : (errorMsg ? String(errorMsg) : undefined);
+
           const newSample = {
             id: completedCountRef.current,
             status,
             success,
-            latency: duration
+            latency: duration,
+            error: finalErrorMsg
           };
 
           allSamplesRef.current.push(newSample);
@@ -1436,7 +1469,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
             ...newSample,
             statusCode,
             responsePreview,
-            error: errorMsg || undefined,
+            error: finalErrorMsg,
             requestName: baseRequest.name,
             requestMethod: baseRequest.method,
             timestamp: new Date().toLocaleTimeString()
@@ -1874,21 +1907,21 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
         
         {/* Header bar */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#151518] bg-[#09090B]">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex items-center justify-center">
-              <Activity size={18} className="text-[#3ECF8E] animate-pulse" />
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-8 h-8 rounded-lg bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex items-center justify-center">
+              <Activity size={14} className="text-[#3ECF8E] animate-pulse" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider font-mono">Smoke & Performance Suite</h3>
-              <p className="text-[10px] text-[#55555C] font-mono mt-0.5">Deploy bulk scenarios in parallel with real-time outcome analytics</p>
+              <h3 className="text-[11px] font-black text-white uppercase tracking-widest font-mono">Smoke & Performance Suite</h3>
+              <p className="text-[8px] text-[#55555C] font-mono leading-relaxed mt-0.5 uppercase">Deploy bulk scenarios in parallel with real-time outcome analytics</p>
             </div>
           </div>
           <button 
             onClick={onClose} 
             disabled={isRunning}
-            className="p-2 text-[#55555C] hover:text-white bg-white/[0.02] hover:bg-white/[0.05] rounded-xl transition-all cursor-pointer disabled:opacity-30"
+            className="p-1 px-2 text-[10px] text-zinc-400 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] rounded border border-white/[0.05] cursor-pointer disabled:opacity-30"
           >
-            <X size={16} />
+            CLOSE
           </button>
         </div>
 
@@ -1904,37 +1937,37 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 <span className="text-[8px] font-mono text-[#444] mt-1">Cannot alter configurations during active deployment run.</span>
               </div>
             )}
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-3 text-left">
               <div className="flex items-center justify-between">
                 <label className="text-[9px] font-black text-[#555] uppercase tracking-wider font-mono">Scenarios Checklist</label>
                 <span className="text-[9px] font-bold font-mono text-[#3ECF8E]">{selectedRequestIds.length} SELECTED</span>
               </div>
               
               <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" />
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#444]" />
                 <input
                   type="text"
-                  placeholder="Search targets..."
+                  placeholder="SEARCH TARGET SCENARIOS..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#050507] border border-[#151518] pl-8 pr-3 py-1.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
+                  className="w-full bg-[#050508] border border-[#151518] pl-7 pr-3 py-1.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 placeholder:text-[#333]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2 pt-1 font-mono">
                 <button
                   onClick={handleSelectAll}
                   disabled={isRunning}
-                  className="py-1 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 text-[#3ECF8E] hover:bg-[#3ECF8E]/20 text-[9px] font-black text-center cursor-pointer font-mono"
+                  className="py-1 px-2.5 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/15 text-[#3ECF8E] hover:bg-[#3ECF8E]/25 text-[8px] font-black uppercase tracking-wider text-center cursor-pointer transition-colors"
                 >
-                  SELECT ALL
+                  Select All
                 </button>
                 <button
                   onClick={handleClearAll}
                   disabled={isRunning}
-                  className="py-1 rounded bg-[#1C1C22]/30 border border-[#222226] text-[#888] hover:bg-[#1C1C22]/50 text-[9px] font-black text-center cursor-pointer font-mono"
+                  className="py-1 px-2.5 rounded bg-transparent border border-[#151518] text-[#555] hover:text-[#888] text-[8px] font-black uppercase tracking-wider text-center cursor-pointer transition-colors"
                 >
-                  CLEAR
+                  Clear All
                 </button>
               </div>
             </div>
@@ -1949,12 +1982,12 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                     <div 
                       key={item.request.id} 
                       className={cn(
-                        "flex items-center justify-between py-1.5 px-2 rounded-xl border border-[#151518] bg-[#09090B]/40 hover:border-[#222] transition-all cursor-pointer select-none",
-                        isChecked && "bg-[#3ECF8E]/[0.01]"
+                        "flex items-center justify-between py-1.5 px-2 rounded hover:bg-white/[0.02] cursor-pointer transition-all select-none text-left",
+                        isChecked ? "bg-[#3ECF8E]/[0.01]" : "bg-transparent"
                       )}
                       onClick={() => handleToggleRequest(item.request.id)}
                     >
-                      <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className={cn(
                             "text-[6px] font-bold px-1 rounded font-mono uppercase tracking-tight shrink-0",
@@ -1985,196 +2018,91 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               )}
               
               {((searchQuery && filteredRequests.length === 0) || (!searchQuery && collections.length === 0)) && (
-                <div className="text-center py-16 text-[#444] italic font-mono text-[10px]">No scenarios target match</div>
+                <div className="text-center py-16 text-zinc-500 italic font-sans text-xs">No scenarios match query</div>
               )}
             </div>
           </div>
 
           {/* Right panel: execution setup and diagnostics */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#050507]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[#050508]">
             
-            {/* Top configuration options */}
-            <div className="p-4 border-b border-[#151518] bg-[#070709] grid grid-cols-12 gap-3 relative">
+            {/* Top configuration options replaced with action ribbon */}
+            <div className="flex items-center justify-between p-4 border-b border-[#151518]/60 bg-[#070709] relative text-left select-none">
               {isRunning && (
                 <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex items-center justify-center p-4 text-center gap-2 select-none">
-                  <Shield className="text-[#3ECF8E]/40 animate-pulse" size={14} />
-                  <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em]">Configuration Locked</span>
-                  <span className="text-[8px] font-mono text-[#555]">&bull; Smoke testing active run in progress</span>
+                  <Shield className="text-[#555] animate-pulse" size={14} />
+                  <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em] animate-pulse">Running Smoke Suite</span>
                 </div>
               )}
-              <div className="col-span-12 grid grid-cols-12 gap-3">
-                <div className="col-span-12 xl:col-span-8 bg-[#09090B]/60 border border-[#151518] rounded-2xl p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[9px] font-black text-white uppercase tracking-wider font-mono">Execution Profile</h4>
-                    <span className="text-[7px] font-black text-[#3ECF8E] bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 px-2 py-0.5 rounded-md uppercase tracking-wider font-mono">Optimized</span>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono block">Environment</label>
-                      <select
-                        disabled={isRunning}
-                        value={selectedEnvId || ''}
-                        onChange={(e) => setSelectedEnvId(e.target.value || null)}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
-                      >
-                        <option value="">No Active Environment</option>
-                        {environments.map(env => (
-                          <option key={env.id} value={env.id}>{env.name}</option>
-                        ))}
-                      </select>
-                    </div>
+              
+              {/* Left summary details of the active suite params */}
+              <div className="flex flex-wrap items-center gap-1.5 max-w-[80%]">
+                <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest font-mono mr-1">
+                  Active Suite Parameters:
+                </span>
+                
+                {/* Env Indicator */}
+                <span className="text-[8px] text-sky-400 font-black uppercase bg-sky-500/10 border border-sky-500/15 px-1.5 py-0.5 rounded font-mono tracking-wider">
+                  Env: {environments.find(e => e.id === selectedEnvId)?.name || 'NONE'}
+                </span>
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Threads</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={20}
-                        disabled={isRunning}
-                        value={threads}
-                        onChange={(e) => setThreads(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                      />
-                    </div>
+                {/* Worker counts */}
+                <span className="text-[8px] text-[#3ECF8E] font-black uppercase bg-[#3ECF8E]/10 border border-[#3ECF8E]/15 px-1.5 py-0.5 rounded font-mono tracking-wider">
+                  {threads} {threads === 1 ? 'Workthread' : 'Workthreads'} • {loops} {loops === 1 ? 'Loop' : 'Loops'}
+                </span>
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Loops</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        disabled={isRunning}
-                        value={loops}
-                        onChange={(e) => setLoops(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                      />
-                    </div>
+                {/* Latencies & delay */}
+                <span className="text-[8px] text-[#888] font-black uppercase bg-zinc-900 border border-[#151518] px-1.5 py-0.5 rounded font-mono tracking-wider">
+                  Delay: {delay}ms • Timeout: {timeoutMs}ms
+                </span>
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Delay (ms)</label>
-                      <input
-                        type="number"
-                        disabled={isRunning}
-                        value={delay}
-                        onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                      />
-                    </div>
+                {/* sandbox engine */}
+                <span className="text-[8px] text-purple-400 font-black uppercase bg-purple-500/10 border border-purple-500/15 px-1.5 py-0.5 rounded font-mono tracking-wider">
+                  Engine: {sandboxEngine === 'worker' ? 'WorkerPool' : 'InThread'}
+                </span>
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono">Timeout (ms)</label>
-                      <input
-                        type="number"
-                        disabled={isRunning}
-                        value={timeoutMs}
-                        onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-[#666] uppercase tracking-wider font-mono block">Engine</label>
-                      <select
-                        disabled={isRunning}
-                        value={sandboxEngine}
-                        onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
-                        className="w-full h-8 bg-[#050508] border border-[#151518] px-2.5 rounded-lg text-[10px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 cursor-pointer"
-                      >
-                        <option value="in-thread">In-Thread</option>
-                        <option value="worker">Isolated Worker</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-span-12 xl:col-span-4 bg-[#09090B]/60 border border-[#151518] rounded-2xl p-3.5 space-y-2.5">
-                  <h4 className="text-[9px] font-black text-white uppercase tracking-wider font-mono">Reliability & Integrations</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
-                      Abort on Fail
-                      <input
-                        type="checkbox"
-                        checked={stopOnFailure}
-                        disabled={isRunning}
-                        onChange={(e) => setStopOnFailure(e.target.checked)}
-                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
-                      Run Scripts
-                      <input
-                        type="checkbox"
-                        checked={runRequestScripts}
-                        disabled={isRunning}
-                        onChange={(e) => setRunRequestScripts(e.target.checked)}
-                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
-                      Save Temp DB Logs
-                      <input
-                        type="checkbox"
-                        checked={saveTempLogs}
-                        disabled={isRunning}
-                        onChange={(e) => setSaveTempLogs(e.target.checked)}
-                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
-                      />
-                    </label>
-
-                    <label className="flex items-center justify-between h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#AAA] uppercase tracking-wider font-mono cursor-pointer">
-                      Virtual MSW
-                      <input
-                        type="checkbox"
-                        checked={mswEnabled}
-                        disabled={isRunning}
-                        onChange={(e) => {
-                          const val = e.target.checked;
-                          setMswEnabled(val);
-                          syncMswConfig({ enabled: val });
-                        }}
-                        className="w-3.5 h-3.5 rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      disabled={isRunning}
-                      onClick={() => setShowMswConfigPanel((prev) => !prev)}
-                      className="h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#888] hover:text-purple-400 hover:border-purple-500/20 uppercase tracking-wider font-mono transition-all cursor-pointer"
-                    >
-                      {showMswConfigPanel ? 'Hide MSW Config' : 'Open MSW Config'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isRunning}
-                      onClick={() => setShowScriptDrawer((prev) => !prev)}
-                      className="h-8 px-2.5 rounded-lg bg-[#050508] border border-[#151518] text-[8px] font-black text-[#888] hover:text-amber-400 hover:border-amber-500/20 uppercase tracking-wider font-mono transition-all cursor-pointer"
-                    >
-                      {showScriptDrawer ? 'Hide Dynamic Suite-Level' : 'Open Dynamic Suite-Level'}
-                    </button>
-                  </div>
-                </div>
+                {/* Indicators flags if active */}
+                {stopOnFailure && (
+                  <span className="text-[8px] text-red-500 font-black uppercase bg-red-500/10 border border-red-500/15 px-1.5 py-0.5 rounded font-mono tracking-wider animate-pulse">
+                    Abort-On-Fail
+                  </span>
+                )}
+                {runRequestScripts && (
+                  <span className="text-[8px] text-amber-500 font-black uppercase bg-amber-500/10 border border-amber-500/15 px-1.5 py-0.5 rounded font-mono tracking-wider">
+                    Scripts
+                  </span>
+                )}
+                {mswEnabled && (
+                  <span className="text-[8px] text-pink-500 font-black uppercase bg-pink-500/10 border border-pink-500/15 px-1.5 py-0.5 rounded font-mono tracking-wider">
+                    Virtual MSW Override
+                  </span>
+                )}
               </div>
 
+              {/* Right Settings Toggle button */}
+              <button
+                onClick={() => setShowSuiteSettings(true)}
+                disabled={isRunning}
+                className="flex items-center gap-1.5 h-7 px-3 text-[9px] font-black text-zinc-300 hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 bg-[#09090C] border border-[#151518] rounded-xl transition-all cursor-pointer disabled:opacity-30 uppercase font-mono"
+              >
+                <SlidersHorizontal size={11} />
+                Suite Settings
+              </button>
             </div>
 
             {/* Middle telemetry & graphs view */}
             <div className="p-6 space-y-6 flex-1 flex flex-col overflow-y-auto no-scrollbar">
 
               {/* Runner Mode Selection Tab */}
-              <div className="flex bg-[#0A0A0F] p-1 rounded-xl border border-[#151518] w-full max-w-lg select-none relative shrink-0">
+              <div className="flex bg-[#050508] p-1 rounded-xl border border-[#151518] w-full max-w-sm select-none relative shrink-0">
                 {isRunning && (
                   <div className="absolute inset-0 bg-transparent z-40 cursor-not-allowed" />
                 )}
                 <button
                   onClick={() => setRunnerMode('loop')}
                   className={cn(
-                    "flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono text-center outline-none",
-                    runnerMode === 'loop' ? "bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/15" : "text-[#55555C] hover:text-[#888]"
+                    "flex-1 py-1 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono text-center outline-none border-0",
+                    runnerMode === 'loop' ? "bg-[#3ECF8E]/10 border border-[#3ECF8E]/15 text-[#3ECF8E]" : "text-[#555] hover:text-[#888]"
                   )}
                 >
                   Loop-based Scenario Runner
@@ -2182,205 +2110,15 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 <button
                   onClick={() => setRunnerMode('mot')}
                   className={cn(
-                    "flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono text-center outline-none",
-                    runnerMode === 'mot' ? "bg-amber-500/10 text-amber-500 border border-amber-500/15" : "text-[#55555C] hover:text-[#888]"
+                    "flex-1 py-1 px-3 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono text-center outline-none border-0",
+                    runnerMode === 'mot' ? "bg-amber-500/10 border border-amber-500/15 text-amber-500" : "text-[#555] hover:text-[#888]"
                   )}
                 >
-                  Minutes of Testing (MoT Endurance Engine)
+                  Minutes of Testing (MoT Engine)
                 </button>
               </div>
 
-              {/* MSW Virtual API Mocking Service Section */}
-              <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className={cn(
-                      "p-2 rounded-xl border transition-all duration-300",
-                      mswEnabled 
-                        ? "bg-purple-500/10 border-purple-500/20 text-purple-400 animate-pulse" 
-                        : "bg-[#101012] border-[#1C1C22] text-[#555]"
-                    )}>
-                      <Shield size={16} />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-[#E4E4E7] font-mono flex items-center gap-1.5">
-                        Virtual MSW Network Interceptor
-                        {mswEnabled && (
-                          <span className="text-[7.5px] bg-purple-500/10 text-purple-400 border border-purple-500/20 font-mono px-1.5 py-0.5 rounded tracking-widest uppercase font-black animate-pulse">
-                            Active Intercept
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-[8px] text-[#55555C] font-mono leading-relaxed uppercase mt-0.5">
-                        Replaces network socket fetches with instant, zero-latency micro-responses to prevent loop-based execution Out Of Memory (OOM) leaks.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 pl-4">
-                    <input
-                      type="checkbox"
-                      checked={mswEnabled}
-                      disabled={isRunning}
-                      onChange={(e) => {
-                        const val = e.target.checked;
-                        setMswEnabled(val);
-                        syncMswConfig({ enabled: val });
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4 bg-[#151518] rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-[#555] peer-checked:after:bg-purple-400 after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500/10 border border-[#222] peer-checked:border-purple-400/30" />
-                  </label>
-                </div>
 
-                {/* Expanded configuration metrics controls */}
-                {mswEnabled && (
-                  <div className="pt-3 border-t border-[#121215] grid grid-cols-12 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    
-                    {/* Status Code Selection */}
-                    <div className="col-span-4 space-y-1.5 text-left">
-                      <label className="text-[9px] font-black text-purple-400 uppercase tracking-wider font-mono block">Mock HTTP Status</label>
-                      <select
-                        disabled={isRunning}
-                        value={mswStatus}
-                        onChange={(e) => {
-                          const code = parseInt(e.target.value) || 200;
-                          let text = 'OK';
-                          if (code === 201) text = 'Created';
-                          if (code === 204) text = 'No Content';
-                          if (code === 400) text = 'Bad Request';
-                          if (code === 401) text = 'Unauthorized';
-                          if (code === 403) text = 'Forbidden';
-                          if (code === 404) text = 'Not Found';
-                          if (code === 429) text = 'Too Many Requests';
-                          if (code === 500) text = 'Internal Server Error';
-                          
-                          setMswStatus(code);
-                          setMswStatusText(text);
-                          syncMswConfig({ status: code, statusText: text });
-                        }}
-                        className="w-full bg-[#050508] border border-[#151518] px-3 py-2 rounded-xl text-[11px] font-mono text-white outline-none focus:border-purple-500/30"
-                      >
-                        <option value={200}>200 OK</option>
-                        <option value={201}>201 Created</option>
-                        <option value={204}>204 No Content</option>
-                        <option value={400}>400 Bad Request</option>
-                        <option value={401}>401 Unauthorized</option>
-                        <option value={403}>403 Forbidden</option>
-                        <option value={404}>404 Not Found</option>
-                        <option value={429}>429 Too Many Requests</option>
-                        <option value={505}>500 Internal Server Error</option>
-                      </select>
-                      <p className="text-[8px] text-[#55555C] font-mono uppercase">Simulated status return</p>
-                    </div>
-
-                    {/* Mock Latency slider */}
-                    <div className="col-span-4 space-y-1.5 text-left">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[9px] font-black text-purple-400 uppercase tracking-wider font-mono">Mock Latency (ms)</label>
-                        <span className="text-[9px] font-mono font-bold text-white">{mswLatency}ms</span>
-                      </div>
-                      <input
-                        type="range"
-                        disabled={isRunning}
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={mswLatency}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value) || 0;
-                          setMswLatency(val);
-                          syncMswConfig({ latency: val });
-                        }}
-                        className="w-full accent-purple-500 bg-[#050508] h-1.5 rounded-lg appearance-none cursor-pointer mt-2.5 border border-[#151518]"
-                      />
-                      <p className="text-[8px] text-[#55555C] font-mono uppercase">Keeps runs super fast and steady</p>
-                    </div>
-
-                    {/* Template Selections */}
-                    <div className="col-span-4 space-y-1.5 text-left">
-                      <label className="text-[9px] font-black text-purple-400 uppercase tracking-wider font-mono block">Preset Fast-Mock Payload</label>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          disabled={isRunning}
-                          onClick={() => {
-                            const body = '{\n  "status": "success",\n  "msw_mocked": true,\n  "message": "Auth Session Active",\n  "token": "msw_jwt_mocked_token_sequence_xyz123"\n}';
-                            setMswResponseBody(body);
-                            syncMswConfig({ responseBody: body, responseType: 'json' });
-                          }}
-                          className="py-1 px-2 text-[8px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/20 hover:bg-purple-500/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap uppercase font-mono cursor-pointer"
-                        >
-                          🔐 AUTH
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isRunning}
-                          onClick={() => {
-                            const body = '{\n  "status": "success",\n  "count": 3,\n  "users": [\n    {"id": 1, "name": "John Doe", "role": "admin"},\n    {"id": 2, "name": "Jane Smith", "role": "editor"},\n    {"id": 3, "name": "Bob Martin", "role": "viewer"}\n  ]\n}';
-                            setMswResponseBody(body);
-                            syncMswConfig({ responseBody: body, responseType: 'json' });
-                          }}
-                          className="py-1 px-2 text-[8px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/20 hover:bg-purple-500/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap uppercase font-mono cursor-pointer"
-                        >
-                          👥 USERS
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isRunning}
-                          onClick={() => {
-                            const body = '{\n  "status": "healthy",\n  "uptime_secs": 18231,\n  "engine": "v8-isolated-context"\n}';
-                            setMswResponseBody(body);
-                            syncMswConfig({ responseBody: body, responseType: 'json' });
-                          }}
-                          className="py-1 px-2 text-[8px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/20 hover:bg-purple-500/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap uppercase font-mono cursor-pointer"
-                        >
-                          💚 HEALTH
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isRunning}
-                          onClick={() => {
-                            const body = 'OK';
-                            setMswResponseBody(body);
-                            setMswResponseType('text');
-                            syncMswConfig({ responseBody: body, responseType: 'text' });
-                          }}
-                          className="py-1 px-2 text-[8px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/20 hover:bg-purple-500/5 transition-all text-ellipsis overflow-hidden whitespace-nowrap uppercase font-mono cursor-pointer"
-                        >
-                          📄 PLAIN OK
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Response Payload Text Editor Box */}
-                    <div className="col-span-12 space-y-1.5 pt-2 text-left">
-                      <label className="text-[9px] font-black text-purple-400 uppercase tracking-wider font-mono block">Custom MSW Intercepted Response JSON Body</label>
-                      <textarea
-                        disabled={isRunning}
-                        rows={3}
-                        value={mswResponseBody}
-                        onChange={(e) => {
-                          const body = e.target.value;
-                          setMswResponseBody(body);
-                          syncMswConfig({ responseBody: body });
-                        }}
-                        className="w-full bg-[#050508] border border-[#151518] px-3.5 py-2.5 rounded-xl text-[10px] font-mono text-white outline-none focus:border-purple-500/30 no-scrollbar select-text leading-relaxed font-semibold transition-all"
-                        placeholder="Paste or write mock JSON response payload returned by MSW service handler..."
-                      />
-                      <div className="flex items-center justify-between text-[7.5px] text-[#555] font-mono uppercase">
-                        <span>* MSW intercept overrides actual request execution for loop tests</span>
-                        {mswResponseType === 'json' ? (
-                          <span className="text-purple-400/80 font-black">VALIDATED JSON CONTENTTYPE</span>
-                        ) : (
-                          <span className="text-amber-500/80 font-black">RAW TEXT CONTENTTYPE</span>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-              </div>
 
               {/* MoT Extra Settings Parameters inputs */}
               {runnerMode === 'mot' && (
@@ -2486,47 +2224,7 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
                 </div>
               )}
 
-              {/* Suite Automation scripts drawer */}
-              <div className="bg-[#09090B]/60 border border-[#151518] rounded-2xl p-4 space-y-3 relative">
-                {isRunning && (
-                  <div className="absolute inset-0 bg-black/75 backdrop-blur-[1px] z-30 flex items-center justify-center p-3 text-center gap-2 rounded-2xl select-none">
-                    <Shield className="text-amber-500/40" size={12} />
-                    <span className="text-[9px] font-mono font-black text-[#888] uppercase tracking-[0.2em]">Scripts Locked</span>
-                  </div>
-                )}
-                <button
-                  onClick={() => setShowScriptDrawer(!showScriptDrawer)}
-                  className="w-full flex items-center justify-between text-[10px] font-black text-amber-500 uppercase tracking-widest font-mono hover:text-amber-400 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5"><Code size={12} /> Dynamic Suite-Level Script Runners</span>
-                  <span className="text-[8px] border border-amber-500/30 px-1.5 py-0.5 rounded font-bold font-mono">
-                    {showScriptDrawer ? 'COLLAPSE CODE AREA' : 'EXPAND CODE AREA'}
-                  </span>
-                </button>
-                
-                {showScriptDrawer && (
-                  <div className="grid grid-cols-2 gap-4 pt-2 animate-in fade-in duration-200">
-                    <div className="space-y-1.5">
-                      <label className="text-[8px] font-black text-[#555] uppercase block font-mono">Suite Pre-request Script (javascript)</label>
-                      <textarea
-                        value={suitePreScript}
-                        onChange={(e) => setSuitePreScript(e.target.value)}
-                        placeholder="// Modify or dynamically mock target requests before transmission..."
-                        className="w-full h-24 bg-[#050508] border border-[#151518] p-2.5 rounded-xl text-[9px] font-mono text-white outline-none focus:border-amber-500/30 resize-none font-normal"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[8px] font-black text-[#555] uppercase block font-mono">Suite Assertion Test Verification (javascript)</label>
-                      <textarea
-                        value={suiteTestScript}
-                        onChange={(e) => setSuiteTestScript(e.target.value)}
-                        placeholder="// Execute test assertions on the responses returned..."
-                        className="w-full h-24 bg-[#050508] border border-[#151518] p-2.5 rounded-xl text-[9px] font-mono text-white outline-none focus:border-amber-500/30 resize-none font-normal"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
+
 
               {renderLatencyGraph()}
 
@@ -3142,6 +2840,474 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
               </button>
             </div>
           </motion.div>
+        </div>
+      )}
+
+      {/* Smoke Suite Settings Modal */}
+      {showSuiteSettings && (
+        <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-3xl bg-[#09090C] border border-[#1C1C22] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-[#1C1C22] bg-[#0C0C10] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 flex items-center justify-center">
+                  <SlidersHorizontal size={14} className="text-[#3ECF8E]" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest font-mono">
+                    Suite Settings & Reliability Config
+                  </h3>
+                  <p className="text-[8px] text-[#55555C] font-mono uppercase tracking-widest mt-0.5 leading-none">
+                    Configure threads, limits, mock response structures, and assertion triggers
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSuiteSettings(false)}
+                className="p-1.5 rounded-lg hover:bg-white/[0.05] text-[#55555C] hover:text-white transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Tab Navigation header */}
+            <div className="px-5 py-2 border-b border-[#1C1C22]/60 bg-[#070709] flex gap-2 select-none shrink-0 font-mono">
+              <button
+                type="button"
+                onClick={() => setSettingsActiveTab('general')}
+                className={`px-3 py-1.5 text-[8.5px] font-black uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  settingsActiveTab === 'general'
+                    ? 'bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/20 shadow-sm shadow-[#3ECF8E]/5'
+                    : 'text-[#666] hover:text-[#999] border border-transparent'
+                }`}
+              >
+                ⚙️ Profiles & General
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsActiveTab('scripts')}
+                className={`px-3 py-1.5 text-[8.5px] font-black uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  settingsActiveTab === 'scripts'
+                    ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm shadow-amber-500/5'
+                    : 'text-[#666] hover:text-[#999] border border-transparent'
+                }`}
+              >
+                📝 Suite Scripts
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettingsActiveTab('msw')}
+                className={`px-3 py-1.5 text-[8.5px] font-black uppercase tracking-wider rounded transition-all cursor-pointer ${
+                  settingsActiveTab === 'msw'
+                    ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20 shadow-sm shadow-purple-500/5'
+                    : 'text-[#666] hover:text-[#999] border border-transparent'
+                }`}
+              >
+                🛡️ MSW Interceptor
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 bg-[#050508] select-none no-scrollbar">
+              
+              {settingsActiveTab === 'general' && (
+                <div className="space-y-5 animate-in fade-in duration-200">
+                  {/* Profile setup: threads & limits */}
+                  <div className="space-y-3">
+                    <h4 className="text-[9px] font-black text-[#555] uppercase tracking-wider font-mono border-b border-[#151518]/60 pb-1.5 leading-none">
+                      Execution Performance Profiles
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Environment Scope</label>
+                        <select
+                          disabled={isRunning}
+                          value={selectedEnvId || ''}
+                          onChange={(e) => setSelectedEnvId(e.target.value || null)}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[10px] font-mono text-zinc-300 outline-none focus:border-[#3ECF8E]/30 cursor-pointer uppercase font-bold"
+                        >
+                          <option value="">No Environment</option>
+                          {environments.map(env => (
+                            <option key={env.id} value={env.id}>{env.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Concurrent Threads (1-20)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          disabled={isRunning}
+                          value={threads}
+                          onChange={(e) => setThreads(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Loops Per Thread (1-100)</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          disabled={isRunning}
+                          value={loops}
+                          onChange={(e) => setLoops(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Delay Between Runs (ms)</label>
+                        <input
+                          type="number"
+                          disabled={isRunning}
+                          value={delay}
+                          onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Socket Timeout Limit (ms)</label>
+                        <input
+                          type="number"
+                          disabled={isRunning}
+                          value={timeoutMs}
+                          onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 font-bold"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[8px] font-black text-[#888] uppercase tracking-wider font-mono block">Sandbox Isolation engine</label>
+                        <select
+                          disabled={isRunning}
+                          value={sandboxEngine}
+                          onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
+                          className="w-full h-8 bg-[#09090C] border border-[#1C1C22] px-2 rounded-lg text-[10px] font-mono text-zinc-300 outline-none focus:border-[#3ECF8E]/30 cursor-pointer uppercase font-bold"
+                        >
+                          <option value="in-thread">In-Thread (Main Engine)</option>
+                          <option value="worker">Worker Pool (Isolate)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reliability toggles */}
+                  <div className="space-y-3">
+                    <h4 className="text-[9px] font-black text-[#555] uppercase tracking-wider font-mono border-b border-[#151518]/60 pb-1.5 leading-none">
+                      Reliability Guard & Automation Toggles
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <label className="flex items-center justify-between h-8.5 px-3 rounded-xl bg-[#09090C]/60 border border-[#151518]/80 text-[8px] font-black uppercase tracking-wider text-[#888] cursor-pointer hover:border-[#1C1C22] hover:text-white select-none transition-all">
+                        Abort on failure
+                        <input
+                          type="checkbox"
+                          checked={stopOnFailure}
+                          disabled={isRunning}
+                          onChange={(e) => setStopOnFailure(e.target.checked)}
+                          className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer ml-2"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between h-8.5 px-3 rounded-xl bg-[#09090C]/60 border border-[#151518]/80 text-[8px] font-black uppercase tracking-wider text-[#888] cursor-pointer hover:border-[#1C1C22] hover:text-white select-none transition-all">
+                        execute scripts
+                        <input
+                          type="checkbox"
+                          checked={runRequestScripts}
+                          disabled={isRunning}
+                          onChange={(e) => setRunRequestScripts(e.target.checked)}
+                          className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer ml-2"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between h-8.5 px-3 rounded-xl bg-[#09090C]/60 border border-[#151518]/80 text-[8px] font-black uppercase tracking-wider text-[#888] cursor-pointer hover:border-[#1C1C22] hover:text-white select-none transition-all">
+                        archive logs
+                        <input
+                          type="checkbox"
+                          checked={saveTempLogs}
+                          disabled={isRunning}
+                          onChange={(e) => setSaveTempLogs(e.target.checked)}
+                          className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer ml-2"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between h-8.5 px-3 rounded-xl bg-[#09090C]/60 border border-[#151518]/80 text-[8px] font-black uppercase tracking-wider text-[#888] cursor-pointer hover:border-[#1C1C22] hover:text-white select-none transition-all">
+                        VIRTUAL MSW OVERRIDE
+                        <input
+                          type="checkbox"
+                          checked={mswEnabled}
+                          disabled={isRunning}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setMswEnabled(val);
+                            syncMswConfig({ enabled: val });
+                          }}
+                          className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer ml-2"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsActiveTab === 'scripts' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  <div className="bg-[#09090C]/40 border border-[#151518] rounded-xl p-3.5 text-left select-none font-mono">
+                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block mb-1">
+                      💡 Dynamic Scripting Integration Guide
+                    </span>
+                    <p className="text-[8.5px] text-[#777] leading-relaxed">
+                      Scripts run synchronously inside secure isolated JavaScript threads. Use the <code className="text-amber-400 font-bold">pm.*</code> style sandbox functions: <code className="text-[#3ECF8E]">pm.environment.set(key, val)</code>, <code className="text-[#3ECF8E]">pm.response.json()</code>, and <code className="text-[#3ECF8E]">pm.expect()</code> for asserting status and fields.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 text-left">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[8px] font-black text-amber-500 uppercase block font-mono">
+                          Suite Pre-request Script (javascript)
+                        </label>
+                        <span className="text-[7.5px] font-mono text-[#555]">Runs before each scenario request</span>
+                      </div>
+                      <textarea
+                        value={suitePreScript}
+                        disabled={isRunning}
+                        onChange={(e) => setSuitePreScript(e.target.value)}
+                        rows={12}
+                        placeholder="// Modify or dynamically mock configurations before sending...
+// Example:
+// pm.variables.set('timestamp', Date.now());"
+                        className="w-full bg-[#09090C] border border-[#1C1C22] p-3 rounded-xl text-[10px] font-mono text-zinc-100 outline-none focus:border-amber-500/30 font-semibold select-text"
+                      />
+                    </div>
+
+                    <div className="space-y-2 text-left">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[8px] font-black text-amber-500 uppercase block font-mono">
+                          Suite Assertion Test verification (javascript)
+                        </label>
+                        <span className="text-[7.5px] font-mono text-[#555]">Evaluates responses returned</span>
+                      </div>
+                      <textarea
+                        value={suiteTestScript}
+                        disabled={isRunning}
+                        onChange={(e) => setSuiteTestScript(e.target.value)}
+                        rows={12}
+                        placeholder="// Execute test assertions on the responses returned...
+// Example:
+// pm.test('Status is 200', () => {
+//   pm.response.to.have.status(200);
+// });"
+                        className="w-full bg-[#09090C] border border-[#1C1C22] p-3 rounded-xl text-[10px] font-mono text-zinc-100 outline-none focus:border-amber-500/30 font-semibold select-text"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {settingsActiveTab === 'msw' && (
+                <div className="space-y-4 animate-in fade-in duration-200">
+                  {/* Toggle header at top of tab */}
+                  <div className="flex items-center justify-between bg-[#09090C]/60 border border-[#151518] rounded-xl p-3.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded-full ${mswEnabled ? 'bg-purple-500 animate-pulse shadow-md shadow-purple-500/20' : 'bg-[#222]'}`} />
+                      <div>
+                        <span className="text-[9px] font-black text-white uppercase tracking-widest block font-mono">
+                          MSW Network Mock Intercept Mode
+                        </span>
+                        <p className="text-[8px] text-[#555] font-mono uppercase tracking-wider leading-none mt-0.5">
+                          {mswEnabled ? 'Routing active queries into the simulated loop sandbox' : 'Mock emulator disabled, requests query real hosts'}
+                        </p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer font-mono text-[8px] font-black text-[#888] hover:text-white transition-all select-none uppercase">
+                      Status: {mswEnabled ? 'ACTIVE' : 'INACTIVE'}
+                      <input
+                        type="checkbox"
+                        checked={mswEnabled}
+                        disabled={isRunning}
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setMswEnabled(val);
+                          syncMswConfig({ enabled: val });
+                        }}
+                        className="rounded border-[#222226] bg-[#0A0A0F] text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 w-4 h-4 cursor-pointer ml-1"
+                      />
+                    </label>
+                  </div>
+
+                  {mswEnabled ? (
+                    <div className="bg-[#09090C]/60 border border-[#151518] rounded-2xl p-4 space-y-4 relative animate-in zoom-in-95 duration-200">
+                      <div className="flex items-center gap-1.5 border-b border-[#1C1C22]/50 pb-2">
+                        <Shield size={12} className="text-purple-400" />
+                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest block font-mono">
+                          Mock Interceptor Response Properties
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-12 gap-3 pb-1">
+                        {/* Status Code Selection */}
+                        <div className="col-span-12 md:col-span-6 space-y-1.5 text-left font-mono">
+                          <label className="text-[8px] font-black text-purple-400 uppercase tracking-widest block">Mock HTTP Status Override</label>
+                          <select
+                            disabled={isRunning}
+                            value={mswStatus}
+                            onChange={(e) => {
+                              const code = parseInt(e.target.value) || 200;
+                              let text = 'OK';
+                              if (code === 201) text = 'Created';
+                              if (code === 204) text = 'No Content';
+                              if (code === 400) text = 'Bad Request';
+                              if (code === 401) text = 'Unauthorized';
+                              if (code === 403) text = 'Forbidden';
+                              if (code === 404) text = 'Not Found';
+                              if (code === 429) text = 'Too Many Requests';
+                              if (code === 500) text = 'Internal Server Error';
+                              
+                              setMswStatus(code);
+                              setMswStatusText(text);
+                              syncMswConfig({ status: code, statusText: text });
+                            }}
+                            className="w-full bg-[#050508] border border-[#151518]/60 px-2 h-8 rounded-lg text-[10px] font-mono text-white outline-none focus:border-purple-500/30 cursor-pointer"
+                          >
+                            <option value={200}>200 OK</option>
+                            <option value={201}>201 Created</option>
+                            <option value={204}>204 No Content</option>
+                            <option value={400}>400 Bad Request</option>
+                            <option value={401}>401 Unauthorized</option>
+                            <option value={403}>403 Forbidden</option>
+                            <option value={404}>404 Not Found</option>
+                            <option value={429}>429 Too Many Requests</option>
+                            <option value={500}>500 Internal Server Error</option>
+                          </select>
+                        </div>
+
+                        {/* Mock Latency slider */}
+                        <div className="col-span-12 md:col-span-6 space-y-1.5 text-left font-mono">
+                          <div className="flex justify-between items-center bg-transparent">
+                            <label className="text-[8px] font-black text-purple-400 uppercase tracking-widest text-[#E0E0E6]">Mock Latency (ms)</label>
+                            <span className="text-[10px] font-mono font-bold text-white">{mswLatency}ms</span>
+                          </div>
+                          <input
+                            type="range"
+                            disabled={isRunning}
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={mswLatency}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
+                              setMswLatency(val);
+                              syncMswConfig({ latency: val });
+                            }}
+                            className="w-full h-1 bg-[#1C1C25] rounded-lg appearance-none cursor-pointer mt-3 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Preset triggers for fast mockup payloads */}
+                      <div className="space-y-1.5 font-mono text-left">
+                        <label className="text-[8px] font-black text-purple-400 uppercase tracking-wider block">Preset Mock response body models:</label>
+                        <div className="flex flex-wrap gap-1.5 animate-in fade-in">
+                          <button
+                            type="button"
+                            disabled={isRunning}
+                            onClick={() => {
+                              const body = '{\n  "status": "success",\n  "msw_mocked": true,\n  "message": "Auth Session Active",\n  "token": "msw_jwt_mocked_token_sequence_xyz123"\n}';
+                              setMswResponseBody(body);
+                              syncMswConfig({ responseBody: body, responseType: 'json' });
+                            }}
+                            className="py-1 px-3.5 text-[8.5px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/25 hover:bg-purple-500/5 transition-all uppercase font-semibold cursor-pointer"
+                          >
+                            🔐 API AUTHENTICATION
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isRunning}
+                            onClick={() => {
+                              const body = '{\n  "status": "success",\n  "count": 3,\n  "users": [\n    {"id": 1, "name": "John Doe", "role": "admin"},\n    {"id": 2, "name": "Jane Smith", "role": "editor"},\n    {"id": 3, "name": "Bob Martin", "role": "viewer"}\n  ]\n}';
+                              setMswResponseBody(body);
+                              syncMswConfig({ responseBody: body, responseType: 'json' });
+                            }}
+                            className="py-1 px-3.5 text-[8.5px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/25 hover:bg-purple-500/5 transition-all uppercase font-semibold cursor-pointer"
+                          >
+                            👥 USER LISTING
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isRunning}
+                            onClick={() => {
+                              const body = '{\n  "status": "healthy",\n  "uptime_secs": 18231,\n  "engine": "v8-isolated-context"\n}';
+                              setMswResponseBody(body);
+                              syncMswConfig({ responseBody: body, responseType: 'json' });
+                            }}
+                            className="py-1 px-3.5 text-[8.5px] text-[#888] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/25 hover:bg-purple-500/5 transition-all uppercase font-semibold cursor-pointer"
+                          >
+                            💚 STATUS HEALTH
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isRunning}
+                            onClick={() => {
+                              const body = 'OK';
+                              setMswResponseBody(body);
+                              setMswResponseType('text');
+                              syncMswConfig({ responseBody: body, responseType: 'text' });
+                            }}
+                            className="py-1 px-3.5 text-[#888] text-[8.5px] font-bold border border-[#1C1C22] bg-[#0A0A0E] rounded-md hover:text-purple-400 hover:border-purple-500/25 hover:bg-purple-500/5 transition-all uppercase font-semibold cursor-pointer"
+                          >
+                            📄 PLAIN STRING OK
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Body Editor */}
+                      <div className="space-y-1.5 text-left font-mono">
+                        <label className="text-[8px] font-black text-purple-400 uppercase tracking-wider block">Custom Intercepted JSON Body Payload</label>
+                        <textarea
+                          disabled={isRunning}
+                          rows={6}
+                          value={mswResponseBody}
+                          onChange={(e) => {
+                            const body = e.target.value;
+                            setMswResponseBody(body);
+                            syncMswConfig({ responseBody: body });
+                          }}
+                          className="w-full bg-[#050508] border border-[#151518] px-3.5 py-2.5 rounded-xl text-[10px] font-mono text-white outline-none focus:border-purple-500/30 no-scrollbar select-text leading-relaxed font-semibold transition-all"
+                          placeholder="Paste mockup response body here..."
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-[#09090C]/40 border border-[#151518]/60 rounded-xl p-8 text-center select-none font-mono">
+                      <Shield size={24} className="text-[#333] mx-auto mb-2" />
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest block mb-1">
+                        Virtual MSW Interceptor is Inactive
+                      </span>
+                      <p className="text-[8.5px] text-[#555] max-w-sm mx-auto leading-relaxed uppercase">
+                        Enable the override toggle above to intercept API endpoint queries and substitute them locally with simulated states, response patterns, and delays.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3.5 border-t border-[#1C1C22] bg-[#0C0C10] flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowSuiteSettings(false)}
+                className="h-8.5 px-5 bg-[#3ECF8E] hover:bg-[#32B379] text-[#070708] rounded-xl text-[9px] font-black uppercase tracking-wider font-mono transition-all cursor-pointer"
+              >
+                Apply & Save Configs
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

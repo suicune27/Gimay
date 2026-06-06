@@ -197,7 +197,7 @@ const WORKER_SOURCE = `
     requestFunc.body = {
       // Avoid serializing the entire RequestBody object. Only expose the raw content to scripts.
       raw: typeof requestBody === 'object' && requestBody !== null
-        ? String((requestBody as any).content || '')
+        ? String(requestBody.content || '')
         : String(requestBody || '')
     };
     requestFunc.headers = {

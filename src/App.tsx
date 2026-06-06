@@ -231,15 +231,18 @@ export default function App() {
       setLoading(false);
     };
 
+    if (isElectron()) {
+      console.log('[App] Desktop environment: Forcing offline sandbox.');
+      handleOfflineMode();
+      setLoading(false);
+      return () => {
+        unsubscribeSync();
+      };
+    }
+
     // Initial check
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleAuthChange('INITIAL_SESSION', session);
-      if (isElectron() && !session) {
-        console.log('[App] Desktop environment without session detected. Auto-launching offline sandbox.');
-        setTimeout(() => {
-          handleOfflineMode();
-        }, 150);
-      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -252,7 +255,7 @@ export default function App() {
     };
   }, [hasHydrated, setSyncStatus, setProfile, resetOnboarding, setUserId, resetStore, setStep]);
 
-  const handleOfflineMode = () => {
+  function handleOfflineMode() {
     const offlineSession = {
       user: {
         id: 'offline-user-id',
@@ -283,7 +286,7 @@ export default function App() {
     mainStore.setSyncStatus('offline');
 
     setSession(offlineSession);
-  };
+  }
 
   const runSchemaBootstrap = useCallback(async () => {
     if (!session?.user?.id || !isConfigured) {

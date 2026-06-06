@@ -59,7 +59,7 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
   const [threads, setThreads] = useState(5);
   const [loops, setLoops] = useState(5);
   const [delay, setDelay] = useState(50);
-  const [timeoutMs, setTimeoutMs] = useState(5000);
+  const [timeoutMs, setTimeoutMs] = useState(30000);
   
   const [isRunning, setIsRunning] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
@@ -470,10 +470,21 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
               success = false;
               status = response.statusText;
               try {
-                const bodyObj = JSON.parse(response.body);
-                errorMsg = bodyObj?.error || bodyObj?.diagnostics?.message || response.statusText;
+                let bodyObj = response.body;
+                if (typeof bodyObj === 'string') {
+                  try {
+                    bodyObj = JSON.parse(bodyObj);
+                  } catch {}
+                }
+                if (bodyObj && typeof bodyObj === 'object') {
+                  errorMsg = bodyObj.error || bodyObj.message || bodyObj.diagnostics?.message || JSON.stringify(bodyObj);
+                } else {
+                  errorMsg = response.body || response.statusText;
+                }
               } catch {
-                errorMsg = response.body || response.statusText;
+                errorMsg = typeof response.body === 'object' && response.body !== null
+                  ? (response.body.error || response.body.message || JSON.stringify(response.body))
+                  : String(response.body || response.statusText);
               }
             } else if (testOut.results.some(r => r.status === 'fail')) {
               success = false;
@@ -501,13 +512,17 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
           if (duration > maxLatencyVal) maxLatencyVal = duration;
           if (success) successCount++;
 
+          const finalErrorMsg = (typeof errorMsg === 'object' && errorMsg !== null)
+            ? ((errorMsg as any).error || (errorMsg as any).message || JSON.stringify(errorMsg))
+            : (errorMsg ? String(errorMsg) : undefined);
+
           const newSample: TestSample = {
             id: completedCount,
             timestamp: new Date().toLocaleTimeString(),
             latency: duration,
             status,
             success,
-            error: errorMsg || undefined
+            error: finalErrorMsg
           };
 
           allSamplesRef.current.push(newSample);
@@ -787,10 +802,21 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
                 success = false;
                 status = response.statusText;
                 try {
-                  const bodyObj = JSON.parse(response.body);
-                  errorMsg = bodyObj?.error || bodyObj?.diagnostics?.message || response.statusText;
+                  let bodyObj = response.body;
+                  if (typeof bodyObj === 'string') {
+                    try {
+                      bodyObj = JSON.parse(bodyObj);
+                    } catch {}
+                  }
+                  if (bodyObj && typeof bodyObj === 'object') {
+                    errorMsg = bodyObj.error || bodyObj.message || bodyObj.diagnostics?.message || JSON.stringify(bodyObj);
+                  } else {
+                    errorMsg = response.body || response.statusText;
+                  }
                 } catch {
-                  errorMsg = response.body || response.statusText;
+                  errorMsg = typeof response.body === 'object' && response.body !== null
+                    ? (response.body.error || response.body.message || JSON.stringify(response.body))
+                    : String(response.body || response.statusText);
                 }
               } else if (testOut.results.some(r => r.status === 'fail')) {
                 success = false;
@@ -876,13 +902,17 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
             currentConsecutiveFailuresRef.current++;
           }
 
+          const finalErrorMsg = (typeof errorMsg === 'object' && errorMsg !== null)
+            ? ((errorMsg as any).error || (errorMsg as any).message || JSON.stringify(errorMsg))
+            : (errorMsg ? String(errorMsg) : undefined);
+
           const newSample: TestSample = {
             id: completedCountRef.current,
             timestamp: new Date().toLocaleTimeString(),
             status,
             success,
             latency: duration,
-            error: errorMsg || undefined
+            error: finalErrorMsg
           };
 
           allSamplesRef.current.push(newSample);
@@ -1574,293 +1604,314 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
   };
 
   return (
-    <div className="space-y-6 p-1">
+    <div className="space-y-6 p-1 relative">
       {/* Immersive Blocking Overlay while cleaning / resetting */}
       {isCleaning && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-200">
-          <div className="max-w-md w-full bg-[#0a0a0f] border border-emerald-500/20 rounded-2xl p-8 space-y-6 shadow-2xl flex flex-col items-center text-center">
+        <div className="absolute inset-0 bg-[#070709]/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 rounded-2xl border border-emerald-500/10 select-none animate-in fade-in duration-200">
+          <div className="max-w-sm w-full bg-[#0E0E12] border border-emerald-500/20 rounded-xl p-6 space-y-4 shadow-2xl flex flex-col items-center text-center">
             <div className="relative flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
-              <Activity className="absolute text-emerald-400 animate-pulse" size={20} />
+              <div className="w-12 h-12 rounded-full border-2 border-emerald-500/20 border-t-emerald-500 animate-spin" />
+              <Activity className="absolute text-emerald-400 animate-pulse" size={16} />
             </div>
 
-            <div className="space-y-4 w-full">
+            <div className="space-y-3 w-full">
               <div className="space-y-1">
-                <h3 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest font-mono">
-                  Memory Tuner: Sanitizing & Cleaning Heap
+                <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest font-mono">
+                  Memory Sanitizer Active
                 </h3>
-                <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-tight leading-relaxed font-mono">
-                  Purging stale environments, workers, and stale run references.
+                <p className="text-[9px] text-[#A0A0AA] uppercase tracking-wider font-mono">
+                  Flushing environment refs & safety buffers
                 </p>
               </div>
 
-              <div className="bg-[#030304] border border-[#151518] px-3 py-2.5 rounded-xl text-[9px] font-mono text-emerald-400 uppercase tracking-wide leading-relaxed">
-                ⚙️ STATUS: <span className="text-white font-black font-mono">{cleaningStatus}</span>
+              <div className="bg-black/40 border border-emerald-500/10 px-3 py-2 rounded-lg text-[9px] font-mono text-emerald-400 uppercase tracking-wide">
+                Status: <span className="text-white font-black">{cleaningStatus}</span>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Immersive Blocking Overlay while running */}
+      {/* Localized Overlay while running */}
       {isRunning && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 select-none">
-          <div className="max-w-md w-full bg-[#0a0a0f] border border-white/[0.06] rounded-2xl p-8 space-y-6 shadow-2xl flex flex-col items-center text-center animate-in fade-in duration-200">
-            {/* Spinning/pulsing elegant loader icon */}
-            <div className="relative flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full border-2 border-[#3ECF8E]/20 border-t-[#3ECF8E] animate-spin" />
+        <div className="absolute inset-0 bg-[#070709]/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-6 rounded-2xl border border-white/[0.04] select-none animate-in fade-in duration-200">
+          <div className="max-w-md w-full bg-[#09090C] border border-white/[0.05] rounded-xl p-6 space-y-5 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+            {/* Ambient accent background glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#3ECF8E]/5 blur-3xl rounded-full pointer-events-none" />
+
+            <div className="relative flex items-center justify-center z-10">
+              <div className={`w-14 h-14 rounded-full border-2 border-t-transparent animate-spin ${
+                runnerMode === 'mot' ? "border-amber-500/20 border-t-amber-500" : "border-[#3ECF8E]/20 border-t-[#3ECF8E]"
+              }`} />
               {runnerMode === 'mot' ? (
-                <Shield className={`absolute animate-pulse ${guardStatus === 'CRITICAL' ? 'text-red-500' : 'text-amber-500'}`} size={20} />
+                <Shield className={`absolute animate-pulse ${guardStatus === 'CRITICAL' ? 'text-red-500' : 'text-amber-500'}`} size={18} />
               ) : (
-                <Activity className="absolute text-[#3ECF8E] animate-pulse" size={20} />
+                <Activity className="absolute text-[#3ECF8E] animate-pulse" size={18} />
               )}
             </div>
 
-            <div className="space-y-2 w-full">
-              <h3 className="text-[10px] font-black text-[#555] uppercase tracking-widest font-mono">
-                {runnerMode === 'mot' ? 'Minutes of Testing (MoT) Endurance Active' : 'Loop-based Smoke Test Active'}
+            <div className="space-y-3 w-full z-10">
+              <h3 className="text-[9px] font-black text-[#666] uppercase tracking-widest font-mono font-black">
+                {runnerMode === 'mot' ? 'MOT ENDURANCE RUN LIVE' : 'LOOP-BASED SUITE LIVE'}
               </h3>
               
               {runnerMode === 'loop' ? (
-                <div className="text-2xl font-black text-[#3ECF8E] font-mono animate-pulse">
-                  {allSamplesRef.current.length} / {threads * loops} Sent
+                <div className="text-3xl font-black text-[#3ECF8E] font-mono tracking-tight animate-pulse">
+                  {allSamplesRef.current.length} <span className="text-[14px] text-[#666] font-normal">/ {threads * loops}</span>
                 </div>
               ) : (
                 <div className="space-y-3 w-full">
-                  <div className="text-2xl font-black text-amber-500 font-mono animate-pulse">
-                    {completedCountRef.current} Requests Sent
+                  <div className="text-3xl font-black text-amber-500 font-mono tracking-tight animate-pulse">
+                    {completedCountRef.current} <span className="text-[14px] text-[#666] font-normal">sent</span>
                   </div>
                   
-                  {/* Dynamic Memory Pressure & Stability score on blocking overlay */}
-                  <div className="grid grid-cols-2 gap-3 bg-white/[0.02] p-3 border border-white/[0.04] rounded-xl text-left">
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-bold text-[#555] uppercase tracking-wider block">Heap Pressure</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className={`text-[12px] font-bold font-mono ${memoryPressure > 75 ? 'text-red-400' : 'text-green-400'}`}>
-                          {memoryPressure}%
-                        </span>
-                        <span className="text-[7px] text-[#444] font-mono">limit</span>
-                      </div>
+                  <div className="grid grid-cols-2 gap-2.5 bg-black/40 p-3 border border-white/[0.04] rounded-lg text-left">
+                    <div className="space-y-0.5">
+                      <span className="text-[8px] font-bold text-[#666] uppercase tracking-wider block font-mono">Heap Pressure</span>
+                      <span className={`text-[11px] font-bold font-mono ${memoryPressure > 75 ? 'text-red-400' : 'text-green-400'}`}>
+                        {memoryPressure}% <span className="text-[8px] font-normal text-[#555]">usage</span>
+                      </span>
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-bold text-[#555] uppercase tracking-wider block">Stability Score</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[12px] font-bold text-emerald-400 font-mono">
-                          {stabilityScore}/100
-                        </span>
-                      </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[8px] font-bold text-[#666] uppercase tracking-wider block font-mono">Stability Index</span>
+                      <span className="text-[11px] font-bold text-emerald-400 font-mono">
+                        {stabilityScore}/100
+                      </span>
                     </div>
                   </div>
 
                   {isMemoryCooling && (
                     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 flex items-center justify-center gap-1.5 animate-pulse">
                       <ShieldAlert size={11} className="text-red-400" />
-                      <span className="text-[9px] font-black text-red-400 uppercase tracking-widest font-mono">
-                        Memory Flush: Safe Cool-down...
+                      <span className="text-[8px] font-black text-red-400 uppercase tracking-widest font-mono font-black">
+                        Memory Overload Protection Active
                       </span>
                     </div>
                   )}
                 </div>
               )}
 
-              <div className="w-full bg-[#18181f] rounded-full h-1.5 overflow-hidden border border-white/[0.02]">
-                <div 
-                  className={`h-full transition-all duration-300 ${runnerMode === 'mot' ? 'bg-amber-500' : 'bg-[#3ECF8E]'}`}
-                  style={{ width: `${progress}%` }} 
-                />
+              <div className="space-y-1">
+                <div className="w-full bg-[#14141A] rounded-full h-1 overflow-hidden border border-white/[0.01]">
+                  <div 
+                    className={`h-full transition-all duration-300 ${runnerMode === 'mot' ? 'bg-amber-500' : 'bg-[#3ECF8E]'}`}
+                    style={{ width: `${progress}%` }} 
+                  />
+                </div>
+                <div className="flex justify-between items-center text-[8px] text-[#555] font-mono">
+                  <span>DEPLOYED RUNNING</span>
+                  <span className="font-bold">{progress}%</span>
+                </div>
               </div>
 
-              <div className="flex justify-between items-center text-[9px] text-[#444] font-mono pt-1">
-                <span>Progress</span>
-                <span>{progress}%</span>
+              <div className="bg-[#121217] rounded p-2 text-left border border-white/[0.02]">
+                <p className="text-[8px] text-[#888] uppercase tracking-tight font-mono truncate animate-pulse">
+                  Target: <span className="text-white font-bold">{activeRequest.method}</span> {activeRequest.name}
+                </p>
               </div>
-
-              <p className="text-[8px] text-[var(--text-dim)] uppercase tracking-tight font-mono mt-1">
-                Target: {activeRequest.method} {activeRequest.name}
-              </p>
             </div>
 
-            {/* Cancel Button */}
             <button
               onClick={stopSmokeTest}
-              className="w-full h-10 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 rounded-xl text-[9px] font-black text-red-400 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 mt-2 font-mono"
+              className="w-full h-9 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 rounded-lg text-[9px] font-bold text-red-400 uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer font-mono z-10"
             >
               <Square size={10} fill="currentColor" />
-              Cancel Execution
+              ABORT EXECUTION
             </button>
           </div>
         </div>
       )}
 
-      {/* Introduction Card */}
-      <div className="p-4 bg-[var(--bg-deep)]/40 border border-[var(--border-subtle)] rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Main intro bar */}
+      <div className="p-5 bg-[#13171F] border border-zinc-800 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm text-left">
         <div className="space-y-1">
-          <h3 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-2">
-            <Activity size={12} className="text-[#3ECF8E]" />
-            Built-in JMeter Smoke Tester
+          <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2 font-sans tracking-tight">
+            <Activity size={14} className="text-[#3ECF8E]" />
+            Smoke & Performance Runner
           </h3>
-          <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-tight leading-relaxed max-w-2xl">
-            Simulates real-world traffic directly inside your browser client, or exports a professional JMeter Test Plan (.jmx) for massive-scale performance suites. Select between fixed-loop testing and minutes of testing (MoT) endurance modes.
+          <p className="text-xs text-zinc-400 font-sans max-w-2xl leading-relaxed">
+            Simulate concurrent request traffic directly inside the client sandbox. Evaluate endpoint response latency, transfer rates, assertions success, and memory stability under load.
           </p>
         </div>
 
-        {/* Runner Mode Selection Tab */}
-        <div className="flex bg-[#0A0A0F]/60 p-1 rounded-xl border border-white/[0.04] w-full md:w-auto max-w-md select-none relative shrink-0">
+        <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800 select-none relative shrink-0 h-9 items-center">
           {isRunning && (
             <div className="absolute inset-0 bg-transparent z-40 cursor-not-allowed" />
           )}
           <button
             onClick={() => setRunnerMode('loop')}
-            className={`flex-1 md:flex-initial px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono outline-none text-center ${
-              runnerMode === 'loop' ? "bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/15" : "text-[#555] hover:text-[#888]"
+            className={`px-3.5 py-1 rounded text-xs font-medium transition-all cursor-pointer font-sans h-7 flex items-center ${
+              runnerMode === 'loop' 
+                ? "bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/15 shadow-sm" 
+                : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Loops Run
+            Fixed Loop
           </button>
           <button
             onClick={() => setRunnerMode('mot')}
-            className={`flex-1 md:flex-initial px-4 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer font-mono outline-none text-center ${
-              runnerMode === 'mot' ? "bg-amber-500/10 text-amber-500 border border-amber-500/15" : "text-[#555] hover:text-[#888]"
+            className={`px-3.5 py-1 rounded text-xs font-medium transition-all cursor-pointer font-sans h-7 flex items-center ${
+              runnerMode === 'mot' 
+                ? "bg-amber-500/10 text-amber-500 border border-amber-500/15 shadow-sm" 
+                : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
-            Minutes (MoT)
+            Minutes of Testing
           </button>
         </div>
       </div>
 
-      {/* Inputs Configuration */}
-      <div className="bg-[#09090B]/30 border border-[#1C1C25]/40 rounded-xl p-5 space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Concurrency (Threads)</label>
-            <input
-              type="number"
-              disabled={isRunning}
-              min={1}
-              max={10}
-              value={threads}
-              onChange={(e) => setThreads(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
-              className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40"
-            />
-            <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Safe Cap: 10 Threads</p>
-          </div>
-
-          {runnerMode === 'loop' ? (
-            <div className="space-y-1.5">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Loops per Thread</label>
+      {/* Core Profile Inputs Bento Grid */}
+      <div className="bg-[#09090C]/40 border border-[#1C1C25]/50 rounded-xl p-4 space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="space-y-1">
+            <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Concurrency (Threads)</label>
+            <div className="relative rounded-lg bg-black/30 border border-[#1C1C25] overflow-hidden focus-within:border-[#3ECF8E]/40 transition-colors">
               <input
                 type="number"
                 disabled={isRunning}
                 min={1}
-                max={50}
-                value={loops}
-                onChange={(e) => setLoops(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
-                className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40"
+                max={10}
+                value={threads}
+                onChange={(e) => setThreads(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                className="w-full bg-transparent px-3 py-1.5 text-[11px] font-mono text-white outline-none"
               />
-              <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Safe Cap: 50 Loops</p>
+            </div>
+            <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Safe Cap: 10 Threads</p>
+          </div>
+
+          {runnerMode === 'loop' ? (
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Loops per Thread</label>
+              <div className="relative rounded-lg bg-black/30 border border-[#1C1C25] overflow-hidden focus-within:border-[#3ECF8E]/40 transition-colors">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  min={1}
+                  max={50}
+                  value={loops}
+                  onChange={(e) => setLoops(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] font-mono text-white outline-none"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Safe Cap: 50 Loops</p>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <label className="text-[8px] font-black text-amber-500 uppercase tracking-widest block font-mono">Endurance Duration (sec)</label>
-              <input
-                type="number"
-                disabled={isRunning}
-                min={10}
-                max={3600}
-                value={motDuration}
-                onChange={(e) => setMotDuration(Math.min(3600, Math.max(10, parseInt(e.target.value) || 120)))}
-                className="w-full bg-[var(--bg-deep)] border border-amber-500/20 px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-amber-500/40"
-              />
-              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold">Safe ceiling: 3600s</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-amber-500 uppercase tracking-widest block font-mono">Endurance Duration (sec)</label>
+              <div className="relative rounded-lg bg-black/30 border border-amber-500/20 overflow-hidden focus-within:border-amber-500/40 transition-colors font-mono">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  min={10}
+                  max={3600}
+                  value={motDuration}
+                  onChange={(e) => setMotDuration(Math.min(3600, Math.max(10, parseInt(e.target.value) || 120)))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] text-white outline-none"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Safe ceiling: 3600s</p>
             </div>
           )}
 
           {runnerMode === 'loop' ? (
-            <div className="space-y-1.5">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Inter-Request Delay (ms)</label>
-              <input
-                type="number"
-                disabled={isRunning}
-                value={delay}
-                onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40"
-              />
-              <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Delay between queries</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Inter-Request Delay (ms)</label>
+              <div className="relative rounded-lg bg-black/30 border border-[#1C1C25] overflow-hidden focus-within:border-[#3ECF8E]/40 transition-colors">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  value={delay}
+                  onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] font-mono text-white outline-none"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Delay between queries</p>
             </div>
           ) : (
-            <div className="space-y-1.5">
-              <label className="text-[8px] font-black text-amber-500 uppercase tracking-widest block font-mono">Sandbox Engine</label>
-              <select
-                disabled={isRunning}
-                value={sandboxEngine}
-                onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
-                className="w-full bg-[var(--bg-deep)] border border-amber-500/25 px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-amber-500/40 cursor-pointer"
-              >
-                <option value="in-thread">💨 IN-THREAD (Fast)</option>
-                <option value="worker">🔒 ISOLATED (Worker)</option>
-              </select>
-              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold">Script context security</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-amber-500 uppercase tracking-widest block font-mono">Sandbox Engine</label>
+              <div className="relative rounded-lg bg-black/30 border border-amber-500/20 overflow-hidden focus-within:border-amber-500/40 transition-colors">
+                <select
+                  disabled={isRunning}
+                  value={sandboxEngine}
+                  onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
+                  className="w-full bg-transparent px-2 py-1.5 text-[11px] font-mono text-white outline-none cursor-pointer"
+                >
+                  <option value="in-thread">💨 IN-THREAD (Fast)</option>
+                  <option value="worker">🔒 ISOLATED (Worker)</option>
+                </select>
+              </div>
+              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Script context security</p>
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Request Timeout (ms)</label>
-            <input
-              type="number"
-              disabled={isRunning}
-              value={timeoutMs}
-              onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
-              className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40"
-            />
-            <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Response timing ceiling</p>
+          <div className="space-y-1">
+            <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Request Timeout (ms)</label>
+            <div className="relative rounded-lg bg-black/30 border border-[#1C1C25] overflow-hidden focus-within:border-[#3ECF8E]/40 transition-colors">
+              <input
+                type="number"
+                disabled={isRunning}
+                value={timeoutMs}
+                onChange={(e) => setTimeoutMs(Math.max(100, parseInt(e.target.value) || 100))}
+                className="w-full bg-transparent px-3 py-1.5 text-[11px] font-mono text-white outline-none"
+              />
+            </div>
+            <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Response timing ceiling</p>
           </div>
         </div>
 
         {runnerMode === 'mot' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-white/[0.03] animate-in fade-in duration-200">
-            <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[8px] font-black text-amber-500 uppercase tracking-widest block font-mono">Max Requests / Min</label>
-              <input
-                type="number"
-                disabled={isRunning}
-                min={10}
-                max={10000}
-                value={motMaxReqPerMin}
-                onChange={(e) => setMotMaxReqPerMin(Math.min(10000, Math.max(10, parseInt(e.target.value) || 600)))}
-                className="w-full bg-[var(--bg-deep)] border border-[#151518] px-3 py-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-amber-500/30"
-              />
-              <p className="text-[7px] text-[#555] font-mono">Throughput safety roof</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3.5 border-t border-white/[0.03] animate-in fade-in duration-200 font-mono">
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-amber-500 uppercase tracking-widest block font-mono">Throughput Rate (Req/M)</label>
+              <div className="relative rounded-lg bg-black/30 border border-white/[0.04] overflow-hidden">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  min={10}
+                  max={10000}
+                  value={motMaxReqPerMin}
+                  onChange={(e) => setMotMaxReqPerMin(Math.min(10000, Math.max(10, parseInt(e.target.value) || 600)))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] text-white outline-none"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] font-mono">Maximum ceiling cap</p>
             </div>
 
-            <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[8px] font-black text-amber-500 uppercase tracking-widest block font-mono">Max Retries / Min</label>
-              <input
-                type="number"
-                disabled={isRunning}
-                min={0}
-                max={500}
-                value={motMaxRetriesPerMin}
-                onChange={(e) => setMotMaxRetriesPerMin(Math.min(500, Math.max(0, parseInt(e.target.value) || 60)))}
-                className="w-full bg-[var(--bg-deep)] border border-[#151518] px-3 py-2 rounded-lg text-[11px] font-mono text-white outline-none focus:border-amber-500/30"
-              />
-              <p className="text-[7px] text-[#555] font-mono">Endurance auto-recovery cap</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-amber-500 uppercase tracking-widest block font-mono">Max Retries Per Min</label>
+              <div className="relative rounded-lg bg-black/30 border border-white/[0.04] overflow-hidden">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  min={0}
+                  max={500}
+                  value={motMaxRetriesPerMin}
+                  onChange={(e) => setMotMaxRetriesPerMin(Math.min(500, Math.max(0, parseInt(e.target.value) || 60)))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] text-white outline-none"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] font-mono">Endurance safe throttle</p>
             </div>
 
-            <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Inter-Request Delay (ms)</label>
-              <input
-                type="number"
-                disabled={isRunning}
-                value={delay}
-                onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
-                className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40"
-              />
-              <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Rest interval (ms)</p>
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Delay Offset (ms)</label>
+              <div className="relative rounded-lg bg-black/30 border border-white/[0.04] overflow-hidden">
+                <input
+                  type="number"
+                  disabled={isRunning}
+                  value={delay}
+                  onChange={(e) => setDelay(Math.max(0, parseInt(e.target.value) || 0))}
+                  className="w-full bg-transparent px-3 py-1.5 text-[11px] text-white outline-none font-mono"
+                />
+              </div>
+              <p className="text-[7px] text-[#555] uppercase tracking-tight font-semibold font-mono">Throttling delay</p>
             </div>
 
-            <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Pre/Post Scripts</label>
-              <div className="flex items-center gap-3 pt-2">
+            <div className="space-y-1 font-mono">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block font-mono">Scripting Rules</label>
+              <div className="flex items-center gap-2 pt-2.5">
                 <input
                   type="checkbox"
                   disabled={isRunning}
@@ -1869,8 +1920,8 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
                   onChange={(e) => setRunRequestScripts(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-[#1E1E28] bg-black/50 text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 cursor-pointer"
                 />
-                <label htmlFor="runRequestScriptsEndure" className="text-[10px] font-semibold text-[#888894] uppercase tracking-wide cursor-pointer select-none">
-                  Run Setup Scripts
+                <label htmlFor="runRequestScriptsEndure" className="text-[9px] font-black text-[#888] uppercase tracking-wider cursor-pointer select-none">
+                  Active Setup
                 </label>
               </div>
             </div>
@@ -1878,24 +1929,26 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
         )}
 
         {runnerMode === 'loop' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-white/[0.03] animate-in fade-in duration-200">
-            <div className="space-y-1.5 col-span-2 md:col-span-1">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Sandbox Engine</label>
-              <select
-                disabled={isRunning}
-                value={sandboxEngine}
-                onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
-                className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] px-3 py-2 rounded-lg text-[11px] font-mono text-white focus:outline-none focus:border-[#3ECF8E]/40 cursor-pointer"
-              >
-                <option value="in-thread">💨 IN-THREAD (Fast)</option>
-                <option value="worker">🔒 ISOLATED (Worker)</option>
-              </select>
-              <p className="text-[7px] text-[var(--text-dim)] uppercase tracking-tight font-semibold">Containment level</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3.5 border-t border-white/[0.03] animate-in fade-in duration-200 font-mono">
+            <div className="space-y-1">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block">Sandbox Engine</label>
+              <div className="relative rounded-lg bg-black/30 border border-white/[0.04] overflow-hidden">
+                <select
+                  disabled={isRunning}
+                  value={sandboxEngine}
+                  onChange={(e) => setSandboxEngine(e.target.value as 'in-thread' | 'worker')}
+                  className="w-full bg-transparent p-1.5 text-[11px] text-white outline-none cursor-pointer"
+                >
+                  <option value="in-thread">💨 IN-THREAD (Fast)</option>
+                  <option value="worker">🔒 ISOLATED (Worker)</option>
+                </select>
+              </div>
+              <p className="text-[7px] text-[#555] font-bold">Execution context</p>
             </div>
 
-            <div className="space-y-1.5 col-span-2 md:col-span-3">
-              <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Execution Scripts</label>
-              <div className="flex items-center gap-3 pt-2">
+            <div className="space-y-1 col-span-3 font-mono">
+              <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block">Script Pipeline</label>
+              <div className="flex items-center gap-2 pt-2.5">
                 <input
                   type="checkbox"
                   disabled={isRunning}
@@ -1904,18 +1957,18 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
                   onChange={(e) => setRunRequestScripts(e.target.checked)}
                   className="w-3.5 h-3.5 rounded border-[#1E1E28] bg-black/50 text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 cursor-pointer"
                 />
-                <label htmlFor="runRequestScriptsLoop" className="text-[10px] font-semibold text-[#888894] uppercase tracking-wide cursor-pointer select-none">
-                  Run Script Pipeline (Pre-request, tests & assertions)
+                <label htmlFor="runRequestScriptsLoop" className="text-[9px] lg:text-[10px] font-semibold text-[#888894] uppercase tracking-wider cursor-pointer select-none">
+                  Evaluate Pre-request scripts & post-run assertions
                 </label>
               </div>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-white/[0.03]">
-          <div className="space-y-1.5 col-span-2 md:col-span-4">
-            <label className="text-[8px] font-black text-[var(--text-dim)] uppercase tracking-widest block font-mono">Temporary Log Persistence</label>
-            <div className="flex items-center gap-3 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3.5 border-t border-white/[0.03] font-mono">
+          <div className="space-y-1 col-span-4 font-mono">
+            <label className="text-[8px] font-bold text-[#666] uppercase tracking-widest block">Telemetry Memory Saves</label>
+            <div className="flex items-center gap-2 pt-1 font-mono">
               <input
                 type="checkbox"
                 disabled={isRunning}
@@ -1924,7 +1977,7 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
                 onChange={(e) => setSaveTempLogs(e.target.checked)}
                 className="w-3.5 h-3.5 rounded border-[#1E1E28] bg-black/50 text-[#3ECF8E] focus:ring-0 focus:ring-offset-0 cursor-pointer"
               />
-              <label htmlFor="saveTempSmokeLogs" className="text-[10px] font-semibold text-[#888894] uppercase tracking-wide cursor-pointer select-none">
+              <label htmlFor="saveTempSmokeLogs" className="text-[9px] lg:text-[10px] font-black text-[#555] uppercase tracking-widest cursor-pointer select-none font-bold">
                 Save Compact Smoke Logs To Database (Temporary)
               </label>
             </div>
@@ -1932,40 +1985,40 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3">
+      {/* Main Trigger & Action Bar */}
+      <div className="flex gap-2.5 text-left">
         {isCleaning ? (
           <button
             disabled
-            className="flex-1 h-11 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed transition-all shadow-lg animate-pulse font-mono"
+            className="flex-1 h-10 bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[#3ECF8E] rounded-xl text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 cursor-not-allowed transition-all shadow-md animate-pulse font-sans"
           >
-            <div className="w-3.5 h-3.5 rounded-full border-2 border-emerald-500/20 border-t-emerald-400 animate-spin shrink-0" /> Sanitizing Heap...
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-[#3ECF8E]/20 border-t-[#3ECF8E] animate-spin shrink-0" /> Sanitizing heap...
           </button>
         ) : isRunning ? (
           <button
             onClick={stopSmokeTest}
-            className="flex-1 h-11 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 rounded-xl text-[10px] font-black text-red-100 uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer font-mono"
+            className="flex-1 h-10 bg-rose-600 hover:bg-rose-500 rounded-xl text-xs font-semibold text-white tracking-wide flex items-center justify-center gap-2 border-0 transition-all cursor-pointer font-sans shadow-md"
           >
-            <Square size={11} fill="currentColor" />
-            Abort Smoke Run
+            <Square size={12} fill="currentColor" />
+            Abort Execution Run
           </button>
         ) : (
           <button
             onClick={runSmokeTest}
-            className={`flex-1 h-11 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer font-mono ${
+            className={`flex-1 h-10 rounded-xl text-xs font-semibold text-white tracking-wide flex items-center justify-center gap-2 border-0 transition-all cursor-pointer font-sans active:scale-98 shadow-md ${
               runnerMode === 'mot' 
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_15px_rgba(245,158,11,0.15)] hover:brightness-110'
-                : 'bg-[#3ECF8E] text-black shadow-[0_0_15px_rgba(62,207,142,0.15)] hover:bg-[#34B37A]'
-            } active:scale-95`}
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-emerald-600 hover:bg-emerald-500'
+            }`}
           >
-            <Play size={11} fill="currentColor" />
-            {runnerMode === 'mot' ? 'Initiate MoT Endurance Run' : 'Initiate Loops Smoke Test'}
+            <Play size={12} fill="currentColor" />
+            {runnerMode === 'mot' ? 'Deploy MoT Endurance Run' : 'Deploy Loops Smoke Test'}
           </button>
         )}
 
         <button
           onClick={handleExportJMX}
-          className="h-11 px-5 bg-[var(--bg-deep)] border border-[var(--border-subtle)] hover:border-[#3ECF8E]/30 rounded-xl text-[10px] font-black text-[var(--text-dim)] hover:text-[#3ECF8E] uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className="h-10 px-4 bg-zinc-950 border border-zinc-805 hover:border-[#3ECF8E]/20 rounded-xl text-xs font-semibold text-[#888] hover:text-[#3ECF8E] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer font-sans"
         >
           <Download size={13} />
           Export JMX
@@ -1975,50 +2028,50 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
       {/* MoT Live Stabilizer Panels row */}
       {runnerMode === 'mot' && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-200">
-          <div className="bg-[#09090B]/60 border border-white/[0.04] rounded-xl p-4 space-y-1 px-4 py-3">
-            <span className="text-[8px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Heap Memory Pressure</span>
+          <div className="bg-[#13171F] border border-zinc-800 rounded-xl p-4 space-y-1 text-left shadow-sm">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block font-sans">Heap Memory Pressure</span>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-lg font-bold font-mono ${
-                memoryPressure > 80 ? "text-red-500" :
-                memoryPressure > 50 ? "text-amber-500" : "text-[#3ECF8E]"
+                memoryPressure > 80 ? "text-rose-500" :
+                memoryPressure > 50 ? "text-amber-500" : "text-emerald-400"
               }`}>{memoryPressure}%</span>
-              <span className="text-[7px] text-[#55555C] font-mono">allocation</span>
+              <span className="text-[10px] text-zinc-500 font-sans">allocation</span>
             </div>
-            <span className="text-[7px] bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[#3ECF8E] font-mono px-1 py-0.2 rounded uppercase tracking-wider block w-max mt-1">
+            <span className="text-[10px] bg-zinc-950 border border-zinc-850 text-zinc-400 font-sans px-2 py-0.5 rounded tracking-wide block w-max mt-2">
               Web Sandbox
             </span>
           </div>
 
-          <div className="bg-[#09090B]/60 border border-white/[0.04] rounded-xl p-4 space-y-1 px-4 py-3">
-            <span className="text-[8px] font-black text-[#55555C] uppercase tracking-wider block font-mono">System Stability Score</span>
+          <div className="bg-[#13171F] border border-zinc-800 rounded-xl p-4 space-y-1 text-left shadow-sm">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block font-sans">System Stability Score</span>
             <div className="flex items-baseline gap-1.5">
               <span className={`text-lg font-bold font-mono ${
                 stabilityScore > 80 ? "text-[#3ECF8E]" :
-                stabilityScore > 45 ? "text-amber-500" : "text-red-500"
+                stabilityScore > 45 ? "text-amber-500" : "text-rose-500"
               }`}>{stabilityScore}</span>
-              <span className="text-[7px] text-[#55555C] font-mono">/ 100</span>
+              <span className="text-[10px] text-zinc-500 font-sans">/ 100 limit</span>
             </div>
-            <span className="text-[7px] text-[#555] font-mono block uppercase mt-1">Real-time health quotient</span>
+            <span className="text-[10px] text-zinc-500 font-sans block mt-2 font-medium">Real-time health quotient</span>
           </div>
 
-          <div className="bg-[#09090B]/60 border border-white/[0.04] rounded-xl p-4 space-y-1 px-4 py-3">
-            <span className="text-[8px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Resilience Guard Status</span>
-            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border font-mono uppercase w-max tracking-wider block mt-1 ${
-              guardStatus === 'CRITICAL' ? "text-red-500 bg-red-500/10 border-red-500/15 animate-pulse" :
-              guardStatus === 'THROTTLED' ? "text-amber-500 bg-amber-500/10 border-amber-500/15" : "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/15"
+          <div className="bg-[#13171F] border border-zinc-800 rounded-xl p-4 space-y-1 text-left shadow-sm font-sans">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Resilience Guard Status</span>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border uppercase w-max tracking-wide block mt-2 ${
+              guardStatus === 'CRITICAL' ? "text-rose-500 bg-rose-500/10 border-rose-500/20 animate-pulse" :
+              guardStatus === 'THROTTLED' ? "text-amber-500 bg-amber-500/10 border-amber-500/20" : "text-emerald-400 bg-emerald-500/10 border-emerald-500/15"
             }`}>
               {guardStatus}
             </span>
-            <span className="text-[7px] text-[#555] font-mono block uppercase mt-1">Priority Focus: {activePriorityFocus}</span>
+            <span className="text-[10px] text-zinc-500 block mt-2 font-medium">Priority Focus: {activePriorityFocus}</span>
           </div>
 
-          <div className="bg-[#09090B]/60 border border-white/[0.04] rounded-xl p-4 space-y-1 px-4 py-3 flex flex-col justify-between">
-            <span className="text-[8px] font-black text-[#55555C] uppercase tracking-wider block font-mono">Preemptive Adjustments</span>
-            <div className="flex items-baseline gap-1.5">
+          <div className="bg-[#13171F] border border-zinc-800 rounded-xl p-4 space-y-1 text-left shadow-sm flex flex-col justify-between font-sans">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block">Preemptive Adjustments</span>
+            <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-lg font-bold text-white font-mono">{crashPreventionTriggers}</span>
-              <span className="text-[7px] text-[#55555C] font-mono">throttles triggered</span>
+              <span className="text-[10px] text-zinc-400 font-sans">throttles</span>
             </div>
-            <span className="text-[7px] text-[#555] font-mono block uppercase">Heap Safety Intercedes</span>
+            <span className="text-[10px] text-zinc-500 block font-medium">Heap drops preempted</span>
           </div>
         </div>
       )}
