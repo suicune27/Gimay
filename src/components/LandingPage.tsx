@@ -20,9 +20,11 @@ import { SampleSmokeTester } from './SampleSmokeTester';
 
 interface LandingPageProps {
   onStart: () => void;
+  onChangelog?: () => void;
+  onDocs?: () => void;
 }
 
-export function LandingPage({ onStart }: LandingPageProps) {
+export function LandingPage({ onStart, onChangelog, onDocs }: LandingPageProps) {
   const handleDownload = (platform: string) => {
     toast.info(`Preparing ${platform} download...`, {
       description: "Gimay Desktop will start downloading in a few seconds.",
@@ -226,8 +228,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </div>
           
           <div className="flex gap-8 text-[8px] font-black uppercase tracking-[0.3em] text-dim">
-            <a href="#" className="hover:text-[var(--brand)] transition-colors">Documentation</a>
-            <a href="#" className="hover:text-[var(--brand)] transition-colors">Changelog</a>
+            <button onClick={onDocs} className="hover:text-[var(--brand)] transition-colors">Documentation</button>
+            <button onClick={onChangelog} className="hover:text-[var(--brand)] transition-colors">Changelog</button>
             <a href="#" className="hover:text-[var(--brand)] transition-colors">Privacy</a>
           </div>
 

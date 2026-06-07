@@ -9,6 +9,8 @@ import { syncManager } from './services/SyncService';
 import { compareDatabaseStructure, ensureDatabaseSchema } from './services/ensureDatabaseSchema';
 import { isElectron } from './lib/platform';
 import { LandingPage } from './components/LandingPage';
+import { ChangelogPage } from './components/ChangelogPage';
+import { DocumentationPage } from './components/DocumentationPage';
 import { PersistenceService } from './services/PersistenceService';
 import { OnboardingService } from './services/OnboardingService';
 import { ToastContainer } from './components/Toast';
@@ -71,20 +73,33 @@ export default function App() {
     };
   }, [addToast]);
 
+  const [showingChangelog, setShowingChangelog] = useState(false);
+  const [showingDocs, setShowingDocs] = useState(false);
+
   // Sync landingSkipped with URL path on web
   useEffect(() => {
     if (isElectron()) return;
 
     const handleUrlChange = () => {
       const isAppPath = window.location.pathname === '/app';
+      const isChangelogPath = window.location.pathname === '/changelog';
+      const isDocsPath = window.location.pathname === '/docs';
       if (isAppPath) {
         if (!landingSkipped) {
           setLandingSkipped(true);
         }
+      } else if (isChangelogPath) {
+        setShowingChangelog(true);
+        setShowingDocs(false);
+      } else if (isDocsPath) {
+        setShowingDocs(true);
+        setShowingChangelog(false);
       } else {
         if (landingSkipped) {
           setLandingSkipped(false);
         }
+        setShowingChangelog(false);
+        setShowingDocs(false);
       }
     };
 
@@ -93,9 +108,7 @@ export default function App() {
 
     window.addEventListener('popstate', handleUrlChange);
     return () => window.removeEventListener('popstate', handleUrlChange);
-  }, [landingSkipped, setLandingSkipped]);
-
-  // Check for deep link invite
+  }, [landingSkipped, setLandingSkipped]);    // Check for deep link invite
   useEffect(() => {
     if (hasHydrated && !isConfigured) {
       const params = new URLSearchParams(window.location.search);
@@ -110,6 +123,44 @@ export default function App() {
       }
     }
   }, [hasHydrated, isConfigured, setStep, setSetupMode]);
+
+  // Navigate to changelog
+  const goToChangelog = useCallback(() => {
+    if (!isElectron()) {
+      window.history.pushState(null, '', '/changelog');
+    }
+    setLandingSkipped(true);
+    setShowingChangelog(true);
+    setShowingDocs(false);
+  }, [setLandingSkipped]);
+
+  // Go back from changelog
+  const goBackFromChangelog = useCallback(() => {
+    if (!isElectron()) {
+      window.history.pushState(null, '', '/');
+    }
+    setShowingChangelog(false);
+    setLandingSkipped(false);
+  }, [setLandingSkipped]);
+
+  // Navigate to docs
+  const goToDocs = useCallback(() => {
+    if (!isElectron()) {
+      window.history.pushState(null, '', '/docs');
+    }
+    setLandingSkipped(true);
+    setShowingDocs(true);
+    setShowingChangelog(false);
+  }, [setLandingSkipped]);
+
+  // Go back from docs
+  const goBackFromDocs = useCallback(() => {
+    if (!isElectron()) {
+      window.history.pushState(null, '', '/');
+    }
+    setShowingDocs(false);
+    setLandingSkipped(false);
+  }, [setLandingSkipped]);
   const [schemaBootstrapLoading, setSchemaBootstrapLoading] = useState(false);
   const [schemaBootstrapMessage, setSchemaBootstrapMessage] = useState('Checking database structure...');
   const [schemaBootstrapError, setSchemaBootstrapError] = useState<string | null>(null);
@@ -611,6 +662,16 @@ export default function App() {
     );
   }
 
+  // Show docs page
+  if (showingDocs) {
+    return <DocumentationPage onBack={goBackFromDocs} />;
+  }
+
+  // Show changelog page
+  if (showingChangelog) {
+    return <ChangelogPage onBack={goBackFromChangelog} />;
+  }
+
   if (!landingSkipped) {
     return (
       <LandingPage 
@@ -619,7 +680,9 @@ export default function App() {
             window.history.pushState(null, '', '/app');
           }
           setLandingSkipped(true);
-        }} 
+        }}
+        onChangelog={goToChangelog}
+        onDocs={goToDocs}
       />
     );
   }

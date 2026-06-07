@@ -1,6 +1,7 @@
 import { supabase, globalSupabase } from '../lib/supabase';
 import { SecureConfigStorage } from '../lib/SecureConfigStorage';
 import { RequestData, Collection, Environment, Workspace, Folder, Profile, KeyValue, ScriptExecutionLog } from '../types';
+import { syncManager } from './SyncService';
 
 export class PersistenceService {
   private static store: any = null;
@@ -17,7 +18,6 @@ export class PersistenceService {
   private static setOffline(offline: boolean) {
     if (this.store) {
       this.store.getState().updateSyncMetadata({ isOffline: offline });
-      const { syncManager } = require('./SyncService');
       syncManager.setStatus(offline ? 'offline' : 'idle');
     }
   }
@@ -59,7 +59,6 @@ export class PersistenceService {
         return mockWS;
       },
       (mockWS) => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('workspace', 'create', mockWS.id, { name, userId, teamId });
       }
     );
@@ -109,7 +108,6 @@ export class PersistenceService {
         return { id, ...updates } as Workspace;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('workspace', 'update', id, updates);
       }
     );
@@ -136,7 +134,6 @@ export class PersistenceService {
         return id;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('workspace', 'delete', id, null);
       }
     );
@@ -171,7 +168,6 @@ export class PersistenceService {
         return mockCollection;
       },
       (mockCollection) => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('collection', 'create', mockCollection.id, mockCollection);
       }
     );
@@ -197,7 +193,6 @@ export class PersistenceService {
         return { id, ...updates } as Collection;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('collection', 'update', id, updates);
       }
     );
@@ -244,7 +239,6 @@ export class PersistenceService {
         return id;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('collection', 'delete', id, null);
       }
     );
@@ -379,7 +373,6 @@ export class PersistenceService {
         return mockFolder;
       },
       (mockFolder) => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('folder', 'create', mockFolder.id, mockFolder);
       }
     );
@@ -439,7 +432,6 @@ export class PersistenceService {
         return { id, ...updates } as Folder;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('folder', 'update', id, updates);
       }
     );
@@ -491,7 +483,6 @@ export class PersistenceService {
         return id;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('folder', 'delete', id, null);
       }
     );
@@ -787,7 +778,6 @@ export class PersistenceService {
         return mockRequest;
       },
       (mockRequest) => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('request', 'create', mockRequest.id, mockRequest);
       }
     );
@@ -845,7 +835,6 @@ export class PersistenceService {
         return { id, ...updates } as RequestData;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('request', 'update', id, updates);
       }
     );
@@ -905,7 +894,6 @@ export class PersistenceService {
         return id;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('request', 'delete', id, null);
       }
     );
@@ -1095,7 +1083,6 @@ export class PersistenceService {
         return mockEnv;
       },
       (mockEnv) => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('environment', 'create', mockEnv.id, mockEnv);
       }
     );
@@ -1147,7 +1134,6 @@ export class PersistenceService {
         return { id, ...updates } as Environment;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('environment', 'update', id, updates);
       }
     );
@@ -1191,7 +1177,6 @@ export class PersistenceService {
         return id;
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('environment', 'delete', id, null);
       }
     );
@@ -1213,7 +1198,6 @@ export class PersistenceService {
         return { preferences };
       },
       () => {
-        const { syncManager } = require('./SyncService');
         syncManager.enqueueAction('profile', 'update', userId, { preferences });
       }
     );
