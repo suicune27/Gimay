@@ -1,0 +1,7 @@
+# Gimay — Tactical API Command Suite
+# https://gimay.vercel.app/
+
+User-agent: *
+Allow: /
+
+Sitemap: https://gimay.vercel.app/sitemap.xml
