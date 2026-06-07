@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, globalSupabase, getSupabaseConfig } from './lib/supabase';
 import { AuthUI } from './components/AuthUI';
-import { DatabaseChoiceScreen } from './components/DatabaseChoiceScreen';
 import { RootLayout } from './layouts/RootLayout';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { useStore } from './store/useStore';
@@ -19,25 +18,6 @@ export default function App() {
   const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const DB_CHOICE_KEY = 'gimay-db-choice';
-  const [dbChoice, setDbChoice] = useState<'gimay-cloud' | 'self-hosted' | null>(() => {
-    try {
-      const saved = localStorage.getItem('gimay-db-choice');
-      if (saved === 'gimay-cloud' || saved === 'self-hosted') return saved;
-    } catch {}
-    return null;
-  });
-
-  // Persist dbChoice to localStorage so it survives reloads
-  useEffect(() => {
-    try {
-      if (dbChoice) {
-        localStorage.setItem(DB_CHOICE_KEY, dbChoice);
-      } else {
-        localStorage.removeItem(DB_CHOICE_KEY);
-      }
-    } catch {}
-  }, [dbChoice]);
 
   // If electron, always skip landing
   useEffect(() => {
@@ -324,8 +304,6 @@ export default function App() {
           resetStore();
           resetOnboarding();
           setUserId(null);
-          setDbChoice(null);
-          try { localStorage.removeItem(DB_CHOICE_KEY); } catch {}
         }
       }
       setLoading(false);
@@ -649,13 +627,7 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      {!session && !dbChoice && isElectron() && (
-        <DatabaseChoiceScreen
-          onUseGimayCloud={() => setDbChoice('gimay-cloud')}
-          onUseOwnDatabase={() => setDbChoice('self-hosted')}
-        />
-      )}
-      {!session && (dbChoice || !isElectron()) && <AuthUI onOfflineMode={handleOfflineMode} />}
+      {!session && <AuthUI onOfflineMode={handleOfflineMode} />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}
     </>
