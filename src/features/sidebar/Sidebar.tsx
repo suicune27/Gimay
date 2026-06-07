@@ -312,7 +312,7 @@ export const Sidebar: React.FC = () => {
         bodyType: 'none',
         auth: { type: 'inherit' }
       });
-      useStore.getState().addRequest(newRequest);
+      // addRequest is already handled inside PersistenceService.createRequest
       await fetchCollections(activeWorkspaceId);
       addTab(newRequest);
       addToast({ type: 'success', message: `Request "${name}" deployed.` });
@@ -351,15 +351,12 @@ export const Sidebar: React.FC = () => {
       const { type, id, name } = modalContext;
       if (type === 'collection') {
         await PersistenceService.deleteCollection(id);
-        await fetchCollections(activeWorkspaceId);
         addToast({ type: 'info', message: `Collection "${name}" decommissioned.` });
       } else if (type === 'folder') {
         await PersistenceService.deleteFolder(id);
-        await fetchCollections(activeWorkspaceId);
         addToast({ type: 'info', message: `Folder "${name}" liquidated.` });
       } else if (type === 'request') {
         await PersistenceService.deleteRequest(id);
-        await fetchCollections(activeWorkspaceId);
         addToast({ type: 'info', message: `Request "${name}" dismantled.` });
       }
     } catch {

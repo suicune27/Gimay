@@ -337,6 +337,78 @@ class SyncEngine {
     const { useStore } = await import('../store/useStore');
     const state = useStore.getState();
 
+    // Guard: if the realId already exists in the store (from a Realtime fetch that
+    // arrived before remapId ran), remove the tempId entry silently instead of
+    // duplicating the realId.
+    const alreadyExists = (() => {
+      switch (type) {
+        case 'request': {
+          const allReqs = (node: any): any[] => [
+            ...(node.requests || []),
+            ...(node.folders || []).flatMap(allReqs)
+          ];
+          return state.collections.some(c => allReqs(c).some((r: any) => r.id === realId));
+        }
+        case 'collection':
+          return state.collections.some(c => c.id === realId);
+        case 'folder': {
+          const allFolders = (node: any): any[] => [
+            ...(node.folders || []),
+            ...(node.folders || []).flatMap(allFolders)
+          ];
+          return state.collections.some(c => allFolders(c).some((f: any) => f.id === realId));
+        }
+        case 'environment':
+          return state.environments.some(e => e.id === realId);
+        case 'workspace':
+          return state.workspaces.some(w => w.id === realId);
+        default:
+          return false;
+      }
+    })();
+
+    if (alreadyExists) {
+      // Remove the tempId item — the realId is already in the store from Realtime
+      switch (type) {
+        case 'request':
+          state.setCollections(state.collections.map((c: any) => ({
+            ...c,
+            requests: (c.requests || []).filter((r: any) => r.id !== tempId),
+            folders: (c.folders || []).map((f: any) => ({
+              ...f,
+              requests: (f.requests || []).filter((r: any) => r.id !== tempId),
+              folders: f.folders ? (f.folders as any[]).filter((s: any) => s.id !== tempId) : undefined
+            }))
+          })));
+          break;
+        case 'collection':
+          state.setCollections(state.collections.filter((c: any) => c.id !== tempId));
+          break;
+        case 'folder': {
+          const removeFolder = (folders: any[]): any[] =>
+            folders.filter(f => f.id !== tempId).map(f => f.folders ? { ...f, folders: removeFolder(f.folders) } : f);
+          state.setCollections(state.collections.map((c: any) => ({ ...c, folders: removeFolder(c.folders || []) })));
+          break;
+        }
+        case 'environment':
+          state.setEnvironments(state.environments.filter((e: any) => e.id !== tempId));
+          break;
+        case 'workspace':
+          state.setWorkspaces(state.workspaces.filter((w: any) => w.id !== tempId));
+          break;
+      }
+      // Clean up tabs
+      const cleanTabs = state.openTabs.filter(t => t.id !== tempId);
+      if (cleanTabs.length !== state.openTabs.length) {
+        state.setUserTabs(cleanTabs);
+        if (state.activeTabId === tempId) {
+          state.setActiveTab(cleanTabs.length > 0 ? cleanTabs[cleanTabs.length - 1].id : null);
+        }
+      }
+      console.log(`[SyncEngine] realId ${realId} already exists. Removed tempId ${tempId} instead.`);
+      return;
+    }
+
     // Update in store
     switch (type) {
       case 'request': {

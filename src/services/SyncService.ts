@@ -187,7 +187,26 @@ class SyncManager {
       }
     }
 
-    // Block standalone non-CREATE actions for offline-temporary IDs.
+    // For deletes, check if there is a pending 'create' for this same temporary ID.
+    // If so, cancel the create rather than silently dropping the delete — otherwise
+    // the item will reappear when the pending create sync completes.
+    if (action === 'delete') {
+      const createKey = `${type}:create:${id}`;
+      const existingCreate = this.queue.get(createKey);
+      if (existingCreate) {
+        this.queue.delete(createKey);
+        this.updatePendingIds();
+        this.persistQueue();
+        return;
+      }
+      // Also cancel any pending update for this ID
+      const updateKey = `${type}:update:${id}`;
+      if (this.queue.has(updateKey)) {
+        this.queue.delete(updateKey);
+      }
+    }
+
+    // Block standalone non-CREATE/UPDATE actions for offline-temporary IDs.
     // offline-* IDs are placeholders that will be remapped once the CREATE
     // sync succeeds. Trying to UPDATE/DELETE them in Supabase will 400 since
     // they don't exist there. CREATE actions must still go through.
@@ -386,6 +405,82 @@ class SyncManager {
   private remapId(tempId: string, realId: string, type: 'collection' | 'folder' | 'request' | 'environment' | 'workspace') {
     console.log(`[SyncManager] Remapping ${type} ID from temporary ${tempId} to real ${realId}`);
     const state = useStore.getState();
+
+    // Guard: if the realId already exists in the store (from a Realtime fetch that
+    // arrived before remapId ran), remove the tempId entry silently instead of
+    // duplicating the realId. This fixes the race condition where Realtime triggers
+    // fetchCollections between the Supabase INSERT and the remapId call.
+    const alreadyExists = (() => {
+      switch (type) {
+        case 'collection':
+          return state.collections.some(c => c.id === realId);
+        case 'folder': {
+          const allFolders = (node: any): any[] => [
+            ...(node.folders || []),
+            ...(node.folders || []).flatMap(allFolders)
+          ];
+          return state.collections.some(c => allFolders(c).some((f: any) => f.id === realId));
+        }
+        case 'request': {
+          const allReqs = (node: any): any[] => [
+            ...(node.requests || []),
+            ...(node.folders || []).flatMap(allReqs)
+          ];
+          return state.collections.some(c => allReqs(c).some((r: any) => r.id === realId));
+        }
+        case 'environment':
+          return state.environments.some(e => e.id === realId);
+        case 'workspace':
+          return state.workspaces.some(w => w.id === realId);
+        default:
+          return false;
+      }
+    })();
+
+    if (alreadyExists) {
+      // Remove the tempId item from the store (the realId item is already there)
+      switch (type) {
+        case 'collection':
+          state.setCollections(state.collections.filter((c: any) => c.id !== tempId));
+          break;
+        case 'folder': {
+          const removeFolder = (folders: any[]): any[] =>
+            folders.filter(f => f.id !== tempId).map(f => f.folders ? { ...f, folders: removeFolder(f.folders) } : f);
+          state.setCollections(state.collections.map((c: any) => ({ ...c, folders: removeFolder(c.folders || []) })));
+          break;
+        }
+        case 'request': {
+          const removeReq = (folders: any[]): any[] =>
+            folders.map(f => ({
+              ...f,
+              requests: (f.requests || []).filter((r: any) => r.id !== tempId),
+              folders: f.folders ? removeReq(f.folders) : undefined
+            }));
+          state.setCollections(state.collections.map((c: any) => ({
+            ...c,
+            requests: (c.requests || []).filter((r: any) => r.id !== tempId),
+            folders: removeReq(c.folders || [])
+          })));
+          break;
+        }
+        case 'environment':
+          state.setEnvironments(state.environments.filter((e: any) => e.id !== tempId));
+          break;
+        case 'workspace':
+          state.setWorkspaces(state.workspaces.filter((w: any) => w.id !== tempId));
+          break;
+      }
+      // Clean up open tabs
+      const cleanTabs = state.openTabs.filter(t => t.id !== tempId);
+      if (cleanTabs.length !== state.openTabs.length) {
+        state.setUserTabs(cleanTabs);
+        if (state.activeTabId === tempId) {
+          state.setActiveTab(cleanTabs.length > 0 ? cleanTabs[cleanTabs.length - 1].id : null);
+        }
+      }
+      console.log(`[SyncManager] realId ${realId} already exists in store (from Realtime fetch). Removed tempId ${tempId} instead of remapping.`);
+      return;
+    }
 
     // 1. Update active tab ID if active
     if (state.activeTabId === tempId) {
