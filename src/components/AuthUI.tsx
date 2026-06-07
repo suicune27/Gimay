@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, globalSupabase, getSupabaseConfig, refreshSupabaseClient } from '../lib/supabase';
-import { SecureConfigStorage } from '../lib/SecureConfigStorage';
+import { globalSupabase } from '../lib/supabase';
 import { 
   LogIn, 
   UserPlus, 
@@ -11,9 +10,6 @@ import {
   EyeOff, 
   Sparkles, 
   ChevronRight,
-  Database,
-  RefreshCw,
-  Check,
   Cloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -29,78 +25,6 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [dbConfig, setDbConfig] = useState(() => {
-    const config = getSupabaseConfig();
-    const tenant = SecureConfigStorage.getSupabaseConfig();
-    return {
-      url: config.url || '',
-      isTenant: Boolean(tenant)
-    };
-  });
-
-  const [selectedSource, setSelectedSource] = useState<'global' | 'self-hosted'>(
-    () => SecureConfigStorage.getSupabaseConfig() ? 'self-hosted' : 'global'
-  );
-  const [customUrl, setCustomUrl] = useState('');
-  const [customAnonKey, setCustomAnonKey] = useState('');
-  const [savingDb, setSavingDb] = useState(false);
-  const [dbSaveError, setDbSaveError] = useState<string | null>(null);
-
-  const handleResetToEnvDb = () => {
-    SecureConfigStorage.clearConfiguration();
-    refreshSupabaseClient();
-    const freshConfig = getSupabaseConfig();
-    setDbConfig({
-      url: freshConfig.url || '',
-      isTenant: false
-    });
-    setSelectedSource('global');
-    setError(null);
-    setDbSaveError(null);
-  };
-
-  const handleSwitchToGlobal = () => {
-    if (dbConfig.isTenant) {
-      handleResetToEnvDb();
-    } else {
-      setSelectedSource('global');
-    }
-  };
-
-  const handleSwitchToSelfHosted = () => {
-    setSelectedSource('self-hosted');
-    setDbSaveError(null);
-  };
-
-  const handleSaveDbConfig = async () => {
-    if (!customUrl || !customAnonKey) {
-      setDbSaveError('Both URL and anon key are required.');
-      return;
-    }
-    setSavingDb(true);
-    setDbSaveError(null);
-    try {
-      const normalizedUrl = customUrl.trim().replace(/\/+$/, '');
-      if (!normalizedUrl.includes('supabase.co') && !normalizedUrl.includes('supabase.in')) {
-        setDbSaveError('Invalid Supabase URL format. Must be a valid supabase.co or supabase.in URL.');
-        setSavingDb(false);
-        return;
-      }
-      SecureConfigStorage.saveSupabaseConfig(normalizedUrl, customAnonKey.trim());
-      refreshSupabaseClient();
-      const freshConfig = getSupabaseConfig();
-      setDbConfig({
-        url: freshConfig.url || normalizedUrl,
-        isTenant: true
-      });
-      setCustomUrl('');
-      setCustomAnonKey('');
-    } catch (err: any) {
-      setDbSaveError(err?.message || 'Failed to save configuration.');
-    }
-    setSavingDb(false);
-  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -288,144 +212,24 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
               </div>
             )}
 
-            {/* Database Uplink Source - Interactive Selector */}
-            <div className="pt-4 border-t border-white/[0.04] space-y-3">
-              <div className="flex items-center gap-1.5">
-                <Database size={11} className={selectedSource === 'self-hosted' ? 'text-amber-500' : 'text-[var(--brand)]'} />
-                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Database Uplink Source</span>
-              </div>
-
-              {/* Segmented Control */}
-              <div className="p-0.5 bg-black/60 rounded-lg border border-white/[0.03] flex relative">
-                <button
-                  type="button"
-                  onClick={handleSwitchToGlobal}
-                  className={`flex-1 text-center py-1.5 text-[8px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 rounded-md ${selectedSource === 'global' ? 'text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  Global Env
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSwitchToSelfHosted}
-                  className={`flex-1 text-center py-1.5 text-[8px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 rounded-md ${selectedSource === 'self-hosted' ? 'text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  Self-hosted
-                </button>
-                <motion.div
-                  className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--brand)] z-0"
-                  animate={{
-                    left: selectedSource === 'global' ? '2px' : 'calc(50% + 1px)',
-                    right: selectedSource === 'global' ? 'calc(50% + 1px)' : '2px',
-                  }}
-                  transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-                />
-              </div>
-
-              {/* Global Env Details */}
-              {selectedSource === 'global' && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center gap-3 overflow-hidden"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[var(--brand)]/10 flex items-center justify-center shrink-0">
-                    <Cloud size={14} className="text-[var(--brand)]" />
+            {/* Database Uplink Source - Static Badge */}
+            <div className="pt-4 border-t border-white/[0.04]">
+              <div className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[var(--brand)]/10 flex items-center justify-center shrink-0">
+                  <Cloud size={14} className="text-[var(--brand)]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] font-bold text-white truncate">
+                    Gimay Cloud
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[9px] font-bold text-white truncate">
-                      Gimay Cloud
-                    </div>
-                    <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
-                      Managed database &mdash; max 3 members per team
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20">
-                    Active
-                  </span>
-                </motion.div>
-              )}
-
-              {/* Self-hosted Details */}
-              {selectedSource === 'self-hosted' && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  {dbConfig.isTenant ? (
-                    <div className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center justify-between gap-3 overflow-hidden">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[9px] font-mono text-white truncate" title={dbConfig.url}>
-                          {dbConfig.url}
-                        </div>
-                        <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
-                          Custom configuration active - unlimited members
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                          Active
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleResetToEnvDb}
-                          className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 font-mono font-black text-[7.5px] tracking-widest uppercase transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          <RefreshCw size={8} /> Reset
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-black/60 border border-white/[0.03] rounded-lg space-y-3">
-                      <p className="text-[7.5px] text-zinc-500 font-mono uppercase tracking-wider">
-                        Enter your own Supabase project credentials.{' '}
-                        <a 
-                          href="https://supabase.com" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[var(--brand)] hover:underline ml-1"
-                        >
-                          Create a project &rarr;
-                        </a>
-                      </p>
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={customUrl}
-                          onChange={(e) => setCustomUrl(e.target.value)}
-                          placeholder="https://your-project.supabase.co"
-                          className="w-full bg-deep border border-white/[0.04] rounded-lg py-2 px-3 text-[10px] font-mono text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/40 transition-all"
-                        />
-                        <input
-                          type="password"
-                          value={customAnonKey}
-                          onChange={(e) => setCustomAnonKey(e.target.value)}
-                          placeholder="anon public key (eyJ...)"
-                          className="w-full bg-deep border border-white/[0.04] rounded-lg py-2 px-3 text-[10px] font-mono text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/40 transition-all"
-                        />
-                      </div>
-
-                      {dbSaveError && (
-                        <p className="text-[8px] text-rose-400 font-mono">{dbSaveError}</p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={handleSaveDbConfig}
-                        disabled={savingDb || !customUrl || !customAnonKey}
-                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/20 text-black font-black text-[8px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50"
-                      >
-                        {savingDb ? (
-                          <span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                        ) : (
-                          <span className="flex items-center gap-1.5">
-                            <Check size={10} strokeWidth={3} /> Save and Connect
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              )}
+                  <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
+                    Managed database &mdash; max 3 members per team
+                  </p>
+                </div>
+                <span className="shrink-0 text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20">
+                  Active
+                </span>
+              </div>
             </div>
           </motion.div>
         </AnimatePresence>
