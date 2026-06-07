@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, globalSupabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import { useDataSync, useDataSyncSubscription } from '../hooks/useDataSync';
 import { Sidebar } from '../features/sidebar/Sidebar';
@@ -26,14 +26,12 @@ import {
   Globe,
   PanelLeftOpen,
   PanelLeftClose,
-  Laptop,
-  Palette,
   Pin
 } from 'lucide-react';
 import { Workspace } from '../types';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sun, Moon } from 'lucide-react';
+
 import { useAuth } from '../hooks/useAuth';
 import { isElectron } from '../lib/platform';
 
@@ -43,6 +41,8 @@ export const RootLayout: React.FC = () => {
   const { 
     activeWorkspaceId, 
     workspaces, 
+    collections,
+    openTabs,
     profile, 
     setProfile, 
     setActiveWorkspaceId,
@@ -54,8 +54,6 @@ export const RootLayout: React.FC = () => {
     activeEnvId,
     setActiveEnvId,
     syncStatus,
-    settings,
-    updateSettings,
     isSettingsModalOpen,
     setIsSettingsModalOpen,
     isSidebarPinned,
@@ -69,49 +67,24 @@ export const RootLayout: React.FC = () => {
   const { fetchWorkspaces, fetchCollections, fetchEnvironments, fetchHistory, fetchTeams } = useDataSync();
   useDataSyncSubscription();
 
-  const [activeAccent, setActiveAccent] = useState<'emerald' | 'sapphire' | 'ruby' | 'amber' | 'amethyst'>(() => {
-    return (localStorage.getItem('gmy_theme_accent') as any) || 'emerald';
-  });
-
   useEffect(() => {
-    const applyTheme = (base: string, accent: string) => {
-      const root = document.documentElement;
-      
-      // 1. Base Theme
-      let resolvedBase = base;
-      if (base === 'system') {
-        resolvedBase = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      }
-      
-      if (resolvedBase === 'light') {
-        root.classList.add('light');
-        useStore.setState({ theme: 'light' });
-      } else {
-        root.classList.remove('light');
-        useStore.setState({ theme: 'dark' });
-      }
-      
-      // 2. Accent color variables
-      const accents = {
-        emerald: { brand: '#3ECF8E', brandMuted: 'rgba(62, 207, 142, 0.1)', brandBorder: 'rgba(62, 207, 142, 0.2)' },
-        sapphire: { brand: '#3B82F6', brandMuted: 'rgba(59, 130, 246, 0.1)', brandBorder: 'rgba(59, 130, 246, 0.2)' },
-        ruby: { brand: '#EF4444', brandMuted: 'rgba(239, 68, 68, 0.1)', brandBorder: 'rgba(239, 68, 68, 0.2)' },
-        amber: { brand: '#F59E0B', brandMuted: 'rgba(245, 158, 11, 0.1)', brandBorder: 'rgba(245, 158, 11, 0.2)' },
-        amethyst: { brand: '#8B5CF6', brandMuted: 'rgba(139, 92, 246, 0.1)', brandBorder: 'rgba(139, 92, 246, 0.2)' }
-      };
-      
-      const selectedAccent = (accents as any)[accent] || accents.emerald;
-      root.style.setProperty('--brand', selectedAccent.brand);
-      root.style.setProperty('--brand-muted', selectedAccent.brandMuted);
-      root.style.setProperty('--brand-border', selectedAccent.brandBorder);
-    };
-
-    applyTheme(settings.appearance.theme, activeAccent);
-  }, [settings.appearance.theme, activeAccent]);
+    const root = document.documentElement;
+    // Light mode temporarily disabled — always force dark
+    root.classList.remove('light');
+    useStore.setState({ theme: 'dark' });
+    root.style.removeProperty('--brand');
+    root.style.removeProperty('--brand-muted');
+    root.style.removeProperty('--brand-border');
+  }, []); // light mode disabled — runs once on mount
 
   useEffect(() => {
     const initSession = async () => {
-      if (isElectron() && typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Check if we should operate in offline mode (web or desktop)
+      const storeSyncMetadata = useStore.getState().syncMetadata;
+      const isOfflineMode = storeSyncMetadata.isOffline || 
+        (typeof navigator !== 'undefined' && !navigator.onLine);
+
+      if (isOfflineMode) {
         console.warn('[RootLayout] Offline mode active. Using local data context.');
         if (!profile) {
           setProfile({
@@ -129,7 +102,8 @@ export const RootLayout: React.FC = () => {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // Auth always via globalSupabase (global project)
+        const { data: { session } } = await globalSupabase.auth.getSession();
         if (session?.user) {
           const { data: profileData } = await supabase
             .from('profiles')
@@ -139,9 +113,7 @@ export const RootLayout: React.FC = () => {
 
           if (profileData) {
             setProfile(profileData);
-            if (profileData.preferences?.theme) {
-               updateSettings({ appearance: { ...settings.appearance, theme: profileData.preferences.theme } });
-            }
+  
           } else {
             setProfile({
               id: session.user.id,
@@ -168,13 +140,13 @@ export const RootLayout: React.FC = () => {
   const [envFilterQuery, setEnvFilterQuery] = useState('');
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const [isEnvironmentMenuOpen, setIsEnvironmentMenuOpen] = useState(false);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+
   const [wsToDelete, setWsToDelete] = useState<{ id: string; name: string } | null>(null);
   const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   
   const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
   const environmentMenuRef = useRef<HTMLDivElement | null>(null);
-  const themeMenuRef = useRef<HTMLDivElement | null>(null);
+
 
   const filteredEnvironments = useMemo(() => {
     const query = envFilterQuery.trim().toLowerCase();
@@ -246,17 +218,60 @@ export const RootLayout: React.FC = () => {
       if (environmentMenuRef.current && !environmentMenuRef.current.contains(event.target as Node)) {
         setIsEnvironmentMenuOpen(false);
       }
-      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target as Node)) {
-        setIsThemeMenuOpen(false);
-      }
+
     };
 
     document.addEventListener('mousedown', handleDocumentClick);
     return () => document.removeEventListener('mousedown', handleDocumentClick);
   }, []);
 
+  // Global keyboard shortcut: Ctrl+S / ⌘S triggers local save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+        e.preventDefault();
+        const state = useStore.getState();
+        state.triggerLocalSave();
+        const isMac = navigator.platform?.includes('Mac') || navigator.userAgent?.includes('Mac');
+        const shortcut = isMac ? '⌘S' : 'Ctrl+S';
+        state.addToast({ type: 'success', message: `Data secured to local storage (${shortcut})` });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
   const activeEnvironment = environments.find(e => e.id === activeEnvId);
+
+  // Auto-persist sandbox data to localStorage continuously (debounced 500ms)
+  const SANDBOX_PERSIST_KEY = 'gimay-sandbox-persist';
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      persistTimerRef.current = null;
+      const state = useStore.getState();
+      if (!state.syncMetadata.isOffline) return;
+      try {
+        const snapshot = {
+          collections: state.collections,
+          workspaces: state.workspaces,
+          environments: state.environments,
+          openTabs: state.openTabs,
+          activeTabId: state.activeTabId,
+          activeWorkspaceId: state.activeWorkspaceId,
+          activeEnvId: state.activeEnvId,
+          savedAt: Date.now()
+        };
+        localStorage.setItem(SANDBOX_PERSIST_KEY, JSON.stringify(snapshot));
+      } catch {}
+    }, 500);
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    };
+  }, [collections, workspaces, environments, openTabs, activeWorkspaceId, activeEnvId]);
 
   const { logout } = useAuth();
 
@@ -373,7 +388,7 @@ export const RootLayout: React.FC = () => {
             <button 
               onClick={() => setIsSidebarPinned(!isSidebarPinned)}
               className={cn(
-                "p-1.5 rounded-md transition-all text-[#555555] hover:text-[var(--brand)] hover:bg-white/[0.03] titlebar-no-drag",
+                "p-1.5 rounded-md transition-all text-dim hover:text-[var(--brand)] hover:bg-white/[0.03] titlebar-no-drag",
                 isSidebarPinned && "text-[var(--brand)] bg-[var(--brand)]/10"
               )}
               title={isSidebarPinned ? "Unlock Sidebar" : "Lock Sidebar"}
@@ -397,19 +412,19 @@ export const RootLayout: React.FC = () => {
             </button>
           </div>
           
-          <div className="h-4 w-px bg-[#222222]" />
+          <div className="h-4 w-px bg-elevated" />
 
           {/* Workspace selector dropdown */}
           <div ref={workspaceMenuRef} className="relative titlebar-no-drag">
             <button
               onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
-              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
+              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-elevated transition-all group border border-transparent hover:border-[var(--border-subtle)]"
             >
-              <LayoutGrid size={12} className="text-[#555555] group-hover:text-[var(--brand)]" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-[#888888]">
+              <LayoutGrid size={12} className="text-dim group-hover:text-[var(--brand)]" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-muted">
                 {activeWorkspace?.name || 'Local'}
               </span>
-              <ChevronDown size={8} className="text-[#555555]" />
+              <ChevronDown size={8} className="text-dim" />
             </button>
 
             <div className={cn(
@@ -486,22 +501,22 @@ export const RootLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="h-4 w-px bg-[#222222]" />
+          <div className="h-4 w-px bg-elevated" />
 
           {/* Environment Selector Dropdown */}
           <div ref={environmentMenuRef} className="relative titlebar-no-drag">
             <button
               onClick={() => setIsEnvironmentMenuOpen((open) => !open)}
-              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-[#1A1A1A] transition-all group border border-transparent hover:border-[var(--border-subtle)]"
+              className="flex items-center gap-2 px-2.5 py-1 rounded hover:bg-elevated transition-all group border border-transparent hover:border-[var(--border-subtle)]"
             >
-              <Globe size={12} className={cn("transition-colors", activeEnvironment ? "text-[var(--brand)]" : "text-[#555555]")} />
-              <span className={cn("text-[9px] font-bold uppercase tracking-widest", activeEnvironment ? "text-white" : "text-[#888888]")}>
+              <Globe size={12} className={cn("transition-colors", activeEnvironment ? "text-[var(--brand)]" : "text-dim")} />
+              <span className={cn("text-[9px] font-bold uppercase tracking-widest", activeEnvironment ? "text-white" : "text-muted")}>
                 {activeEnvironment?.name || 'No Environment'}
               </span>
               {activeEnvironment && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />
               )}
-              <ChevronDown size={8} className="text-[#555555]" />
+              <ChevronDown size={8} className="text-dim" />
             </button>
 
             <div className={cn(
@@ -511,13 +526,13 @@ export const RootLayout: React.FC = () => {
               <div className="px-4 py-2 border-b border-[var(--border-subtle)] space-y-2">
                 <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Select Environment</h3>
                 <div className="relative">
-                  <Search size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#444444]" />
+                  <Search size={10} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-dim" />
                   <input
                     type="text"
                     placeholder="Search environments..."
                     value={envFilterQuery}
                     onChange={(e) => setEnvFilterQuery(e.target.value)}
-                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg py-1 pl-7 pr-3 text-[9px] font-mono text-white outline-none focus:border-[var(--brand)]/35 placeholder:text-[#333333]"
+                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-lg py-1 pl-7 pr-3 text-[9px] font-mono text-white outline-none focus:border-[var(--brand)]/35 placeholder:text-dim"
                   />
                 </div>
               </div>
@@ -557,7 +572,7 @@ export const RootLayout: React.FC = () => {
                       <span className="truncate">{env.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[7px] text-[#444444] font-mono">
+                      <span className="text-[7px] text-dim font-mono">
                         {env.is_global ? 'Cloud' : 'Local'}
                       </span>
                       {activeEnvId === env.id && (
@@ -568,7 +583,7 @@ export const RootLayout: React.FC = () => {
                 ))}
 
                 {filteredEnvironments.length === 0 && envFilterQuery && (
-                  <div className="px-4 py-3 text-center text-[9px] text-[#55555C] uppercase tracking-widest">
+                  <div className="px-4 py-3 text-center text-[9px] text-dim uppercase tracking-widest">
                     No matching modules
                   </div>
                 )}
@@ -579,7 +594,7 @@ export const RootLayout: React.FC = () => {
 
         {/* Right side options */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-[#0A0A0A] border border-[#222222] rounded-full titlebar-no-drag">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-deep border border-subtle rounded-full titlebar-no-drag">
             {syncStatus === 'saving' ? (
               <>
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
@@ -600,101 +615,15 @@ export const RootLayout: React.FC = () => {
             )}
           </div>
 
-          {/* Theme & Accent Custom Popover */}
-          <div ref={themeMenuRef} className="relative titlebar-no-drag">
-            <button
-              onClick={() => setIsThemeMenuOpen((open) => !open)}
-              className="p-1.5 rounded-lg text-[#555555] hover:text-white hover:bg-[#1A1A1A] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
-              title="Aesthetic Config"
-            >
-              <Palette size={14} className="text-[#888888] hover:text-[var(--brand)] transition-colors" />
-            </button>
 
-            <div className={cn(
-              "absolute top-full right-0 mt-1 w-56 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl shadow-2xl p-4 transition-all z-50 space-y-4",
-              isThemeMenuOpen ? "opacity-100 visible translate-y-0" : "opacity-0 invisible -translate-y-1 pointer-events-none"
-            )}>
-              <div className="border-b border-[var(--border-subtle)] pb-2">
-                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Base Theme</h3>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-1">
-                {[
-                  { id: 'dark', label: 'Dark', icon: Moon },
-                  { id: 'light', label: 'Light', icon: Sun },
-                  { id: 'system', label: 'System', icon: Laptop }
-                ].map((t) => {
-                  const Icon = t.icon;
-                  const isActive = settings.appearance.theme === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        updateSettings({ appearance: { ...settings.appearance, theme: t.id as any } });
-                        if (profile) {
-                          PersistenceService.updateProfilePreferences(profile.id, {
-                            ...profile.preferences,
-                            theme: t.id as any
-                          });
-                        }
-                      }}
-                      className={cn(
-                        "flex flex-col items-center gap-1.5 p-2 rounded-lg border transition-all text-[8px] font-black uppercase tracking-widest",
-                        isActive 
-                          ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)] shadow-[0_0_10px_var(--brand-muted)]" 
-                          : "bg-[var(--bg-deep)] border-[var(--border-subtle)] text-[#55555C] hover:border-[#333333] hover:text-white"
-                      )}
-                    >
-                      <Icon size={12} />
-                      <span>{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="border-b border-[var(--border-subtle)] pt-1 pb-2">
-                <h3 className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Accent Core</h3>
-              </div>
-
-              <div className="flex items-center justify-between px-1">
-                {[
-                  { id: 'emerald', color: '#3ECF8E', label: 'Emerald' },
-                  { id: 'sapphire', color: '#3B82F6', label: 'Sapphire' },
-                  { id: 'ruby', color: '#EF4444', label: 'Ruby' },
-                  { id: 'amber', color: '#F59E0B', label: 'Amber' },
-                  { id: 'amethyst', color: '#8B5CF6', label: 'Amethyst' }
-                ].map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => {
-                      setActiveAccent(a.id as any);
-                      localStorage.setItem('gmy_theme_accent', a.id);
-                    }}
-                    className={cn(
-                      "w-6 h-6 rounded-full border transition-all flex items-center justify-center relative",
-                      activeAccent === a.id 
-                        ? "border-white scale-110 shadow-lg" 
-                        : "border-transparent hover:scale-105"
-                    )}
-                    style={{ backgroundColor: a.color }}
-                    title={a.label}
-                  >
-                    {activeAccent === a.id && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
 
           <div className="flex items-center gap-1 titlebar-no-drag">
-             <button className="p-1.5 text-[#555555] hover:text-[#3ECF8E] transition-all"><Search size={14} /></button>
+             <button className="p-1.5 text-dim hover:text-[var(--brand)] transition-all"><Search size={14} /></button>
           </div>
 
           {isElectron() && (
             <>
-              <div className="h-4 w-px bg-[#222222]" />
+              <div className="h-4 w-px bg-elevated" />
 
               {/* Desktop Shell Window System controls */}
               <div className="flex items-center gap-1 ml-1 titlebar-no-drag">
@@ -702,7 +631,7 @@ export const RootLayout: React.FC = () => {
                   onClick={() => {
                     (window as any).electron?.minimize();
                   }} 
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-[var(--brand)] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-dim hover:text-[var(--brand)] transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
                   title="Minimize Window"
                 >
                   <span className="w-2.5 h-[2px] bg-current rounded-full" />
@@ -711,7 +640,7 @@ export const RootLayout: React.FC = () => {
                   onClick={() => {
                     (window as any).electron?.maximize();
                   }} 
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-[#55555C] hover:text-blue-400 transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-dim hover:text-blue-400 transition-all flex items-center justify-center border border-transparent hover:border-[var(--border-subtle)]"
                   title="Maximize Window"
                 >
                   <span className="w-2 h-2 border-2 border-current rounded-xs" />
@@ -720,7 +649,7 @@ export const RootLayout: React.FC = () => {
                   onClick={() => {
                     (window as any).electron?.close();
                   }} 
-                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-[#55555C] hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-500/20"
+                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-dim hover:text-red-500 transition-all flex items-center justify-center border border-transparent hover:border-red-500/20"
                   title="Terminate Secure Session (Close)"
                 >
                   <Plus className="rotate-45" size={14} />
@@ -745,44 +674,44 @@ export const RootLayout: React.FC = () => {
                 initial={{ height: 0 }}
                 animate={{ height: 180 }}
                 exit={{ height: 0 }}
-                className="border-t border-[#111111] bg-[#050505] overflow-hidden flex flex-col"
+                className="border-t border-subtle bg-deep overflow-hidden flex flex-col"
               >
-                <div className="h-7 border-b border-[#1A1A1A] flex items-center justify-between px-3 bg-[#0A0A0A] shrink-0">
+                <div className="h-7 border-b border-subtle flex items-center justify-between px-3 bg-deep shrink-0">
                    <div className="flex items-center gap-3">
-                     <span className="text-[8px] font-black text-[#666666] uppercase tracking-[0.3em] flex items-center gap-2">
-                       <Terminal size={10} className="text-[#3ECF8E]" />
+                     <span className="text-[8px] font-black text-muted uppercase tracking-[0.3em] flex items-center gap-2">
+                       <Terminal size={10} className="text-[var(--brand)]" />
                        Protocol System Core
                      </span>
                      <div className="flex gap-1">
-                        <div className="w-1 h-1 rounded-full bg-[#3ECF8E] animate-pulse" />
-                        <div className="w-1 h-1 rounded-full bg-[#3ECF8E] opacity-10" />
+                        <div className="w-1 h-1 rounded-full bg-[var(--brand)] animate-pulse" />
+                        <div className="w-1 h-1 rounded-full bg-[var(--brand)] opacity-10" />
                      </div>
                    </div>
                    <button 
                     onClick={() => setConsoleCollapsed(true)} 
-                    className="text-[7px] font-black text-[#555555] hover:text-[#3ECF8E] uppercase transition-colors tracking-[0.2em] px-2 py-0.5 rounded hover:bg-white/[0.03]"
+                    className="text-[7px] font-black text-dim hover:text-[var(--brand)] uppercase transition-colors tracking-[0.2em] px-2 py-0.5 rounded hover:bg-white/[0.03]"
                    >
                      Disconnect Terminal
                    </button>
                 </div>
-                <div className="flex-1 overflow-y-auto font-mono text-[9px] text-[#888888] divide-y divide-white/[0.02] custom-scrollbar bg-black/60">
+                <div className="flex-1 overflow-y-auto font-mono text-[9px] text-muted divide-y divide-white/[0.02] custom-scrollbar bg-black/60">
                    <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] font-bold shrink-0">[KERN]</span>
+                     <span className="text-dim shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-[var(--brand)] font-bold shrink-0">[KERN]</span>
                      <span className="opacity-70 leading-normal">Uplink established; kernel version 2.4.0 active.</span>
                    </div>
                    <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
-                     <span className="text-[#3ECF8E] font-bold shrink-0">[AUTH]</span>
+                     <span className="text-dim shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-[var(--brand)] font-bold shrink-0">[AUTH]</span>
                      <span className="opacity-70 leading-normal">Handshake success: Node identity {profile?.email} validated.</span>
                    </div>
                    <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors text-yellow-500/60">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
+                     <span className="text-dim shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
                      <span className="font-bold shrink-0">[SYNC]</span>
                      <span className="leading-normal">Real-time delta channel initializing... heartbeat listening on sector 7.</span>
                    </div>
-                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors text-[#3ECF8E]">
-                     <span className="text-[#222222] shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
+                   <div className="flex gap-4 px-4 py-1.5 hover:bg-white/[0.01] transition-colors text-[var(--brand)]">
+                     <span className="text-dim shrink-0 font-medium tabular-nums border-r border-white/[0.02] pr-3 min-w-[70px] text-center">{new Date().toLocaleTimeString()}</span>
                      <span className="font-bold shrink-0">[SUCCESS]</span>
                      <span className="font-medium leading-normal tracking-tight">System ready for packet routing.</span>
                    </div>

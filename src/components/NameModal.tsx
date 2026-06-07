@@ -49,13 +49,13 @@ export const NameModal: React.FC<NameModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-md bg-[#0F0F0F] border border-[#222222] rounded-2xl p-6 shadow-2xl"
+            className="relative w-full max-w-md bg-header border border-subtle rounded-2xl p-6 shadow-2xl"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-[11px] font-black text-[#3ECF8E] uppercase tracking-[0.3em]">{title}</h2>
+              <h2 className="text-[11px] font-black text-[var(--brand)] uppercase tracking-[0.3em]">{title}</h2>
               <button 
                 onClick={onClose}
-                className="text-[#444444] hover:text-white transition-colors"
+                className="text-dim hover:text-white transition-colors"
               >
                 <X size={16} />
               </button>
@@ -69,7 +69,7 @@ export const NameModal: React.FC<NameModalProps> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={placeholder}
-                  className="w-full bg-[#0A0A0A] border border-[#222222] rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-[#3ECF8E]/50 transition-all placeholder:text-[#222222]"
+                  className="w-full bg-deep border border-subtle rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-[var(--brand)]/50 transition-all placeholder:text-dim"
                 />
               </div>
 
@@ -77,14 +77,14 @@ export const NameModal: React.FC<NameModalProps> = ({
                 <button 
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-3 bg-transparent border border-[#222222] rounded-xl text-[10px] font-black text-[#444444] hover:text-[#888888] hover:border-[#444444] transition-all uppercase tracking-widest"
+                  className="flex-1 py-3 bg-transparent border border-subtle rounded-xl text-[10px] font-black text-dim hover:text-muted hover:border-strong transition-all uppercase tracking-widest"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   disabled={!name.trim()}
-                  className="flex-1 py-3 bg-[#3ECF8E] rounded-xl text-[10px] font-black text-[#0A0A0A] hover:bg-[#34B37A] transition-all uppercase tracking-widest flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-[var(--brand)] rounded-xl text-[10px] font-black text-[var(--bg-deep)] hover:bg-[var(--brand-hover)] transition-all uppercase tracking-widest flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirm <Check size={14} />
                 </button>

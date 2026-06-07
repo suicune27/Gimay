@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, getSupabaseConfig, refreshSupabaseClient } from '../lib/supabase';
+import { supabase, globalSupabase, getSupabaseConfig, refreshSupabaseClient } from '../lib/supabase';
 import { SecureConfigStorage } from '../lib/SecureConfigStorage';
 import { 
   LogIn, 
@@ -12,7 +12,9 @@ import {
   Sparkles, 
   ChevronRight,
   Database,
-  RefreshCw
+  RefreshCw,
+  Check,
+  Cloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -37,6 +39,14 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
     };
   });
 
+  const [selectedSource, setSelectedSource] = useState<'global' | 'self-hosted'>(
+    () => SecureConfigStorage.getSupabaseConfig() ? 'self-hosted' : 'global'
+  );
+  const [customUrl, setCustomUrl] = useState('');
+  const [customAnonKey, setCustomAnonKey] = useState('');
+  const [savingDb, setSavingDb] = useState(false);
+  const [dbSaveError, setDbSaveError] = useState<string | null>(null);
+
   const handleResetToEnvDb = () => {
     SecureConfigStorage.clearConfiguration();
     refreshSupabaseClient();
@@ -45,7 +55,51 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
       url: freshConfig.url || '',
       isTenant: false
     });
+    setSelectedSource('global');
     setError(null);
+    setDbSaveError(null);
+  };
+
+  const handleSwitchToGlobal = () => {
+    if (dbConfig.isTenant) {
+      handleResetToEnvDb();
+    } else {
+      setSelectedSource('global');
+    }
+  };
+
+  const handleSwitchToSelfHosted = () => {
+    setSelectedSource('self-hosted');
+    setDbSaveError(null);
+  };
+
+  const handleSaveDbConfig = async () => {
+    if (!customUrl || !customAnonKey) {
+      setDbSaveError('Both URL and anon key are required.');
+      return;
+    }
+    setSavingDb(true);
+    setDbSaveError(null);
+    try {
+      const normalizedUrl = customUrl.trim().replace(/\/+$/, '');
+      if (!normalizedUrl.includes('supabase.co') && !normalizedUrl.includes('supabase.in')) {
+        setDbSaveError('Invalid Supabase URL format. Must be a valid supabase.co or supabase.in URL.');
+        setSavingDb(false);
+        return;
+      }
+      SecureConfigStorage.saveSupabaseConfig(normalizedUrl, customAnonKey.trim());
+      refreshSupabaseClient();
+      const freshConfig = getSupabaseConfig();
+      setDbConfig({
+        url: freshConfig.url || normalizedUrl,
+        isTenant: true
+      });
+      setCustomUrl('');
+      setCustomAnonKey('');
+    } catch (err: any) {
+      setDbSaveError(err?.message || 'Failed to save configuration.');
+    }
+    setSavingDb(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -58,9 +112,10 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
       ? undefined 
       : window.location.origin + '/app';
 
+    // Auth always via globalSupabase (global project) — data operations use `supabase` (tenant project)
     const { error: authError } = isLogin 
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ 
+      ? await globalSupabase.auth.signInWithPassword({ email, password })
+      : await globalSupabase.auth.signUp({ 
           email, 
           password,
           options: redirectTo ? { emailRedirectTo: redirectTo } : undefined
@@ -73,9 +128,9 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#050506] overflow-hidden p-4 font-sans selection:bg-[#3ECF8E]/20">
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-deep overflow-hidden p-4 font-sans selection:bg-[var(--brand)]/20">
       {/* Ambient background glows like loading */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#3ECF8E]/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[var(--brand)]/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] bg-blue-500/5 rounded-full blur-[80px] pointer-events-none" />
 
       {/* Technical grid lines in the background */}
@@ -85,19 +140,19 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
         initial={{ opacity: 0, y: 15, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="relative w-full max-w-md bg-[#0C0C0E]/90 border border-white/[0.04] rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.8)] p-8 backdrop-blur-xl z-10 flex flex-col overflow-hidden"
+        className="relative w-full max-w-md bg-[var(--bg-surface)]/90 border border-white/[0.04] rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.8)] p-8 backdrop-blur-xl z-10 flex flex-col overflow-hidden"
       >
         {/* Top Glow Boundary Line */}
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[#3ECF8E]/20 to-transparent pointer-events-none" />
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--brand)]/20 to-transparent pointer-events-none" />
 
         {/* Brand Header */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-11 h-11 bg-[#3ECF8E] rounded-xl shadow-[0_0_30px_rgba(62,207,142,0.15)] flex items-center justify-center transition-all hover:scale-105">
-            <Terminal size={22} className="text-[#050506] stroke-[2.5]" />
+          <div className="w-11 h-11 bg-[var(--brand)] rounded-xl shadow-[0_0_30px_rgba(var(--brand-rgb),0.15)] flex items-center justify-center transition-all hover:scale-105">
+            <Terminal size={22} className="text-[var(--bg-deep)] stroke-[2.5]" />
           </div>
           <div>
             <h1 className="text-2xl font-black text-white tracking-tighter uppercase leading-none flex items-center gap-1.5">
-              Gimay <span className="text-[9px] py-0.5 px-1.5 rounded-full border border-[#3ECF8E]/25 text-[#3ECF8E] font-mono tracking-widest font-black bg-[#3ECF8E]/5">CORE</span>
+              Gimay <span className="text-[9px] py-0.5 px-1.5 rounded-full border border-[var(--brand)]/25 text-[var(--brand)] font-mono tracking-widest font-black bg-[var(--brand)]/5">CORE</span>
             </h1>
             <p className="text-[8px] text-zinc-500 font-mono uppercase tracking-[0.25em] font-black mt-1">Cortex API Uplink Engine</p>
           </div>
@@ -136,7 +191,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
               </button>
               
               <motion.div
-                className="absolute top-1 bottom-1 rounded-lg bg-[#3ECF8E] z-0"
+                className="absolute top-1 bottom-1 rounded-lg bg-[var(--brand)] z-0"
                 animate={{
                   left: isLogin ? '4px' : 'calc(50% + 2px)',
                   right: isLogin ? 'calc(50% + 2px)' : '4px',
@@ -155,7 +210,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#050506] border border-white/[0.04] rounded-xl py-3 pl-11 pr-4 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[#3ECF8E]/40 focus:bg-white/[0.01] transition-all"
+                    className="w-full bg-deep border border-white/[0.04] rounded-xl py-3 pl-11 pr-4 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[var(--brand)]/40 focus:bg-white/[0.01] transition-all"
                     placeholder="operator@putment.io"
                     required
                   />
@@ -171,7 +226,7 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#050506] border border-white/[0.04] rounded-xl py-3 pl-11 pr-11 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[#3ECF8E]/40 focus:bg-white/[0.01] transition-all"
+                    className="w-full bg-deep border border-white/[0.04] rounded-xl py-3 pl-11 pr-11 text-xs text-zinc-200 placeholder:text-zinc-700 focus:outline-none focus:border-[var(--brand)]/40 focus:bg-white/[0.01] transition-all"
                     placeholder="••••••••"
                     required
                   />
@@ -206,10 +261,10 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
               {/* Command Action Button */}
               <button 
                 disabled={loading}
-                className="w-full bg-[#3ECF8E] hover:bg-[#46e6a0] disabled:bg-[#3ECF8E]/20 text-[#050506] font-black text-[9px] uppercase tracking-widest py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-lg shadow-[#3ECF8E]/10 cursor-pointer active:scale-[0.98]"
+                className="w-full bg-[var(--brand)] hover:bg-[var(--brand-hover)] disabled:bg-[var(--brand)]/20 text-[var(--bg-deep)] font-black text-[9px] uppercase tracking-widest py-3.5 rounded-xl flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-lg shadow-[rgba(var(--brand-rgb),0.1)] cursor-pointer active:scale-[0.98]"
               >
                 {loading ? (
-                  <span className="w-4 h-4 border-2 border-[#050506]/30 border-t-[#050506] rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[var(--bg-deep)]/30 border-t-[var(--bg-deep)] rounded-full animate-spin" />
                 ) : (
                   <>
                     {isLogin ? <LogIn size={13} className="stroke-[2.5]" /> : <UserPlus size={13} className="stroke-[2.5]" />}
@@ -228,46 +283,149 @@ export const AuthUI: React.FC<AuthUIProps> = ({ onOfflineMode }) => {
                   onClick={onOfflineMode}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.04] text-[8px] font-black text-zinc-500 hover:text-zinc-300 uppercase tracking-widest transition-all cursor-pointer active:scale-[0.97]"
                 >
-                  <Sparkles size={11} className="text-[#3ECF8E]" /> Launch Offline Sandbox
+                  <Sparkles size={11} className="text-[var(--brand)]" /> Launch Offline Sandbox
                 </button>
               </div>
             )}
 
-            {/* Database Connection Node status */}
-            <div className="pt-4 border-t border-white/[0.04] space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Database size={11} className={dbConfig.isTenant ? 'text-amber-500' : 'text-[#3ECF8E]'} />
-                  <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Database Uplink Source</span>
-                </div>
-                <span className={`text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono ${
-                  dbConfig.isTenant ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/20'
-                }`}>
-                  {dbConfig.isTenant ? 'Tenant Override' : 'Global Env'}
-                </span>
+            {/* Database Uplink Source - Interactive Selector */}
+            <div className="pt-4 border-t border-white/[0.04] space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Database size={11} className={selectedSource === 'self-hosted' ? 'text-amber-500' : 'text-[var(--brand)]'} />
+                <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Database Uplink Source</span>
               </div>
-              <div className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center justify-between gap-3 overflow-hidden">
-                <div className="flex-1 min-w-0">
-                  <div className="text-[9px] font-mono text-white truncate" title={dbConfig.url}>
-                    {dbConfig.url || 'http://unconfigured-endpoint.co'}
+
+              {/* Segmented Control */}
+              <div className="p-0.5 bg-black/60 rounded-lg border border-white/[0.03] flex relative">
+                <button
+                  type="button"
+                  onClick={handleSwitchToGlobal}
+                  className={`flex-1 text-center py-1.5 text-[8px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 rounded-md ${selectedSource === 'global' ? 'text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  Global Env
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSwitchToSelfHosted}
+                  className={`flex-1 text-center py-1.5 text-[8px] font-black uppercase tracking-widest relative z-10 transition-colors duration-300 rounded-md ${selectedSource === 'self-hosted' ? 'text-black' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  Self-hosted
+                </button>
+                <motion.div
+                  className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--brand)] z-0"
+                  animate={{
+                    left: selectedSource === 'global' ? '2px' : 'calc(50% + 1px)',
+                    right: selectedSource === 'global' ? 'calc(50% + 1px)' : '2px',
+                  }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                />
+              </div>
+
+              {/* Global Env Details */}
+              {selectedSource === 'global' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center gap-3 overflow-hidden"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-[var(--brand)]/10 flex items-center justify-center shrink-0">
+                    <Cloud size={14} className="text-[var(--brand)]" />
                   </div>
-                  <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
-                    {dbConfig.isTenant 
-                      ? 'Local overridden configuration active.' 
-                      : 'Targeting default workspace environment database.'
-                    }
-                  </p>
-                </div>
-                {dbConfig.isTenant && (
-                  <button
-                    type="button"
-                    onClick={handleResetToEnvDb}
-                    className="shrink-0 px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 font-mono font-black text-[7.5px] tracking-widest uppercase transition-all cursor-pointer flex items-center gap-1"
-                  >
-                    <RefreshCw size={8} /> Reset to Env
-                  </button>
-                )}
-              </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[9px] font-bold text-white truncate">
+                      Gimay Cloud
+                    </div>
+                    <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
+                      Managed database &mdash; max 3 members per team
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20">
+                    Active
+                  </span>
+                </motion.div>
+              )}
+
+              {/* Self-hosted Details */}
+              {selectedSource === 'self-hosted' && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  {dbConfig.isTenant ? (
+                    <div className="p-2.5 bg-black/60 border border-white/[0.03] rounded-lg flex items-center justify-between gap-3 overflow-hidden">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[9px] font-mono text-white truncate" title={dbConfig.url}>
+                          {dbConfig.url}
+                        </div>
+                        <p className="text-[7.5px] text-zinc-600 font-mono uppercase mt-0.5 tracking-wider">
+                          Custom configuration active - unlimited members
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                          Active
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleResetToEnvDb}
+                          className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 hover:text-rose-300 font-mono font-black text-[7.5px] tracking-widest uppercase transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw size={8} /> Reset
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-black/60 border border-white/[0.03] rounded-lg space-y-3">
+                      <p className="text-[7.5px] text-zinc-500 font-mono uppercase tracking-wider">
+                        Enter your own Supabase project credentials.{' '}
+                        <a 
+                          href="https://supabase.com" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[var(--brand)] hover:underline ml-1"
+                        >
+                          Create a project &rarr;
+                        </a>
+                      </p>
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={customUrl}
+                          onChange={(e) => setCustomUrl(e.target.value)}
+                          placeholder="https://your-project.supabase.co"
+                          className="w-full bg-deep border border-white/[0.04] rounded-lg py-2 px-3 text-[10px] font-mono text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/40 transition-all"
+                        />
+                        <input
+                          type="password"
+                          value={customAnonKey}
+                          onChange={(e) => setCustomAnonKey(e.target.value)}
+                          placeholder="anon public key (eyJ...)"
+                          className="w-full bg-deep border border-white/[0.04] rounded-lg py-2 px-3 text-[10px] font-mono text-zinc-300 placeholder:text-zinc-700 focus:outline-none focus:border-amber-500/40 transition-all"
+                        />
+                      </div>
+
+                      {dbSaveError && (
+                        <p className="text-[8px] text-rose-400 font-mono">{dbSaveError}</p>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleSaveDbConfig}
+                        disabled={savingDb || !customUrl || !customAnonKey}
+                        className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:bg-amber-500/20 text-black font-black text-[8px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] disabled:opacity-50"
+                      >
+                        {savingDb ? (
+                          <span className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <Check size={10} strokeWidth={3} /> Save and Connect
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

@@ -91,32 +91,32 @@ export const JoinInviteWizard: React.FC = () => {
         </h2>
         <button
           onClick={() => setOnboardingStep('option-select')}
-          className="p-2 hover:bg-[#1A1A1A] rounded-lg transition-all"
+          className="p-2 hover:bg-elevated rounded-lg transition-all"
         >
-          <ArrowLeft size={20} className="text-[#888888]" />
+          <ArrowLeft size={20} className="text-muted" />
         </button>
       </div>
 
       <div className="space-y-6">
-        <div className="p-4 rounded-xl bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex gap-4 items-center">
-          <div className="w-12 h-12 rounded-lg bg-[#3ECF8E]/20 flex items-center justify-center shrink-0">
-            <QrCode size={24} className="text-[#3ECF8E]" />
+        <div className="p-4 rounded-xl bg-[var(--brand)]/10 border border-[var(--brand)]/20 flex gap-4 items-center">
+          <div className="w-12 h-12 rounded-lg bg-[var(--brand)]/20 flex items-center justify-center shrink-0">
+            <QrCode size={24} className="text-[var(--brand)]" />
           </div>
           <div>
             <p className="text-sm font-bold text-white">Secure Onboarding</p>
-            <p className="text-xs text-[#888888]">
+            <p className="text-xs text-muted">
               Your team connection details will be fetched automatically.
             </p>
           </div>
         </div>
 
-        <p className="text-sm text-[#888888]">
+        <p className="text-sm text-muted">
           Enter the secure team invite code provided by your team administrator.
         </p>
 
         {/* Temporary Code Input */}
         <div>
-          <label className="block text-xs font-black uppercase text-[#888888] mb-2 tracking-widest">
+          <label className="block text-xs font-black uppercase text-muted mb-2 tracking-widest">
             Team Invite Code
           </label>
           <input
@@ -125,9 +125,9 @@ export const JoinInviteWizard: React.FC = () => {
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
             maxLength={24}
-            className="w-full px-4 py-4 bg-[#1A1A1A] border border-[#222222] rounded-lg text-white placeholder:text-[#555555] focus:border-[#3ECF8E] focus:outline-none transition-all font-mono tracking-widest text-center text-xl"
+            className="w-full px-4 py-4 bg-elevated border border-subtle rounded-lg text-white placeholder:text-dim focus:border-[var(--brand)] focus:outline-none transition-all font-mono tracking-widest text-center text-xl"
           />
-          <p className="text-xs text-[#555555] mt-2 text-center">
+          <p className="text-xs text-dim mt-2 text-center">
             Format: TEMP-XXXX-XXXX-XXXX
           </p>
         </div>
@@ -177,7 +177,7 @@ export const JoinInviteWizard: React.FC = () => {
             !inviteCode ||
             !OnboardingService.isValidInviteCodeFormat(inviteCode)
           }
-          className="w-full px-4 py-4 bg-[#3ECF8E] text-[var(--text-on-brand)] font-black rounded-lg hover:shadow-[0_0_20px_rgba(62,207,142,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-md"
+          className="w-full px-4 py-4 bg-[var(--brand)] text-[var(--text-on-brand)] font-black rounded-lg hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-md"
         >
           {isJoining && <Loader size={20} className="animate-spin" />}
           {isJoining ? 'Verifying Invite...' : 'Secure Join'}

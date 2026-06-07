@@ -1,6 +1,6 @@
 import { supabase, globalSupabase } from '../lib/supabase';
+import { SecureConfigStorage } from '../lib/SecureConfigStorage';
 import { RequestData, Collection, Environment, Workspace, Folder, Profile, KeyValue, ScriptExecutionLog } from '../types';
-import { isElectron } from '../lib/platform';
 
 export class PersistenceService {
   private static store: any = null;
@@ -27,38 +27,18 @@ export class PersistenceService {
     offlineAction: () => T,
     enqueueAction: (offlineResult: T) => void
   ): Promise<T> {
-    // If running in Desktop/Electron, we ALWAYS prioritize offline-first!
-    // This executes mutations locally with 0ms latency to maximize speed and stability,
-    // and registers syncing as a background, non-blocking queue action.
-    if (isElectron() || this.isOffline()) {
-      console.log('[PersistenceService] Offline-First Priority Active (Desktop/Local Mode). Execution local-first.');
-      const result = offlineAction();
-      try {
-        enqueueAction(result);
-      } catch (syncErr) {
-        console.warn('[PersistenceService] Async sync enqueuing failed:', syncErr);
-      }
-      return result;
-    }
+    // Always save locally first (optimistic update) — this ensures the user
+    // has a local backup even if they disconnect mid-save. The SyncService
+    // handles cloud sync in the background with debounce, retries, and ID remapping.
+    const result = offlineAction();
 
     try {
-      return await onlineAction();
-    } catch (err: any) {
-      const isNetworkError = err.message?.includes('Network Error') || 
-        err.message?.includes('Failed to fetch') || 
-        err.message?.includes('timeout') ||
-        err.code === 'ECONNABORTED' ||
-        err.status === 0;
-
-      if (isNetworkError) {
-        console.warn('[PersistenceService] Database write request timed out or was cut off. Transitioning to local cache buffer.');
-        this.setOffline(true);
-        const result = offlineAction();
-        enqueueAction(result);
-        return result;
-      }
-      throw err;
+      enqueueAction(result);
+    } catch (syncErr) {
+      console.warn('[PersistenceService] Sync enqueue failed:', syncErr);
     }
+
+    return result;
   }
 
   // --- Workspace Actions ---
@@ -1428,6 +1408,21 @@ export class PersistenceService {
       }
 
       if (error) throw error;
+
+      // If no teams found in global project, check saved tenant config
+      // (team may have been created in the user's own Supabase project via OnboardingService.createTeamWorkspace)
+      if (!data || data.length === 0) {
+        const metadata = SecureConfigStorage.getWorkspaceMetadata();
+        if (metadata?.teamId) {
+          console.log('[PersistenceService] No teams found in global project; returning stub from saved tenant config.');
+          return [{
+            id: metadata.teamId,
+            name: 'My Team',
+            _tenantTeam: true,
+          }];
+        }
+      }
+
       return data || [];
     } catch (e) {
       return this.store?.getState()?.teams || [];
@@ -1450,6 +1445,24 @@ export class PersistenceService {
       }
 
       if (error) throw error;
+
+      // If no workspaces found in global project, check saved tenant config
+      if (!data || data.length === 0) {
+        const metadata = SecureConfigStorage.getWorkspaceMetadata();
+        if (metadata?.workspaceId && metadata?.teamId === teamId) {
+          console.log('[PersistenceService] No workspaces found in global project; returning stub from saved tenant config.');
+          return [{
+            id: metadata.workspaceId,
+            name: 'My Workspace',
+            team_id: teamId,
+            user_id: metadata.userId || '',
+            visibility: 'team',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          } as Workspace];
+        }
+      }
+
       return data || [];
     } catch (e) {
       return [];

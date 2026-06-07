@@ -206,7 +206,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
             }}
             className={cn(
               "px-1 rounded pointer-events-auto cursor-pointer border",
-              exists ? "text-[#3ECF8E] bg-[#3ECF8E]/10 border-[#3ECF8E]/20" : "text-red-400 bg-red-400/10 border-red-500/30"
+              exists ? "text-[var(--brand)] bg-[var(--brand)]/10 border-[var(--brand)]/20" : "text-red-400 bg-red-400/10 border-red-500/30"
             )}
             title={exists ? `${lookup.scope} variable` : 'Unresolved variable'}
           >
@@ -241,7 +241,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           style={(value.includes('{{') && !isFocused) ? { color: 'transparent', caretColor: 'white' } : {}}
           className={cn(
             "w-full bg-transparent text-[11px] font-mono py-1.5 px-2 outline-none border border-transparent rounded transition-all relative z-10",
-            "focus:border-[#222222] focus:bg-[#0F0F0F]",
+            "focus:border-subtle focus:bg-header",
             disabled && "opacity-60 cursor-not-allowed",
             className
           )}
@@ -268,7 +268,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
               <div className="text-[10px] font-black uppercase tracking-widest text-white">{hoveredLookup.name}</div>
               <div className={cn(
                 'text-[9px] font-bold uppercase tracking-widest',
-                hoveredLookup.scope === 'unresolved' ? 'text-red-400' : 'text-[#3ECF8E]'
+                hoveredLookup.scope === 'unresolved' ? 'text-red-400' : 'text-[var(--brand)]'
               )}>
                 Scope: {hoveredLookup.scope}
               </div>
@@ -287,7 +287,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
             </div>
           ) : (
             <>
-              <label className="text-[8px] font-black text-[#777777] uppercase tracking-widest">Resolved Value</label>
+              <label className="text-[8px] font-black text-muted uppercase tracking-widest">Resolved Value</label>
               <input
                 value={editingValue}
                 onChange={(e) => setEditingValue(e.target.value)}
@@ -299,7 +299,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
                   }
                 }}
                 type={hoveredLookup.masked ? 'password' : 'text'}
-                className="mt-1 w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded px-2 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/40"
+                className="mt-1 w-full bg-deep border border-subtle rounded px-2 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[var(--brand)]/40"
               />
             </>
           )}
@@ -307,7 +307,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
           {(hoveredLookup.scope === 'environment' || hoveredLookup.scope === 'collection') && (
             <button
               onClick={navigateToVariableSource}
-              className="mt-2 w-full px-2 py-1.5 rounded border border-[#2A2A2A] text-[9px] font-black uppercase tracking-widest text-[#AAAAAA] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/30 transition-all flex items-center justify-center gap-1.5"
+              className="mt-2 w-full px-2 py-1.5 rounded border border-subtle text-[9px] font-black uppercase tracking-widest text-muted hover:text-[var(--brand)] hover:border-[var(--brand)]/30 transition-all flex items-center justify-center gap-1.5"
             >
               <ExternalLink size={11} />
               Open Source Definition
@@ -325,7 +325,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
               onMouseEnter={() => setSuggestionIndex(i)}
               className={cn(
                 "w-full text-left px-3 py-2 text-[10px] font-mono flex items-center justify-between transition-colors",
-                i === suggestionIndex ? "bg-[#1A1A1A] text-[#3ECF8E]" : "text-[#888888]"
+                i === suggestionIndex ? "bg-elevated text-[var(--brand)]" : "text-muted"
               )}
             >
               <span>{v.key}</span>

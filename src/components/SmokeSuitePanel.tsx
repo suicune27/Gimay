@@ -12,6 +12,7 @@ import { ScriptService } from '../services/ScriptService';
 import { VariableService } from '../services/VariableService';
 import { SandboxRunner } from '../services/sandboxRunner';
 import { SmokeLogService } from '../services/SmokeLogService';
+import { SmokeRunnerService } from '../services/SmokeRunnerService';
 import { Collection, RequestData } from '../types';
 import { isElectron } from '../lib/platform';
 
@@ -1622,22 +1623,15 @@ export const SmokeSuitePanel: React.FC<SmokeSuitePanelProps> = ({ isEmbedded = f
         .filter(h => h.runCount > 0)
         .sort((a, b) => b.unreliabilityIndex - a.unreliabilityIndex);
 
-        // Form recommendations
-        const recs: string[] = [];
-        if (hotspotsList.length > 0 && hotspotsList[0].failRate > 25) {
-          recs.push(`Unstable Target Endpoint Detected: '${hotspotsList[0].method} ${hotspotsList[0].name}' exhibited a ${hotspotsList[0].failRate}% fail rate. Investigate endpoint exception logging for connection resets.`);
-        }
-        if (maxLatencyValue > 4000) {
-          recs.push(`High Latency Ceiling Spike: Latency spiked to ${maxLatencyValue}ms during loading. Implement a robust response caching layer to bypass database row scans.`);
-        }
-        if (crashPreventionTriggersCountRef.current > 0) {
-          recs.push(`Resilience Intercedes Active: Preemptive stabilizers adjusted loop velocities ${crashPreventionTriggersCountRef.current} times to curb stack buffer drop offs. Optimize database indexes on high throughput endpoints.`);
-        }
-        if (recs.length === 0) {
-          recs.push("Pristine Systems Stability: Continuous endurance testing achieved excellent results. The local cluster sustained the concurrent loads perfectly with no memory exhaustion signs.");
-        }
-
-        setMotReportData({
+                // Form recommendations
+        const finalPassRate = Math.round((successCountRef.current / (completedCountRef.current || 1)) * 100);
+        const recs = SmokeRunnerService.generateMoTRecommendations(
+          finalPassRate,
+          maxLatencyValue === -Infinity ? 0 : maxLatencyValue,
+          crashPreventionTriggersCountRef.current,
+          hotspotsList
+        );
+setMotReportData({
           durationSeconds: Math.round(totalElapsed),
           totalRequests: completedCountRef.current,
           successCount: successCountRef.current,

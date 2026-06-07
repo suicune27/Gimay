@@ -70,7 +70,17 @@ class SyncManager {
               this.queue.set(key, change);
             });
             console.log(`[SyncManager] Restored ${this.queue.size} pending offline actions.`);
-            this.updatePendingIds();
+            // Guard against useStore not being initialized yet (circular dependency: SyncService -> useStore -> PersistenceService -> SyncService)
+            try {
+              this.updatePendingIds();
+            } catch (err) {
+              console.warn('[SyncManager] Cannot access store during initialization, deferring pending ID sync:', err);
+              setTimeout(() => {
+                try { this.updatePendingIds(); } catch (e) {
+                  console.warn('[SyncManager] Deferred updatePendingIds also failed:', e);
+                }
+              }, 0);
+            }
           }
         }
       } catch (err) {
@@ -86,12 +96,17 @@ class SyncManager {
       window.addEventListener('online', () => this.handleConnectivityChange(true));
       window.addEventListener('offline', () => this.handleConnectivityChange(false));
       
-      // Init offline state
+      // Init offline state — do NOT flush stale queue items on startup.
+      // The persisted queue from a previous session may contain stale update
+      // entries that would overwrite newer data on the server. We only sync
+      // entries that are explicitly created during the current session.
       setTimeout(() => {
         try {
-          this.handleConnectivityChange(window.navigator.onLine);
+          const isOnline = window.navigator.onLine;
+          useStore.getState().updateSyncMetadata({ isOffline: !isOnline });
+          this.setStatus(isOnline ? 'idle' : 'offline');
         } catch (e) {
-          console.warn('SyncManager: Delayed initialization failed, will retry on next check.', e);
+          console.warn('SyncManager: Delayed initialization failed.', e);
         }
       }, 0);
     }
@@ -159,6 +174,8 @@ class SyncManager {
     
     // For updates, check if there is an existing 'create' in the queue for this same temporary ID
     // If so, we merge the updates directly into the pending creation data!
+    // This must happen BEFORE the offline-ID guard so edits to offline-created items
+    // are captured in the CREATE payload rather than silently dropped.
     if (action === 'update') {
       const createKey = `${type}:create:${id}`;
       const existingCreate = this.queue.get(createKey);
@@ -168,6 +185,16 @@ class SyncManager {
         this.persistQueue();
         return;
       }
+    }
+
+    // Block standalone non-CREATE actions for offline-temporary IDs.
+    // offline-* IDs are placeholders that will be remapped once the CREATE
+    // sync succeeds. Trying to UPDATE/DELETE them in Supabase will 400 since
+    // they don't exist there. CREATE actions must still go through.
+    // NOTE: This guard runs AFTER the merge logic above so edits to offline-
+    // created items are still captured in the CREATE payload.
+    if (id.startsWith('offline-') && action !== 'create') {
+      return;
     }
 
     const existing = this.queue.get(key);

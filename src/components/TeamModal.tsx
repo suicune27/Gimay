@@ -216,13 +216,13 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 15 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className="relative w-full max-w-lg bg-[#0A0A0C] border border-[#1C1C22] rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[85vh]"
+        className="relative w-full max-w-lg bg-[#0A0A0C] border border-[var(--bg-code)] rounded-3xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[85vh]"
       >
         {/* Glowing visual accent line */}
-        <div className="h-[2px] bg-gradient-to-r from-[#3ECF8E] via-blue-500 to-indigo-600" />
+        <div className="h-[2px] bg-gradient-to-r from-[var(--brand)] via-blue-500 to-indigo-600" />
 
         {decommissionCandidateId && (
-          <div className="absolute inset-0 z-50 bg-[#0A0A0C]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
+          <div className="absolute inset-0 z-50 bg-glass-bg backdrop-blur-md flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-200">
             <ShieldAlert size={36} className="text-red-500 mb-4 animate-[bounce_1s_infinite]" />
             <h3 className="text-xs font-black text-white uppercase tracking-widest mb-2">Decommission Operator</h3>
             <p className="text-[10px] text-gray-400 max-w-xs mb-6 font-mono leading-relaxed uppercase tracking-tight">
@@ -241,7 +241,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
               </button>
               <button
                 onClick={() => setDecommissionCandidateId(null)}
-                className="px-4 py-2 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer font-bold"
+                className="px-4 py-2 bg-code border border-subtle text-[10px] font-black uppercase tracking-widest text-muted hover:text-white rounded-lg transition-all cursor-pointer font-bold"
               >
                 Cancel
               </button>
@@ -250,23 +250,23 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
         )}
 
         {/* Modal Header */}
-        <div className="p-6 border-b border-[#1A1A22]/50 bg-[#0C0C0F] flex items-center justify-between">
+        <div className="p-6 border-b border-subtle/50 bg-card flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 flex items-center justify-center">
-              <Users size={18} className="text-[#3ECF8E]" />
+            <div className="w-10 h-10 rounded-2xl bg-[var(--brand)]/10 border border-[var(--brand)]/20 flex items-center justify-center">
+              <Users size={18} className="text-[var(--brand)]" />
             </div>
             <div>
               <h2 className="text-[13px] font-black text-white uppercase tracking-[0.15em] font-mono flex items-center gap-2">
                 {team ? team.name : 'Initialize Team Unit'}
               </h2>
-              <p className="text-[9px] text-[#55555C] uppercase tracking-wider font-mono mt-0.5">
+              <p className="text-[9px] text-dim uppercase tracking-wider font-mono mt-0.5">
                 {team ? `UNIT CODE: ${team.id.split('-')[0]}` : 'Configure collaborative sync deployment'}
               </p>
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="p-1.5 rounded-xl text-[#55555C] hover:text-white bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer"
+            className="p-1.5 rounded-xl text-dim hover:text-white bg-white/[0.02] hover:bg-white/[0.05] transition-all cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -278,20 +278,20 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
           {/* TEAM CONFIGURATION FORM (If creating) */}
           {!team && (
             <div className="space-y-5">
-              <div className="p-4 bg-[#3ECF8E]/5 border border-[#3ECF8E]/15 rounded-2xl space-y-1.5">
-                <span className="text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest font-mono flex items-center gap-1.5"><Sparkles size={11} /> Collaborative Sandbox</span>
-                <p className="text-[10px] text-[#888] leading-relaxed font-mono">
+              <div className="p-4 bg-[var(--brand)]/5 border border-[var(--brand)]/15 rounded-2xl space-y-1.5">
+                <span className="text-[9px] font-black text-[var(--brand)] uppercase tracking-widest font-mono flex items-center gap-1.5"><Sparkles size={11} /> Collaborative Sandbox</span>
+                <p className="text-[10px] text-muted leading-relaxed font-mono">
                   Initializing a Team Unit enables instant, bi-directional workspace sync. Shared collections, environments, and runner configurations sync in near real-time between all enlistees.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Unit Designation (Name)</label>
+                <label className="text-[9px] font-black text-dim uppercase tracking-[0.2em] font-mono">Unit Designation (Name)</label>
                 <input 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. ALPHA_TEAM"
-                  className="w-full bg-[#050507] border border-[#1C1C22] px-4 py-3.5 rounded-xl text-white font-mono text-[11px] placeholder:text-[#333] focus:outline-none focus:border-[#3ECF8E]/40 focus:ring-1 focus:ring-[#3ECF8E]/20 transition-all uppercase"
+                  className="w-full bg-deep border border-[var(--bg-code)] px-4 py-3.5 rounded-xl text-white font-mono text-[11px] placeholder:text-dim focus:outline-none focus:border-[var(--brand)]/40 focus:ring-1 focus:ring-[var(--brand)]/20 transition-all uppercase"
                 />
               </div>
             </div>
@@ -301,32 +301,32 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
           {team && (
             <>
               {/* Telemetry Metrics Panel */}
-              <div className="grid grid-cols-3 gap-3 bg-[#0C0C0F] p-4 border border-[#1A1A22] rounded-2xl font-mono">
+              <div className="grid grid-cols-3 gap-3 bg-card p-4 border border-subtle rounded-2xl font-mono">
                 <div className="space-y-1 text-center">
-                  <span className="text-[8px] text-[#55555C] uppercase tracking-widest block">Operators</span>
+                  <span className="text-[8px] text-dim uppercase tracking-widest block">Operators</span>
                   <span className="text-sm font-bold text-white block">{members.length}</span>
                 </div>
-                <div className="space-y-1 text-center border-x border-[#1A1A22]">
-                  <span className="text-[8px] text-[#55555C] uppercase tracking-widest block">Realtime Sync</span>
-                  <span className="text-xs font-bold text-[#3ECF8E] flex items-center justify-center gap-1.5">
+                <div className="space-y-1 text-center border-x border-subtle">
+                  <span className="text-[8px] text-dim uppercase tracking-widest block">Realtime Sync</span>
+                  <span className="text-xs font-bold text-[var(--brand)] flex items-center justify-center gap-1.5">
                     <Activity size={10} className="animate-pulse" /> ACTIVE
                   </span>
                 </div>
                 <div className="space-y-1 text-center">
-                  <span className="text-[8px] text-[#55555C] uppercase tracking-widest block">Access Rulings</span>
-                  <span className="text-[9px] font-bold text-[#A0A0A9] block">RBAC ENFORCED</span>
+                  <span className="text-[8px] text-dim uppercase tracking-widest block">Access Rulings</span>
+                  <span className="text-[9px] font-bold text-muted block">RBAC ENFORCED</span>
                 </div>
               </div>
 
               {/* Navigation Tabs */}
-              <div className="flex bg-[#0C0C0F] p-1 rounded-xl border border-[#1A1A22]">
+              <div className="flex bg-card p-1 rounded-xl border border-subtle">
                 <button
                   onClick={() => setActiveTab('members')}
                   className={cn(
                     "flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all cursor-pointer",
                     activeTab === 'members' 
-                      ? "bg-[#1C1C22] text-[#3ECF8E] border border-white/5 shadow-sm" 
-                      : "text-[#55555C] hover:text-[#A0A0A9]"
+                      ? "bg-code text-[var(--brand)] border border-white/5 shadow-sm" 
+                      : "text-dim hover:text-muted"
                   )}
                 >
                   Roster Operations
@@ -336,8 +336,8 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                   className={cn(
                     "flex-1 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer",
                     activeTab === 'invites' 
-                      ? "bg-[#1C1C22] text-[#3ECF8E] border border-white/5 shadow-sm" 
-                      : "text-[#55555C] hover:text-[#A0A0A9]"
+                      ? "bg-code text-[var(--brand)] border border-white/5 shadow-sm" 
+                      : "text-dim hover:text-muted"
                   )}
                 >
                   <QrCode size={11} />
@@ -350,21 +350,21 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                 <div className="space-y-5 animate-in fade-in duration-200">
                   {/* Member Invite Panel */}
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Enlist Operator</label>
+                    <label className="text-[9px] font-black text-dim uppercase tracking-[0.2em] font-mono">Enlist Operator</label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
-                        <Mail size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#333]" />
+                        <Mail size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-dim" />
                         <input 
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="operator@email.com"
-                          className="w-full bg-[#050507] border border-[#1C1C22] pl-10 pr-4 py-2.5 rounded-xl text-white font-mono text-[11px] placeholder:text-[#333] focus:outline-none focus:border-[#3ECF8E]/40 transition-all"
+                          className="w-full bg-deep border border-[var(--bg-code)] pl-10 pr-4 py-2.5 rounded-xl text-white font-mono text-[11px] placeholder:text-dim focus:outline-none focus:border-[var(--brand)]/40 transition-all"
                         />
                       </div>
                       <button 
                         onClick={handleInvite}
                         disabled={isLoading || !email}
-                        className="px-4.5 bg-[#3ECF8E] hover:bg-[#32B379] text-[#070708] text-[9px] font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(62,207,142,0.2)] transition-all disabled:opacity-30 cursor-pointer"
+                        className="px-4.5 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-[var(--bg-deep)] text-[9px] font-black uppercase tracking-widest rounded-xl hover:shadow-[0_0_15px_rgba(var(--brand-rgb),0.2)] transition-all disabled:opacity-30 cursor-pointer"
                       >
                         Enlist
                       </button>
@@ -374,8 +374,8 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                   {/* Members List */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <label className="text-[9px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Current Roster ({members.length})</label>
-                      <span className="text-[8px] text-[#444] font-mono font-bold">HOVER FOR CONTROLS</span>
+                      <label className="text-[9px] font-black text-dim uppercase tracking-[0.2em] font-mono">Current Roster ({members.length})</label>
+                      <span className="text-[8px] text-dim font-mono font-bold">HOVER FOR CONTROLS</span>
                     </div>
 
                     <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar pr-1">
@@ -387,7 +387,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                         return (
                           <div 
                             key={member.user_id} 
-                            className="flex items-center justify-between p-3 bg-[#0C0C0F]/60 border border-[#1C1C22] rounded-xl hover:border-white/5 transition-all group/member"
+                            className="flex items-center justify-between p-3 bg-[var(--bg-card)]/60 border border-[var(--bg-code)] rounded-xl hover:border-white/5 transition-all group/member"
                           >
                             <div className="flex items-center gap-3">
                               {/* Glowing Avatar */}
@@ -398,17 +398,17 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                                 )}>
                                   {initials}
                                 </div>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#3ECF8E] border border-[#0A0A0C] shadow-[0_0_6px_#3ECF8E]" />
+                                <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[var(--brand)] border border-[#0A0A0C] shadow-[0_0_6px_var(--brand)]" />
                               </div>
 
                               <div>
-                                <div className="text-[11px] font-bold text-[#E0E0E6] flex items-center gap-1.5">
+                                <div className="text-[11px] font-bold text-main flex items-center gap-1.5">
                                   {member.profiles?.full_name || member.profiles?.email}
                                   {isSelf && (
-                                    <span className="text-[7px] font-black bg-white/5 text-[#888] px-1 py-0.2 rounded font-mono">YOU</span>
+                                    <span className="text-[7px] font-black bg-white/5 text-muted px-1 py-0.2 rounded font-mono">YOU</span>
                                   )}
                                 </div>
-                                <div className="text-[8px] font-black text-[#555] uppercase tracking-widest font-mono mt-0.5">
+                                <div className="text-[8px] font-black text-dim uppercase tracking-widest font-mono mt-0.5">
                                   {member.profiles?.email}
                                 </div>
                               </div>
@@ -447,7 +447,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 5, scale: 0.95 }}
                                         transition={{ duration: 0.1 }}
-                                        className="absolute right-0 mt-1.5 w-32 bg-[#0E0E12] border border-[#222] rounded-xl shadow-2xl z-[700] p-1 space-y-0.5 text-left"
+                                        className="absolute right-0 mt-1.5 w-32 bg-surface border border-subtle rounded-xl shadow-2xl z-[700] p-1 space-y-0.5 text-left"
                                       >
                                         {([
                                           { r: 'admin', l: 'Officer', desc: 'Manage access' },
@@ -460,13 +460,13 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                                             className={cn(
                                               "w-full text-left px-2 py-1.5 rounded-lg text-[9px] font-black tracking-wide font-mono transition-all flex items-center justify-between cursor-pointer",
                                               member.role === opt.r 
-                                                ? "bg-[#3ECF8E]/10 text-[#3ECF8E]" 
-                                                : "text-[#555] hover:text-[#E0E0E6] hover:bg-white/5"
+                                                ? "bg-[var(--brand)]/10 text-[var(--brand)]" 
+                                                : "text-dim hover:text-main hover:bg-white/5"
                                             )}
                                           >
                                             <div>
                                               <div>{opt.l}</div>
-                                              <div className="text-[6px] text-[#444] font-normal uppercase tracking-normal">{opt.desc}</div>
+                                              <div className="text-[6px] text-dim font-normal uppercase tracking-normal">{opt.desc}</div>
                                             </div>
                                             {member.role === opt.r && <Check size={10} />}
                                           </button>
@@ -481,7 +481,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                               {!isSelf && member.role !== 'owner' && (
                                 <button 
                                   onClick={() => handleRemove(member.user_id)}
-                                  className="p-1 text-[#55555C] hover:text-red-400 bg-white/[0.02] hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all cursor-pointer opacity-0 group-hover/member:opacity-100"
+                                  className="p-1 text-dim hover:text-red-400 bg-white/[0.02] hover:bg-red-500/10 rounded-lg border border-transparent hover:border-red-500/20 transition-all cursor-pointer opacity-0 group-hover/member:opacity-100"
                                   title="Decommission Operator"
                                 >
                                   <UserMinus size={11} />
@@ -500,13 +500,13 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
               {activeTab === 'invites' && (
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between">
-                    <label className="text-[9px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono flex items-center gap-1.5">
+                    <label className="text-[9px] font-black text-dim uppercase tracking-[0.2em] font-mono flex items-center gap-1.5">
                        Secure Invitation Tokens
                     </label>
                     <button
                       onClick={handleGenerateInvite}
                       disabled={isLoading}
-                      className="text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-[9px] font-black text-[var(--brand)] uppercase tracking-widest hover:underline cursor-pointer flex items-center gap-1"
                     >
                       <Sparkles size={11} /> Generate New Token
                     </button>
@@ -515,38 +515,38 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                   {/* Invitations list */}
                   <div className="space-y-3 max-h-64 overflow-y-auto no-scrollbar pr-1">
                     {invites.length === 0 ? (
-                      <div className="p-8 text-center border border-dashed border-[#1C1C22] rounded-2xl bg-[#070709]/50">
-                        <QrCode size={30} className="mx-auto text-[#222] mb-3 opacity-30 animate-pulse" />
-                        <p className="text-[10px] text-[#55555C] uppercase tracking-widest leading-relaxed font-mono">
+                      <div className="p-8 text-center border border-dashed border-[var(--bg-code)] rounded-2xl bg-[var(--bg-deep)]/50">
+                        <QrCode size={30} className="mx-auto text-dim mb-3 opacity-30 animate-pulse" />
+                        <p className="text-[10px] text-dim uppercase tracking-widest leading-relaxed font-mono">
                           No secure codes generated.<br/>Create one for one-click onboarding.
                         </p>
                       </div>
                     ) : (
                       invites.map((invite) => (
-                        <div key={invite.id} className="p-4 bg-[#0C0C0F]/80 border border-[#1C1C22] rounded-xl space-y-3.5 group/invite relative overflow-hidden">
+                        <div key={invite.id} className="p-4 bg-[var(--bg-card)]/80 border border-[var(--bg-code)] rounded-xl space-y-3.5 group/invite relative overflow-hidden">
                           {/* Copier overlay */}
                           <div className="flex items-center justify-between">
-                            <div className="text-[12px] font-mono font-black text-[#3ECF8E] tracking-[0.18em] bg-[#050507] px-2.5 py-1.5 rounded-lg border border-white/5 select-all">
+                            <div className="text-[12px] font-mono font-black text-[var(--brand)] tracking-[0.18em] bg-deep px-2.5 py-1.5 rounded-lg border border-white/5 select-all">
                               {invite.code}
                             </div>
                             <div className="flex items-center gap-1.5">
                               <button 
                                 onClick={() => copyToClipboard(invite.code, 'Onboarding code')}
-                                className="p-2 text-[#55555C] hover:text-[#3ECF8E] bg-white/[0.02] border border-[#1C1C22] hover:border-[#3ECF8E]/20 rounded-lg transition-all cursor-pointer"
+                                className="p-2 text-dim hover:text-[var(--brand)] bg-white/[0.02] border border-[var(--bg-code)] hover:border-[var(--brand)]/20 rounded-lg transition-all cursor-pointer"
                                 title="Copy Invitation Token"
                               >
                                 <Copy size={11} />
                               </button>
                               <button 
                                 onClick={() => copyToClipboard(`${window.location.origin}/?invite=${invite.code}`, 'Onboarding Join Link')}
-                                className="p-2 text-[#55555C] hover:text-[#3ECF8E] bg-white/[0.02] border border-[#1C1C22] hover:border-[#3ECF8E]/20 rounded-lg transition-all cursor-pointer"
+                                className="p-2 text-dim hover:text-[var(--brand)] bg-white/[0.02] border border-[var(--bg-code)] hover:border-[var(--brand)]/20 rounded-lg transition-all cursor-pointer"
                                 title="Copy Secure Join Link"
                               >
                                 <LinkIcon size={11} />
                               </button>
                               <button 
                                 onClick={() => handleRevokeInvite(invite.id)}
-                                className="p-2 text-[#55555C] hover:text-red-400 bg-white/[0.02] border border-[#1C1C22] hover:border-red-500/20 rounded-lg transition-all cursor-pointer opacity-0 group-hover/invite:opacity-100"
+                                className="p-2 text-dim hover:text-red-400 bg-white/[0.02] border border-[var(--bg-code)] hover:border-red-500/20 rounded-lg transition-all cursor-pointer opacity-0 group-hover/invite:opacity-100"
                                 title="Revoke Secure Token"
                               >
                                 <Trash2 size={11} />
@@ -554,7 +554,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-[#555] font-mono pt-1 border-t border-[#1C1C22]/50">
+                          <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-dim font-mono pt-1 border-t border-[var(--bg-code)]/50">
                             <div className="flex items-center gap-1.5">
                               <Calendar size={10} />
                               {invite.expires_at ? `Exp: ${new Date(invite.expires_at).toLocaleDateString()}` : 'Never'}
@@ -570,11 +570,11 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
                   </div>
 
                   {/* Informational Security Tip */}
-                  <div className="p-4 bg-[#3ECF8E]/5 border border-[#3ECF8E]/10 rounded-2xl flex gap-3">
-                    <ShieldAlert size={16} className="text-[#3ECF8E] shrink-0 mt-0.5" />
+                  <div className="p-4 bg-[var(--brand)]/5 border border-[var(--brand)]/10 rounded-2xl flex gap-3">
+                    <ShieldAlert size={16} className="text-[var(--brand)] shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[10px] text-[#3ECF8E] font-bold font-mono">💡 Secure Connection Packages</p>
-                      <p className="text-[9px] text-[#55555C] leading-relaxed font-mono mt-0.5">
+                      <p className="text-[10px] text-[var(--brand)] font-bold font-mono">💡 Secure Connection Packages</p>
+                      <p className="text-[9px] text-dim leading-relaxed font-mono mt-0.5">
                         These secure invite codes carry cryptographically compiled references to active Supabase sync hosts. Operators joining using a valid token are instantly logged in and synced without needing to manual-configure server connection hashes.
                       </p>
                     </div>
@@ -587,15 +587,15 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
         </div>
 
         {/* Modal Actions Footer */}
-        <div className="p-6 border-t border-[#1A1A22]/50 bg-[#0C0C0F] flex items-center justify-between shrink-0">
-          <span className="text-[8px] text-[#444] uppercase tracking-wider font-mono">
+        <div className="p-6 border-t border-subtle/50 bg-card flex items-center justify-between shrink-0">
+          <span className="text-[8px] text-dim uppercase tracking-wider font-mono">
             {team ? 'RBAC deployment active' : 'Secure handshake pending'}
           </span>
           
           <div className="flex items-center gap-3">
             <button 
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-[9px] font-black text-[#888] hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-[#1A1A22] cursor-pointer uppercase transition-all"
+              className="px-4 py-2 rounded-xl text-[9px] font-black text-muted hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-subtle cursor-pointer uppercase transition-all"
             >
               Close
             </button>
@@ -603,7 +603,7 @@ export const TeamModal: React.FC<TeamModalProps> = ({ isOpen, onClose, team }) =
               <button
                 onClick={handleCreate}
                 disabled={isLoading || !name.trim()}
-                className="px-5 py-2 bg-[#3ECF8E] hover:bg-[#32B379] text-[#070708] text-[9px] font-black uppercase tracking-wider rounded-xl hover:shadow-[0_0_15px_rgba(62,207,142,0.2)] disabled:opacity-30 cursor-pointer transition-all"
+                className="px-5 py-2 bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-[var(--bg-deep)] text-[9px] font-black uppercase tracking-wider rounded-xl hover:shadow-[0_0_15px_rgba(var(--brand-rgb),0.2)] disabled:opacity-30 cursor-pointer transition-all"
               >
                 Initialize Deployment
               </button>

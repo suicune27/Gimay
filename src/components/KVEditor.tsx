@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Trash2, CheckCircle2, Circle, Edit3 } from 'lucide-react';
 import { KeyValue } from '../types';
 import { cn } from '../lib/utils';
@@ -27,11 +27,9 @@ export const KVEditor: React.FC<KVEditorProps> = ({
   const [bulkText, setBulkText] = useState('');
 
   // Normalize items to ensure all items have a unique id
-  const normalizedItems = React.useMemo(() => {
-    let changed = false;
-    const safeItems = (items || []).filter(Boolean).map(item => {
+  const normalizedItems = useMemo(() => {
+    return (items || []).filter(Boolean).map(item => {
       if (!item.id) {
-        changed = true;
         return {
           ...item,
           id: Math.random().toString(36).substr(2, 9)
@@ -39,12 +37,15 @@ export const KVEditor: React.FC<KVEditorProps> = ({
       }
       return item;
     });
+  }, [items]);
 
-    if (changed) {
-      setTimeout(() => onChange(safeItems), 0);
+  // Propagate generated IDs to parent after render (avoid stale closure from setTimeout(0))
+  useEffect(() => {
+    const needsIds = (items || []).some(item => item && !item.id);
+    if (needsIds) {
+      onChange(normalizedItems);
     }
-    return safeItems;
-  }, [items, onChange]);
+  }, [items, normalizedItems, onChange]);
 
   const handleItemChange = (id: string, updates: Partial<KeyValue>) => {
     const safeItems = normalizedItems || [];
@@ -116,12 +117,12 @@ export const KVEditor: React.FC<KVEditorProps> = ({
     <div className="space-y-1">
       {/* Action / Header Bar */}
       <div className="flex items-center justify-between px-1 pb-1 mb-1">
-        <div className="text-[10px] font-black text-[#555555] uppercase tracking-widest">
+        <div className="text-[10px] font-black text-dim uppercase tracking-widest">
           {isBulkEdit ? 'Bulk Edit Mode' : ''}
         </div>
         <button 
           onClick={isBulkEdit ? saveBulkEdit : startBulkEdit}
-          className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-black text-[#666666] hover:text-[#3ECF8E] transition-all uppercase tracking-widest bg-[#1A1A1A] border border-[#222222] rounded"
+          className="flex items-center gap-1.5 px-2 py-1 text-[8px] font-black text-muted hover:text-[var(--brand)] transition-all uppercase tracking-widest bg-elevated border border-subtle rounded"
         >
           {isBulkEdit ? (
             <><CheckCircle2 size={10} /> Save Rows</>
@@ -133,13 +134,13 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
       {/* Header Row (aligned with body columns) */}
       {!isBulkEdit && (
-        <div className="flex items-center gap-1 border-b border-[#222222] pb-2 mb-2 px-1">
+        <div className="flex items-center gap-1 border-b border-subtle pb-2 mb-2 px-1">
           <div className="w-8 flex justify-center shrink-0" />
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Variable</div>
+          <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">Variable</div>
           {isVariableEditor && (
-             <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">Initial Value</div>
+             <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">Initial Value</div>
           )}
-          <div className="flex-1 text-[10px] font-black text-[#555555] uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
+          <div className="flex-1 text-[10px] font-black text-dim uppercase tracking-widest px-2">{isVariableEditor ? 'Current Value' : 'Value'}</div>
           <div className="w-8 flex justify-center shrink-0" />
         </div>
       )}
@@ -151,9 +152,9 @@ export const KVEditor: React.FC<KVEditorProps> = ({
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             placeholder="key: value&#10;key2: value2"
-            className="w-full h-48 bg-[#0A0A0A] text-[11px] font-mono p-4 outline-none border border-[#222222] rounded-lg text-[#E0E0E0] placeholder:text-[#333333] resize-none"
+            className="w-full h-48 bg-deep text-[11px] font-mono p-4 outline-none border border-subtle rounded-lg text-main placeholder:text-dim resize-none"
           />
-          <p className="mt-2 text-[9px] text-[#444444] font-medium italic">
+          <p className="mt-2 text-[9px] text-dim font-medium italic">
             Enter key-value pairs separated by colons. Each pair on a new line.
           </p>
         </div>
@@ -165,7 +166,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
                 onClick={() => handleItemChange(item.id, { active: !item.active })}
                 className={cn(
                   "w-8 flex justify-center transition-colors",
-                  item.active ? "text-[#3ECF8E]" : "text-[#333333] hover:text-[#555555]"
+                  item.active ? "text-[var(--brand)]" : "text-dim hover:text-dim"
                 )}
               >
                 {item.active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
@@ -202,7 +203,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
               <button 
                 onClick={() => removeItem(item.id)}
-                className="w-8 flex justify-center text-[#333333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all px-2"
+                className="w-8 flex justify-center text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all px-2"
               >
                 <Trash2 size={12} />
               </button>
@@ -211,7 +212,7 @@ export const KVEditor: React.FC<KVEditorProps> = ({
 
           <button 
             onClick={addItem}
-            className="mt-2 flex items-center gap-2 px-2 py-1.5 text-[9px] font-black text-[#666666] hover:text-[#3ECF8E] transition-all uppercase tracking-widest"
+            className="mt-2 flex items-center gap-2 px-2 py-1.5 text-[9px] font-black text-muted hover:text-[var(--brand)] transition-all uppercase tracking-widest"
           >
             <Plus size={12} /> Add Pair
           </button>

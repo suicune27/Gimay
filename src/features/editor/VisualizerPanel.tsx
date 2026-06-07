@@ -8,15 +8,31 @@ import {
 import { BarChart3, Layout, PieChart as PieChartIcon, TrendingUp, Code2, Info } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const COLORS = ['#3ECF8E', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ['#2563EB', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export const VisualizerPanel: React.FC = () => {
   const { lastResponse } = useStore();
-  const [viewMode, setViewMode] = React.useState<'auto' | 'html' | 'chart'>('auto');
+
+  const isHtmlResponse = React.useMemo(() => {
+    return lastResponse?.contentType?.toLowerCase()?.includes('html') ?? false;
+  }, [lastResponse?.contentType]);
+
+  const [viewMode, setViewMode] = React.useState<'auto' | 'html' | 'chart'>(isHtmlResponse ? 'html' : 'auto');
   const [chartType, setChartType] = React.useState<'bar' | 'line' | 'area' | 'pie'>('bar');
+
+  // Auto-switch to HTML view when an HTML response is received
+  React.useEffect(() => {
+    if (isHtmlResponse) {
+      setViewMode('html');
+    }
+  }, [isHtmlResponse]);
 
   const data = useMemo(() => {
     if (!lastResponse?.body) return null;
+    // For HTML content, skip JSON parse — return raw body so the HTML view can render
+    if (isHtmlResponse) {
+      return lastResponse.body;
+    }
     try {
       return typeof lastResponse.body === 'string' 
         ? JSON.parse(lastResponse.body) 
@@ -24,7 +40,7 @@ export const VisualizerPanel: React.FC = () => {
     } catch {
       return null;
     }
-  }, [lastResponse?.body]);
+  }, [lastResponse?.body, isHtmlResponse]);
 
   const chartData = useMemo(() => {
     if (!data) return null;
@@ -139,7 +155,7 @@ export const VisualizerPanel: React.FC = () => {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                     <div>
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest font-mono flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#3ECF8E] animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-[var(--brand)] animate-pulse" />
                         {chartType.toUpperCase()} Telemetry Breakdown
                       </h4>
                       <p className="text-[8px] text-[var(--text-dim)] font-mono uppercase tracking-tight mt-1">
@@ -148,7 +164,7 @@ export const VisualizerPanel: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-3">
                       {numericKeys.slice(0, 3).map((key, idx) => (
-                        <div key={key} className="flex items-center gap-2 text-[9px] font-mono text-[var(--text-dim)] uppercase bg-[#000]/25 px-2.5 py-1 rounded-md border border-[var(--border-subtle)]/30">
+                        <div key={key} className="flex items-center gap-2 text-[9px] font-mono text-[var(--text-dim)] uppercase bg-deep/25 px-2.5 py-1 rounded-md border border-[var(--border-subtle)]/30">
                           <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
                           <span className="text-white font-black">{key}</span>
                         </div>
@@ -178,7 +194,7 @@ export const VisualizerPanel: React.FC = () => {
                                   }}
                                 >
                                   {/* Hover Floating Tooltip widget */}
-                                  <div className="absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 bg-[#0C0C10]/95 border border-[#1E1E28] text-white text-[8px] font-mono p-3 rounded-lg shadow-2xl opacity-0 translate-y-2 group-hover/bar:opacity-100 group-hover/bar:translate-y-0 transition-all z-50 pointer-events-none whitespace-nowrap backdrop-blur-md">
+                                  <div className="absolute bottom-full mb-2.5 left-1/2 -translate-x-1/2 bg-[var(--bg-card)]/95 border border-[var(--bg-code)] text-white text-[8px] font-mono p-3 rounded-lg shadow-2xl opacity-0 translate-y-2 group-hover/bar:opacity-100 group-hover/bar:translate-y-0 transition-all z-50 pointer-events-none whitespace-nowrap backdrop-blur-md">
                                     <p className="font-bold text-[var(--text-dim)] uppercase text-[7px] tracking-wider mb-0.5">{key}</p>
                                     <p className="text-white font-black text-[11px]">{val.toLocaleString()}</p>
                                     <div className="text-[6px] text-gray-500 mt-1 uppercase tracking-tighter">Record: {label}</div>
@@ -269,7 +285,7 @@ export const VisualizerPanel: React.FC = () => {
                           .header { margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
                           h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 2px; }
                           pre { background: #f5f5f5; padding: 20px; border-radius: 8px; font-size: 13px; overflow: auto; border: 1px solid #ddd; }
-                          .badge { background: #3ECF8E; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+                          .badge { background: var(--brand); color: #000; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
                         </style>
                       </head>
                       <body>

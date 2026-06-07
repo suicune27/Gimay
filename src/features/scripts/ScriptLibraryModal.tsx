@@ -529,7 +529,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
               </button>
               <button
                 onClick={() => setDeleteScriptCandidateId(null)}
-                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer font-bold"
+                className="px-5 py-2.5 bg-code border border-subtle text-[10px] font-black uppercase tracking-widest text-muted hover:text-white rounded-lg transition-all cursor-pointer font-bold"
               >
                 Cancel
               </button>
@@ -548,7 +548,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                 Script Laboratory
                 <span className="text-[8px] bg-[var(--brand)]/10 text-[var(--brand)] px-1.5 py-0.5 rounded border border-[var(--brand-border)]">v11 Engine</span>
               </h2>
-              <p className="text-[8px] text-[#55555C] font-mono uppercase tracking-widest font-black mt-0.5">Reusable Protocol Handlers & Test Assertions</p>
+              <p className="text-[8px] text-dim font-mono uppercase tracking-widest font-black mt-0.5">Reusable Protocol Handlers & Test Assertions</p>
             </div>
           </div>
           <button 
@@ -567,12 +567,12 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
             {/* Search Input Bar */}
             <div className="p-4 border-b border-[var(--border-subtle)]">
               <div className="relative group">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#44444F] group-focus-within:text-[var(--brand)] transition-colors" />
+                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-placeholder group-focus-within:text-[var(--brand)] transition-colors" />
                 <input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Scan laboratory components..."
-                  className="w-full bg-[#0A0A0B] border border-[var(--border-subtle)] rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-mono text-white outline-none focus:border-[var(--brand)]/40 transition-colors placeholder:text-[#33333C]"
+                  className="w-full bg-deep border border-[var(--border-subtle)] rounded-lg pl-9 pr-4 py-1.5 text-[10px] font-mono text-white outline-none focus:border-[var(--brand)]/40 transition-colors placeholder:text-dim"
                 />
               </div>
             </div>
@@ -598,12 +598,12 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                       "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-[9px] font-black uppercase tracking-widest border border-transparent",
                       isActive 
                         ? "bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand-border)] shadow-[0_0_10px_var(--brand-muted)]" 
-                        : "text-[#55555C] hover:bg-white/[0.02] hover:text-white"
+                        : "text-dim hover:bg-white/[0.02] hover:text-white"
                     )}
                   >
-                    <Icon size={13} className={isActive ? "text-[var(--brand)]" : "text-[#55555C]"} />
+                    <Icon size={13} className={isActive ? "text-[var(--brand)]" : "text-dim"} />
                     <span className="flex-1 truncate">{scope.label}</span>
-                    <span className="text-[8px] font-mono text-[#44444F]">{scope.count}</span>
+                    <span className="text-[8px] font-mono text-placeholder">{scope.count}</span>
                   </button>
                 );
               })}
@@ -611,13 +611,13 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
 
             {/* Categories sidebar lists */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-0.5">
-              <div className="px-3 py-2 text-[8px] font-black text-[#44444F] uppercase tracking-widest">Library Sectors</div>
+              <div className="px-3 py-2 text-[8px] font-black text-placeholder uppercase tracking-widest">Library Sectors</div>
               
               <button
                 onClick={() => setSelectedCategoryId(null)}
                 className={cn(
                   "w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left transition-colors text-[9px] font-bold uppercase tracking-widest",
-                  selectedCategoryId === null ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-[#55555C] hover:bg-white/[0.01] hover:text-[#88888F]"
+                  selectedCategoryId === null ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-dim hover:bg-white/[0.01] hover:text-muted"
                 )}
               >
                 <span>All Sectors</span>
@@ -631,11 +631,11 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                     onClick={() => setSelectedCategoryId(catName)}
                     className={cn(
                       "w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-left transition-colors text-[9px] font-bold uppercase tracking-widest truncate",
-                      selectedCategoryId === catName ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-[#55555C] hover:bg-white/[0.01] hover:text-[#88888F]"
+                      selectedCategoryId === catName ? "text-[var(--brand)] bg-[var(--brand)]/5" : "text-dim hover:bg-white/[0.01] hover:text-muted"
                     )}
                   >
                     <span className="truncate pr-2">{catName}</span>
-                    <span className="text-[8px] font-mono text-[#333338]">{count}</span>
+                    <span className="text-[8px] font-mono text-dim">{count}</span>
                   </button>
                 );
               })}
@@ -644,8 +644,8 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
 
           {/* 2. Middle list cards of Scripts */}
           <div className="w-80 border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] flex flex-col shrink-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[#0A0A0B]/20">
-              <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest">Available Components ({currentScripts.length})</span>
+            <div className="px-4 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0 bg-[var(--bg-deep)]/20">
+              <span className="text-[9px] font-black text-dim uppercase tracking-widest">Available Components ({currentScripts.length})</span>
             </div>
 
             <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2.5">
@@ -655,8 +655,8 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                 </div>
               ) : currentScripts.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                  <TerminalSquare size={36} className="text-[#1D1D22] mb-3" />
-                  <span className="text-[9px] font-black text-[#44444F] uppercase tracking-widest leading-relaxed">No matching scripts mapped</span>
+                  <TerminalSquare size={36} className="text-[var(--border-subtle)] mb-3" />
+                  <span className="text-[9px] font-black text-placeholder uppercase tracking-widest leading-relaxed">No matching scripts mapped</span>
                 </div>
               ) : (
                 currentScripts.map((script) => {
@@ -674,7 +674,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                         "group p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col gap-2 relative",
                         isSelected 
                           ? "bg-[var(--brand)]/5 border-[var(--brand)]/35 shadow-lg" 
-                          : "bg-[#0B0B0C] border-[var(--border-subtle)] hover:bg-[#0E0E10] hover:border-[#222225]"
+                          : "bg-sidebar border-[var(--border-subtle)] hover:bg-surface hover:border-[#222225]"
                       )}
                     >
                       <div className="flex items-start justify-between min-w-0 pr-6">
@@ -693,7 +693,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                         </button>
                       </div>
 
-                      <p className="text-[9px] text-[#55555C] line-clamp-2 leading-relaxed">
+                      <p className="text-[9px] text-dim line-clamp-2 leading-relaxed">
                         {script.description}
                       </p>
 
@@ -704,20 +704,20 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                           ) : (
                             <span className="text-[7px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1 py-0.5 rounded">User</span>
                           )}
-                          <span className="text-[7px] text-[#333338] font-mono">v{script.version}</span>
+                          <span className="text-[7px] text-dim font-mono">v{script.version}</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           {!script.is_builtin && (
                             <button
                               onClick={(e) => handleDeleteCustomScript(script.id, e)}
-                              className="p-1 hover:text-red-500 text-[#55555C] transition-colors"
+                              className="p-1 hover:text-red-500 text-dim transition-colors"
                               title="Delete custom script"
                             >
                               <Trash2 size={10} />
                             </button>
                           )}
-                          <ChevronRight size={12} className={cn("transition-colors", isSelected ? "text-[var(--brand)]" : "text-[#44444C]")} />
+                          <ChevronRight size={12} className={cn("transition-colors", isSelected ? "text-[var(--brand)]" : "text-dim")} />
                         </div>
                       </div>
                     </div>
@@ -728,7 +728,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
           </div>
 
           {/* 3. Right script details / Preview panel */}
-          <div className="flex-1 flex flex-col bg-[#080809] overflow-hidden relative">
+          <div className="flex-1 flex flex-col bg-deep overflow-hidden relative">
             <AnimatePresence mode="wait">
               {selectedScript ? (
                 <motion.div
@@ -748,14 +748,14 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                               type="text"
                               value={editName}
                               onChange={e => setEditName(e.target.value)}
-                              className="w-full bg-[#0A0A0B] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[var(--brand)]"
+                              className="w-full bg-deep border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[11px] font-mono text-white outline-none focus:border-[var(--brand)]"
                               placeholder="Script name..."
                             />
                             <textarea
                               value={editDesc}
                               onChange={e => setEditDesc(e.target.value)}
                               rows={2}
-                              className="w-full bg-[#0A0A0B] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[10px] text-[#888888] outline-none focus:border-[var(--brand)] resize-none"
+                              className="w-full bg-deep border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 text-[10px] text-muted outline-none focus:border-[var(--brand)] resize-none"
                               placeholder="Description..."
                             />
                             <div className="flex items-center gap-2 pt-1">
@@ -786,7 +786,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                                 <span className="px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest bg-purple-500/10 text-purple-400 border border-purple-500/20">Team Shared</span>
                               )}
                             </div>
-                            <p className="text-[10px] text-[#55555C] leading-relaxed max-w-xl pr-4">{selectedScript.description}</p>
+                            <p className="text-[10px] text-dim leading-relaxed max-w-xl pr-4">{selectedScript.description}</p>
                           </>
                         )}
                       </div>
@@ -797,7 +797,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                           {selectedScript.is_builtin ? (
                             <button
                               onClick={handleDuplicate}
-                              className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-[#0B0B0C] hover:bg-[#141415] text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                              className="px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] bg-sidebar hover:bg-[#141415] text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-1.5 transition-all"
                               title="Duplicate to My Scripts to customize"
                             >
                               <Copy size={11} /> Customize
@@ -810,7 +810,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                                   setEditDesc(selectedScript.description);
                                   setIsEditing(true);
                                 }}
-                                className="p-2 rounded-lg border border-[var(--border-subtle)] bg-[#0B0B0C] hover:bg-[#141415] text-[#88888F] hover:text-white transition-all flex items-center justify-center"
+                                className="p-2 rounded-lg border border-[var(--border-subtle)] bg-sidebar hover:bg-[#141415] text-muted hover:text-white transition-all flex items-center justify-center"
                                 title="Edit name & description"
                               >
                                 <Edit3 size={11} />
@@ -822,7 +822,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                                   "p-2 rounded-lg border transition-all flex items-center justify-center",
                                   selectedScript.is_shared 
                                     ? "bg-purple-500/10 border-purple-500/30 text-purple-400" 
-                                    : "bg-[#0B0B0C] border-[var(--border-subtle)] text-[#88888F] hover:text-white"
+                                    : "bg-sidebar border-[var(--border-subtle)] text-muted hover:text-white"
                                 )}
                                 title={selectedScript.is_shared ? "Unshare from Team" : "Share with Team"}
                               >
@@ -833,7 +833,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
 
                           <button
                             onClick={handleCopy}
-                            className="p-2 rounded-lg border border-[var(--border-subtle)] bg-[#0B0B0C] hover:bg-[#141415] text-white flex items-center justify-center transition-all"
+                            className="p-2 rounded-lg border border-[var(--border-subtle)] bg-sidebar hover:bg-[#141415] text-white flex items-center justify-center transition-all"
                             title="Copy to clipboard"
                           >
                             {copied ? <CheckCircle2 size={11} className="text-[var(--brand)]" /> : <Copy size={11} />}
@@ -853,7 +853,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                     {!isEditing && selectedScript.tags && selectedScript.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-3.5">
                         {selectedScript.tags.map(tag => (
-                          <span key={tag} className="px-1.5 py-0.5 rounded bg-[#0D0D0E] border border-[var(--border-subtle)] text-[8px] font-mono text-[#44444C] uppercase">
+                          <span key={tag} className="px-1.5 py-0.5 rounded bg-surface border border-[var(--border-subtle)] text-[8px] font-mono text-dim uppercase">
                             #{tag}
                           </span>
                         ))}
@@ -864,7 +864,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                   {/* Monaco Live Preview Box */}
                   <div className="flex-1 relative overflow-hidden">
                     <Suspense fallback={
-                      <div className="absolute inset-0 flex items-center justify-center bg-[#080809] text-[#44444C] text-[10px] font-mono">
+                      <div className="absolute inset-0 flex items-center justify-center bg-deep text-dim text-[10px] font-mono">
                         Injecting laboratory editor engine...
                       </div>
                     }>
@@ -892,9 +892,9 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                 </motion.div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 select-none">
-                  <TerminalSquare size={48} className="text-[#151518] mb-4" />
+                  <TerminalSquare size={48} className="text-[var(--border-subtle)] mb-4" />
                   <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Script Laboratory Core</h3>
-                  <p className="text-[9px] text-[#55555C] max-w-sm leading-relaxed mt-2 uppercase tracking-wide">
+                  <p className="text-[9px] text-dim max-w-sm leading-relaxed mt-2 uppercase tracking-wide">
                     Select any protocol handler, helper, or assertion suite to inspect, customize, and load into your requests.
                   </p>
                 </div>
@@ -915,11 +915,11 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                       <h3 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
                         <Zap size={12} className="text-[var(--brand)]" /> Load workflow config
                       </h3>
-                      <p className="text-[8px] text-[#55555C] uppercase tracking-widest font-black mt-0.5">Determine routing and injection logic</p>
+                      <p className="text-[8px] text-dim uppercase tracking-widest font-black mt-0.5">Determine routing and injection logic</p>
                     </div>
                     <button
                       onClick={() => setShowInjectPanel(false)}
-                      className="p-1 text-[#55555C] hover:text-white rounded hover:bg-white/5 transition-colors"
+                      className="p-1 text-dim hover:text-white rounded hover:bg-white/5 transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -929,7 +929,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                   <div className="grid grid-cols-2 gap-6">
                     {/* 1. Target Selectors */}
                     <div className="space-y-2">
-                      <span className="text-[8px] font-black text-[#44444C] uppercase tracking-widest">Routing Target</span>
+                      <span className="text-[8px] font-black text-dim uppercase tracking-widest">Routing Target</span>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { id: 'pre_request_script', label: 'Pre-request' },
@@ -942,7 +942,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                               "px-3 py-2 rounded-lg text-center text-[9px] font-black uppercase tracking-widest border transition-all",
                               injectTarget === t.id
                                 ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)]"
-                                : "bg-[#0A0A0B] border-[var(--border-subtle)] text-[#55555C] hover:border-[#333] hover:text-white"
+                                : "bg-deep border-[var(--border-subtle)] text-dim hover:border-strong hover:text-white"
                             )}
                           >
                             {t.label}
@@ -953,7 +953,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
 
                     {/* 2. Injection logic */}
                     <div className="space-y-2">
-                      <span className="text-[8px] font-black text-[#44444C] uppercase tracking-widest">Injection Mode</span>
+                      <span className="text-[8px] font-black text-dim uppercase tracking-widest">Injection Mode</span>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { id: 'append', label: 'Append Code' },
@@ -966,7 +966,7 @@ export const ScriptLibraryModal: React.FC<ScriptLibraryModalProps> = ({ onInsert
                               "px-3 py-2 rounded-lg text-center text-[9px] font-black uppercase tracking-widest border transition-all",
                               injectMode === m.id
                                 ? "bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)]"
-                                : "bg-[#0A0A0B] border-[var(--border-subtle)] text-[#55555C] hover:border-[#333] hover:text-white"
+                                : "bg-deep border-[var(--border-subtle)] text-dim hover:border-strong hover:text-white"
                             )}
                           >
                             {m.label}

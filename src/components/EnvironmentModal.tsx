@@ -149,21 +149,21 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-[#000000]/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-glass-bg backdrop-blur-sm"
       />
       
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-4xl bg-[#0F0F0F] border border-[#222222] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="relative w-full max-w-4xl bg-header border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
       >
         {/* Header */}
-        <div className="p-6 border-b border-[#222222] flex items-center justify-between bg-[#0A0A0A]">
+        <div className="p-6 border-b border-subtle flex items-center justify-between bg-deep">
           <div className="flex items-center gap-4">
             <div className={cn(
               "w-10 h-10 rounded-xl flex items-center justify-center border",
-              isGlobal ? "bg-amber-500/10 border-amber-500/30 text-amber-500" : "bg-[#3ECF8E]/10 border-[#3ECF8E]/30 text-[#3ECF8E]"
+              isGlobal ? "bg-amber-500/10 border-amber-500/30 text-amber-500" : "bg-[var(--brand)]/10 border-[var(--brand)]/30 text-[var(--brand)]"
             )}>
               <Globe size={20} />
             </div>
@@ -172,11 +172,11 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                 {isGlobal ? 'Global Variable Registry' : (environment ? 'Configure Environment' : 'Initialize Environment')}
               </h2>
               <div className="flex items-center gap-2 mt-1">
-                 <span className="text-[9px] text-[#555555] uppercase tracking-tighter">
+                 <span className="text-[9px] text-dim uppercase tracking-tighter">
                    {isGlobal ? 'Workspace-independent variables' : 'Scope: Active Workspace'}
                  </span>
-                 <span className="text-[#222222]">|</span>
-                 <span className="text-[9px] text-[#3ECF8E] font-bold uppercase tracking-tighter">
+                 <span className="text-dim">|</span>
+                 <span className="text-[9px] text-[var(--brand)] font-bold uppercase tracking-tighter">
                    {variables.length} active parameters
                  </span>
               </div>
@@ -184,15 +184,15 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
           </div>
           
           <div className="flex items-center gap-3">
-            <button onClick={exportJson} className="p-2 text-[#444444] hover:text-[#3ECF8E] transition-all" title="Export Configuration">
+            <button onClick={exportJson} className="p-2 text-dim hover:text-[var(--brand)] transition-all" title="Export Configuration">
               <Download size={18} />
             </button>
-            <label className="p-2 text-[#444444] hover:text-[#3ECF8E] transition-all cursor-pointer" title="Import Configuration">
+            <label className="p-2 text-dim hover:text-[var(--brand)] transition-all cursor-pointer" title="Import Configuration">
               <Upload size={18} />
               <input type="file" className="hidden" accept=".json" onChange={importJson} />
             </label>
-            <div className="w-px h-6 bg-[#222222] mx-2" />
-            <button onClick={onClose} className="text-[#444444] hover:text-white transition-colors">
+            <div className="w-px h-6 bg-elevated mx-2" />
+            <button onClick={onClose} className="text-dim hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -200,7 +200,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
 
         {/* Navigation Tabs */}
         {!isGlobal && (
-          <div className="flex px-6 border-b border-[#222222] bg-[#0D0D0D]">
+          <div className="flex px-6 border-b border-subtle bg-surface">
             {[
               { id: 'variables', icon: Globe, label: 'Variables' },
               { id: 'scripts', icon: Code2, label: 'Execution Scripts' },
@@ -212,8 +212,8 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                 className={cn(
                   "flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2",
                   activeTab === tab.id 
-                    ? "border-[#3ECF8E] text-[#3ECF8E] bg-[#3ECF8E]/5" 
-                    : "border-transparent text-[#444444] hover:text-[#888888]"
+                    ? "border-[var(--brand)] text-[var(--brand)] bg-[var(--brand)]/5" 
+                    : "border-transparent text-dim hover:text-muted"
                 )}
               >
                 <tab.icon size={14} />
@@ -229,12 +229,12 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
             <div className="space-y-6">
               {!isGlobal && (
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Environment Designation</label>
+                  <label className="text-[9px] font-black text-dim uppercase tracking-widest">Environment Designation</label>
                   <input 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="ENV_NAME (e.g. Production, Staging)..."
-                    className="w-full bg-[#111111] border border-[#222222] px-4 py-3 rounded-lg text-white font-mono text-[11px] focus:outline-none focus:border-[#3ECF8E] transition-all"
+                    className="w-full bg-input border border-subtle px-4 py-3 rounded-lg text-white font-mono text-[11px] focus:outline-none focus:border-[var(--brand)] transition-all"
                   />
                 </div>
               )}
@@ -242,14 +242,14 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Variable Stack</label>
+                    <label className="text-[9px] font-black text-dim uppercase tracking-widest">Variable Stack</label>
                     <button
                       type="button"
                       onClick={() => {
                         setBulkModalInitialMode('import');
                         setIsBulkModalOpen(true);
                       }}
-                      className="px-2 py-0.5 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[8px] font-black text-[#3ECF8E] uppercase tracking-wider hover:bg-[#3ECF8E]/20 transition-all cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-[8px] font-black text-[var(--brand)] uppercase tracking-wider hover:bg-[var(--brand)]/20 transition-all cursor-pointer"
                     >
                       Import Apidog Environment
                     </button>
@@ -259,23 +259,23 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                         setBulkModalInitialMode('edit');
                         setIsBulkModalOpen(true);
                       }}
-                      className="px-2 py-0.5 rounded bg-[#222222] border border-[#333333] text-[8px] font-black text-[#888888] uppercase tracking-wider hover:bg-[#333333] transition-all cursor-pointer"
+                      className="px-2 py-0.5 rounded bg-elevated border border-strong text-[8px] font-black text-muted uppercase tracking-wider hover:bg-strong transition-all cursor-pointer"
                     >
                       Bulk CSV Import
                     </button>
                   </div>
                   <div className="relative">
-                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333333]" />
+                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" />
                     <input 
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search variables..."
-                      className="bg-[#111111] border border-[#222222] pl-8 pr-4 py-1.5 rounded-md text-[10px] text-white focus:outline-none focus:border-[#3ECF8E]/30 w-48"
+                      className="bg-input border border-subtle pl-8 pr-4 py-1.5 rounded-md text-[10px] text-white focus:outline-none focus:border-[var(--brand)]/30 w-48"
                     />
                   </div>
                 </div>
                 
-                <div className="bg-[#0A0A0A] border border-[#222222] rounded-xl p-2 min-h-[300px]">
+                <div className="bg-deep border border-subtle rounded-xl p-2 min-h-[300px]">
                   <KVEditor 
                     items={variables}
                     onChange={setVariables}
@@ -292,25 +292,25 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Pre-request Script</label>
-                      <span className="text-[8px] text-[#3ECF8E] font-mono">Run before all requests</span>
+                      <label className="text-[9px] font-black text-dim uppercase tracking-widest">Pre-request Script</label>
+                      <span className="text-[8px] text-[var(--brand)] font-mono">Run before all requests</span>
                     </div>
                     <textarea 
                       value={preRequestScript}
                       onChange={(e) => setPreRequestScript(e.target.value)}
-                      className="w-full h-64 bg-[#0A0A0A] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-[#E0E0E0] outline-none focus:border-[#3ECF8E]/30 resize-none"
+                      className="w-full h-64 bg-deep border border-subtle rounded-xl p-4 text-[11px] font-mono text-main outline-none focus:border-[var(--brand)]/30 resize-none"
                       placeholder="gmy.environment.set('timestamp', Date.now());"
                     />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Test Script</label>
-                      <span className="text-[8px] text-[#3ECF8E] font-mono">Run after all responses</span>
+                      <label className="text-[9px] font-black text-dim uppercase tracking-widest">Test Script</label>
+                      <span className="text-[8px] text-[var(--brand)] font-mono">Run after all responses</span>
                     </div>
                     <textarea 
                       value={testScript}
                       onChange={(e) => setTestScript(e.target.value)}
-                      className="w-full h-64 bg-[#0A0A0A] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-[#E0E0E0] outline-none focus:border-[#3ECF8E]/30 resize-none"
+                      className="w-full h-64 bg-deep border border-subtle rounded-xl p-4 text-[11px] font-mono text-main outline-none focus:border-[var(--brand)]/30 resize-none"
                       placeholder="gmy.test('Status is 200', () => gmy.response.to.have.status(200));"
                     />
                   </div>
@@ -319,7 +319,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                  <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest flex items-center gap-2 mb-2">
                    <Code2 size={14} /> Security Notice
                  </p>
-                 <p className="text-[9px] text-[#888888] leading-relaxed">
+                 <p className="text-[9px] text-muted leading-relaxed">
                    Environment scripts run in a sandboxed runtime. They have access to the <code className="text-amber-500">gmy.*</code> API for variable manipulation and testing. Changes made via <code className="text-amber-500">gmy.environment.set()</code> only persist during the active session unless committed manually.
                  </p>
                </div>
@@ -328,11 +328,11 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
 
           {activeTab === 'docs' && (
             <div className="space-y-4">
-              <label className="text-[9px] font-black text-[#555555] uppercase tracking-widest">Markdown Documentation</label>
+              <label className="text-[9px] font-black text-dim uppercase tracking-widest">Markdown Documentation</label>
               <textarea 
                 value={documentation}
                 onChange={(e) => setDocumentation(e.target.value)}
-                className="w-full h-[400px] bg-[#0A0A0A] border border-[#222222] rounded-xl p-6 text-[12px] text-[#E0E0E0] outline-none focus:border-[#3ECF8E]/30 resize-none leading-relaxed"
+                className="w-full h-[400px] bg-deep border border-subtle rounded-xl p-6 text-[12px] text-main outline-none focus:border-[var(--brand)]/30 resize-none leading-relaxed"
                 placeholder="# Environment Specifications\n\nUse this space to document security protocols, deployment stages, and variable schemas..."
               />
             </div>
@@ -340,14 +340,14 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[#222222] bg-[#0A0A0A] flex items-center justify-between">
-          <div className="text-[9px] text-[#333333] font-mono uppercase tracking-widest">
+        <div className="p-6 border-t border-subtle bg-deep flex items-center justify-between">
+          <div className="text-[9px] text-dim font-mono uppercase tracking-widest">
             {environment?.updated_at ? `Last sync: ${new Date(environment.updated_at).toLocaleString()}` : 'Unsynchronized container'}
           </div>
           <div className="flex gap-3">
             <button
                onClick={onClose}
-               className="px-8 py-3 border border-[#222222] text-[#555555] text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-[#1A1A1A] hover:text-white transition-all"
+               className="px-8 py-3 border border-subtle text-dim text-[11px] font-black uppercase tracking-widest rounded-xl hover:bg-elevated hover:text-white transition-all"
             >
               Abort
             </button>
@@ -355,8 +355,8 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({ isOpen, onCl
                onClick={handleSave}
                disabled={isLoading || (!isGlobal && !name.trim())}
                className={cn(
-                 "px-10 py-3 text-[#0A0A0A] text-[11px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2",
-                 isGlobal ? "bg-amber-500 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]" : "bg-[#3ECF8E] hover:shadow-[0_0_20px_rgba(62,207,142,0.3)]",
+                 "px-10 py-3 text-[var(--bg-deep)] text-[11px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2",
+                 isGlobal ? "bg-amber-500 hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]" : "bg-[var(--brand)] hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)]",
                  isLoading && "opacity-50"
                )}
             >

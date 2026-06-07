@@ -81,10 +81,10 @@ const SOURCE_CARDS: Array<{
     title: 'Auto Detect',
     subtitle: 'Recommended',
     mark: 'AUTO',
-    brandColor: '#3ECF8E',
-    bgGlow: 'hover:shadow-[0_0_25px_rgba(62,207,142,0.08)] hover:bg-[#3ECF8E]/5',
-    borderColor: 'peer-checked:border-[#3ECF8E]/50 active:border-[#3ECF8E]/50',
-    markClass: 'bg-[#3ECF8E]/10 text-[#3ECF8E] border-[#3ECF8E]/20',
+    brandColor: 'var(--brand)',
+    bgGlow: 'hover:shadow-[0_0_25px_rgba(var(--brand-rgb),0.08)] hover:bg-[var(--brand)]/5',
+    borderColor: 'peer-checked:border-[var(--brand)]/50 active:border-[var(--brand)]/50',
+    markClass: 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/20',
     features: 'Auto-detect Postman / API Dog / Insomnia',
   },
 ];
@@ -313,7 +313,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
 
     const getMethodStyle = (method: string) => {
       const m = method.toUpperCase();
-      if (m === 'GET') return 'text-[#3ECF8E] bg-[#3ECF8E]/8 border-[#3ECF8E]/15';
+      if (m === 'GET') return 'text-[var(--brand)] bg-[var(--brand)]/8 border-[var(--brand)]/15';
       if (m === 'POST') return 'text-[#FF9F0A] bg-[#FF9F0A]/8 border-[#FF9F0A]/15';
       if (m === 'PUT') return 'text-[#0A84FF] bg-[#0A84FF]/8 border-[#0A84FF]/15';
       if (m === 'PATCH') return 'text-[#BF5AF2] bg-[#BF5AF2]/8 border-[#BF5AF2]/15';
@@ -337,11 +337,11 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
               className={cn(
                 "w-4 h-4 rounded-md border flex items-center justify-center transition-all duration-200",
                 isChecked 
-                  ? "bg-[#3ECF8E] border-[#3ECF8E] shadow-[0_0_10px_rgba(62,207,142,0.25)]" 
+                  ? "bg-[var(--brand)] border-[var(--brand)] shadow-[0_0_10px_rgba(var(--brand-rgb),0.25)]" 
                   : "border-zinc-700 bg-zinc-950/80 hover:border-zinc-500"
               )}
             >
-              {isChecked && <Check size={10} className="text-[#0A0A0A] stroke-[4]" />}
+              {isChecked && <Check size={10} className="text-[var(--bg-deep)] stroke-[4]" />}
             </div>
           </div>
 
@@ -353,7 +353,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
               >
                 {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               </button>
-              <Folder size={13} className={cn(isChecked ? 'text-[#3ECF8E]' : 'text-zinc-600')} />
+              <Folder size={13} className={cn(isChecked ? 'text-[var(--brand)]' : 'text-zinc-600')} />
               <span className="truncate tracking-wide font-sans normal-case text-zinc-200">{node.name}</span>
             </>
           ) : (
@@ -393,7 +393,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={handleClose}
-        className="absolute inset-0 bg-[#000000]/85 backdrop-blur-md"
+        className="absolute inset-0 bg-deep/85 backdrop-blur-md"
       />
 
       <motion.div
@@ -403,14 +403,14 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
         className="relative w-full max-w-4xl bg-[#0F0F11]/95 border border-white/[0.05] rounded-2xl shadow-[0_30px_70px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[85vh] backdrop-blur-xl"
       >
         {/* Futuristic Background Gradients */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#3ECF8E]/[0.02] rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[var(--brand)]/[0.02] rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/[0.01] rounded-full blur-[100px] pointer-events-none" />
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-white/[0.04] flex items-center justify-between bg-black/25 shrink-0 z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-pulse" />
               <h2 className="text-[13px] font-black text-white uppercase tracking-[0.2em]">Import Collection</h2>
             </div>
             <p className="text-[9px] text-zinc-500 uppercase tracking-wider mt-1">
@@ -487,7 +487,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
             className={cn(
               'rounded-xl border-2 border-dashed p-4 transition-all duration-300 shrink-0 relative overflow-hidden',
               isDragging 
-                ? 'border-[#3ECF8E] bg-[#3ECF8E]/[0.03]' 
+                ? 'border-[var(--brand)] bg-[var(--brand)]/[0.03]' 
                 : 'border-white/[0.04] bg-black/35 hover:border-white/[0.07]'
             )}
           >
@@ -495,9 +495,9 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
               <div className="flex items-center gap-3.5">
                 <div className={cn(
                   "w-11 h-11 rounded-xl flex items-center justify-center border transition-all duration-300",
-                  isDragging ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/20" : "bg-white/[0.01] border-white/[0.04]"
+                  isDragging ? "bg-[var(--brand)]/10 border-[var(--brand)]/20" : "bg-white/[0.01] border-white/[0.04]"
                 )}>
-                  <FileJson size={18} className={cn(isDragging ? "text-[#3ECF8E]" : "text-zinc-400")} />
+                  <FileJson size={18} className={cn(isDragging ? "text-[var(--brand)]" : "text-zinc-400")} />
                 </div>
                 <div>
                   <div className="text-[11px] font-black text-white uppercase tracking-widest">Drop JSON / Export Payload</div>
@@ -556,7 +556,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-2.5 px-3.5 py-2 text-[8px] text-[#3ECF8E] font-black uppercase tracking-[0.25em] bg-[#3ECF8E]/[0.03] border border-[#3ECF8E]/10 rounded-lg shrink-0"
+                className="flex items-center gap-2.5 px-3.5 py-2 text-[8px] text-[var(--brand)] font-black uppercase tracking-[0.25em] bg-[var(--brand)]/[0.03] border border-[var(--brand)]/10 rounded-lg shrink-0"
               >
                 <CircleDot size={12} className="animate-pulse" />
                 Validating Schema Infrastructure...
@@ -596,7 +596,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                 {/* Directory Title bar and selectors */}
                 <div className="flex flex-wrap items-center justify-between border-b border-white/[0.04] pb-3 gap-3">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 text-[#3ECF8E] text-[8px] font-black uppercase tracking-widest leading-none">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--brand)]/10 border border-[var(--brand)]/25 text-[var(--brand)] text-[8px] font-black uppercase tracking-widest leading-none">
                       {preview.format.toUpperCase()}
                     </span>
                     <span className="text-[10px] text-zinc-200 font-bold tracking-wide truncate max-w-[240px]">
@@ -621,11 +621,11 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
                 </div>
 
                 {/* Tree Explorer Container */}
-                <div className="bg-[#070708] rounded-xl border border-white/[0.03] p-3 max-h-56 overflow-y-auto space-y-0.5 no-scrollbar shadow-inner">
+                <div className="bg-deep rounded-xl border border-white/[0.03] p-3 max-h-56 overflow-y-auto space-y-0.5 no-scrollbar shadow-inner">
                   {preview.normalized.items.length > 0 ? (
                     preview.normalized.items.map((node) => renderTreeNode(node, 0))
                   ) : (
-                    <div className="text-[9px] text-[#555555] uppercase text-center py-6">
+                    <div className="text-[9px] text-dim uppercase text-center py-6">
                       No importable endpoints resolved.
                     </div>
                   )}
@@ -652,7 +652,7 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
         {/* Footer controls */}
         <div className="px-6 py-4.5 border-t border-white/[0.04] bg-black/25 flex flex-col md:flex-row gap-3 justify-between items-center shrink-0 z-10">
           <div className="text-[8px] text-zinc-500 uppercase tracking-[0.2em]">
-            Parser Core: <span className="text-[#3ECF8E] font-black">{selectedCard.title}</span>
+            Parser Core: <span className="text-[var(--brand)] font-black">{selectedCard.title}</span>
           </div>
 
           <div className="flex gap-2">
@@ -665,11 +665,11 @@ export const CollectionImportModal: React.FC<CollectionImportModalProps> = ({
             <button
               onClick={handleImport}
               disabled={!canImport}
-              className="px-4.5 py-2.5 rounded-lg bg-[#3ECF8E] text-[#050505] text-[9px] font-black uppercase tracking-widest disabled:opacity-20 active:scale-[0.97] transition-all shadow-[0_4px_20px_rgba(62,207,142,0.15)] flex items-center gap-2 hover:bg-[#46e6a0]"
+              className="px-4.5 py-2.5 rounded-lg bg-[var(--brand)] text-[var(--bg-deep)] text-[9px] font-black uppercase tracking-widest disabled:opacity-20 active:scale-[0.97] transition-all shadow-[0_4px_20px_rgba(var(--brand-rgb),0.15)] flex items-center gap-2 hover:bg-[var(--brand-hover)]"
             >
               {isImporting ? (
                 <>
-                  <span className="w-3.5 h-3.5 border-2 border-[#050505]/30 border-t-[#050505] rounded-full animate-spin" />
+                  <span className="w-3.5 h-3.5 border-2 border-[var(--bg-deep)]/30 border-t-[var(--bg-deep)] rounded-full animate-spin" />
                   Integrating Nodes...
                 </>
               ) : (

@@ -183,7 +183,6 @@ export interface AppSettings {
   };
   appearance: {
     theme: 'dark' | 'light' | 'system';
-    accentColor: string;
     layoutMode: 'compact' | 'comfortable';
     fontFamily: string;
     fontSize: number;
@@ -413,3 +412,5 @@ export interface ScriptLog {
   message: string;
   timestamp: number;
 }
+
+export type SyncStatus = 'local_only' | 'pending_sync' | 'synced' | 'conflict';

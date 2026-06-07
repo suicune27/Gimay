@@ -142,19 +142,19 @@ export const globalSupabase = (() => {
 })();
 
 export function getSupabaseConfig() {
-  const global = getGlobalSupabaseConfig();
   const tenant = getTenantSupabaseConfig();
+  const global = getGlobalSupabaseConfig();
 
-  // If global environment variables are defined, they MUST take precedence over cached local storage
-  // configurations to prevent lockouts and stale DB reference errors when credentials or projects shift.
-  const hasGlobal = Boolean(global.url && global.anonKey);
+  // Prefer the user's tenant config (configured through onboarding wizard) over global env vars.
+  // This ensures the app connects to the user's own Supabase project where their team,
+  // collections, and requests were created. Auth still uses the global project via globalSupabase.
   const config = {
-    url: hasGlobal ? global.url : (tenant?.url || global.url || null),
-    anonKey: hasGlobal ? global.anonKey : (tenant?.anonKey || global.anonKey || null),
+    url: tenant?.url || global.url || null,
+    anonKey: tenant?.anonKey || global.anonKey || null,
   };
 
   console.log('[SUPABASE CLIENT CONFIG]', {
-    source: hasGlobal ? 'Global Env' : (tenant ? 'Tenant LocalStorage' : 'Global Env'),
+    source: tenant ? 'Tenant LocalStorage' : 'Global Env',
     url: config.url,
     anonKey: config.anonKey ? '***' + config.anonKey.slice(-6) : null
   });

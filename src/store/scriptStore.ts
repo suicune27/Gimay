@@ -102,7 +102,10 @@ export const useScriptStore = create<ScriptState>()(
       partialize: (state) => ({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,
-        isConsoleOpen: state.isConsoleOpen
+        isConsoleOpen: state.isConsoleOpen,
+        // Desktop local persistence - scripts & folders
+        scripts: state.scripts || [],
+        folders: state.folders || []
       })
     }
   )

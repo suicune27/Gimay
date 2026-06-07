@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, globalSupabase, getSupabaseConfig } from './lib/supabase';
 import { AuthUI } from './components/AuthUI';
+import { DatabaseChoiceScreen } from './components/DatabaseChoiceScreen';
 import { RootLayout } from './layouts/RootLayout';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { useStore } from './store/useStore';
@@ -18,6 +19,25 @@ export default function App() {
   const { isConfigured, resetOnboarding, userId, setUserId, setStep, setSetupMode, hasHydrated } = useOnboardingStore();
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const DB_CHOICE_KEY = 'gimay-db-choice';
+  const [dbChoice, setDbChoice] = useState<'gimay-cloud' | 'self-hosted' | null>(() => {
+    try {
+      const saved = localStorage.getItem('gimay-db-choice');
+      if (saved === 'gimay-cloud' || saved === 'self-hosted') return saved;
+    } catch {}
+    return null;
+  });
+
+  // Persist dbChoice to localStorage so it survives reloads
+  useEffect(() => {
+    try {
+      if (dbChoice) {
+        localStorage.setItem(DB_CHOICE_KEY, dbChoice);
+      } else {
+        localStorage.removeItem(DB_CHOICE_KEY);
+      }
+    } catch {}
+  }, [dbChoice]);
 
   // If electron, always skip landing
   useEffect(() => {
@@ -115,6 +135,73 @@ export default function App() {
   const [schemaBootstrapError, setSchemaBootstrapError] = useState<string | null>(null);
   const schemaCheckedUserRef = useRef<string | null>(null);
 
+  const SANDBOX_BACKUP_KEY = 'gimay-sandbox-backup';
+
+  function saveSandboxBackup() {
+    const state = useStore.getState();
+    try {
+      const backup = {
+        collections: state.collections,
+        workspaces: state.workspaces,
+        environments: state.environments,
+        openTabs: state.openTabs,
+        activeTabId: state.activeTabId,
+        activeWorkspaceId: state.activeWorkspaceId,
+        activeEnvId: state.activeEnvId,
+        savedAt: Date.now()
+      };
+      localStorage.setItem(SANDBOX_BACKUP_KEY, JSON.stringify(backup));
+      console.log('[Sandbox] Collections/requests saved to localStorage backup.');
+    } catch (e) {
+      console.warn('[Sandbox] Failed to save backup:', e);
+    }
+  }
+
+  const SANDBOX_PERSIST_KEY = 'gimay-sandbox-persist';
+
+  function restoreSandboxBackup() {
+    try {
+      // Try continuous auto-persist key first (saved in real-time by RootLayout), then backup key
+      let raw = localStorage.getItem(SANDBOX_PERSIST_KEY);
+      let source = 'continuous-persist';
+      if (!raw) {
+        raw = localStorage.getItem(SANDBOX_BACKUP_KEY);
+        source = 'backup';
+      }
+      if (!raw) return;
+      const backup = JSON.parse(raw);
+
+      // Clear both keys after restoring
+      try { localStorage.removeItem(SANDBOX_PERSIST_KEY); } catch {}
+      try { localStorage.removeItem(SANDBOX_BACKUP_KEY); } catch {}
+
+      // Restore all data atomically via useStore.setState to avoid
+      // side effects from individual setter functions (e.g. setActiveWorkspaceId clears collections)
+      const patch: Record<string, any> = {};
+      if (backup.workspaces && Array.isArray(backup.workspaces)) patch.workspaces = backup.workspaces;
+      if (backup.collections && Array.isArray(backup.collections)) patch.collections = backup.collections;
+      if (backup.environments && Array.isArray(backup.environments)) patch.environments = backup.environments;
+      if (backup.activeWorkspaceId) patch.activeWorkspaceId = backup.activeWorkspaceId;
+      if (backup.activeEnvId != null) patch.activeEnvId = backup.activeEnvId;
+      if (backup.openTabs && Array.isArray(backup.openTabs)) {
+        patch.openTabs = backup.openTabs;
+        patch.activeTabId = backup.activeTabId || backup.openTabs[backup.openTabs.length - 1]?.id || null;
+      } else {
+        patch.activeTabId = null;
+      }
+
+      if (Object.keys(patch).length > 0) {
+        useStore.setState(patch);
+      }
+
+      console.log(`[Sandbox] Collections/requests restored from localStorage (${source}).`);
+    } catch (e) {
+      console.warn('[Sandbox] Failed to restore backup:', e);
+      try { localStorage.removeItem(SANDBOX_PERSIST_KEY); } catch {}
+      try { localStorage.removeItem(SANDBOX_BACKUP_KEY); } catch {}
+    }
+  }
+
   const fetchProfile = async (userId: string) => {
     try {
       const { data: profile, error } = await supabase
@@ -135,32 +222,32 @@ export default function App() {
     }
   };
 
+  // Listen for sandbox exit event (dispatched from StatusBar)
+  // Saves sandbox data to localStorage backup, then shows AuthUI
   useEffect(() => {
-    const updateTheme = () => {
-      const isDark =
-        settings.appearance.theme === 'dark' ||
-        (settings.appearance.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-      document.documentElement.classList.toggle('dark', isDark);
-      document.documentElement.classList.toggle('light', !isDark);
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-      document.documentElement.style.setProperty('--brand', settings.appearance.accentColor);
-      document.documentElement.style.setProperty('--brand-muted', `${settings.appearance.accentColor}1A`);
-      document.documentElement.style.setProperty('--brand-border', `${settings.appearance.accentColor}33`);
+    const handler = () => {
+      saveSandboxBackup();
+      setSession(null);
+      const store = useStore.getState();
+      store.updateSyncMetadata({ isOffline: false });
     };
+    window.addEventListener('gimay:exit-sandbox', handler);
+    return () => window.removeEventListener('gimay:exit-sandbox', handler);
+  }, []);
 
-    updateTheme();
+  useEffect(() => {
+    const root = document.documentElement;
 
-    if (settings.appearance.theme !== 'system') {
-      return;
-    }
+    // Light mode temporarily disabled — always force dark
+    root.classList.remove('light');
+    root.classList.add('dark');
+    root.setAttribute('data-theme', 'dark');
 
-    const matcher = window.matchMedia('(prefers-color-scheme: dark)');
-    const listener = () => updateTheme();
-    matcher.addEventListener('change', listener);
-
-    return () => matcher.removeEventListener('change', listener);
-  }, [settings.appearance.theme, settings.appearance.accentColor]);
+    // Clear any leftover inline brand styles
+    root.style.removeProperty('--brand');
+    root.style.removeProperty('--brand-muted');
+    root.style.removeProperty('--brand-border');
+  }, []); // light mode disabled — deps intentionally empty
 
   // Auto-recovery: If local storage has valid configuration but the store is not marked configured, auto-align it.
   useEffect(() => {
@@ -187,9 +274,20 @@ export default function App() {
         fetchProfile(session.user.id);
         
         const store = useOnboardingStore.getState();
-        const currentIsConfigured = store.isConfigured;
-        const currentStep = store.step;
+        let currentIsConfigured = store.isConfigured;
+        let currentStep = store.step;
         const currentUserId = store.userId;
+
+        // ⛔ Reset onboarding if signing in from sandbox/offline mode
+        // Sandbox mode previously persisted isConfigured=true, userId='offline-user-id'
+        // which blocks the team selection flow for real cloud users.
+        if (currentUserId === 'offline-user-id' && session.user.id !== 'offline-user-id') {
+          console.log('[App] Signed in from sandbox mode. Resetting onboarding for team selection.');
+          resetOnboarding();
+          resetStore();
+          currentIsConfigured = false;
+          currentStep = 'welcome';
+        }
 
         // Check for teams if REALLY not configured and at welcome screen
         if (!currentIsConfigured && currentStep === 'welcome') {
@@ -226,26 +324,27 @@ export default function App() {
           resetStore();
           resetOnboarding();
           setUserId(null);
+          setDbChoice(null);
+          try { localStorage.removeItem(DB_CHOICE_KEY); } catch {}
         }
       }
       setLoading(false);
     };
 
-    if (isElectron()) {
-      console.log('[App] Desktop environment: Forcing offline sandbox.');
+    // Electron: try Supabase auth first (user can choose sandbox via AuthUI)
+    // Initial check
+    // Auth always uses globalSupabase (global project) so credentials are validated against the right project,
+    // while data operations use `supabase` which now preferentially points to the user's tenant project.
+    globalSupabase.auth.getSession().then(({ data: { session } }) => {
+      handleAuthChange('INITIAL_SESSION', session);
+    }).catch((err) => {
+      // If Supabase is unreachable (e.g. offline Electron), fall back to sandbox
+      console.warn('[App] Auth check failed, falling back to sandbox mode:', err);
       handleOfflineMode();
       setLoading(false);
-      return () => {
-        unsubscribeSync();
-      };
-    }
-
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleAuthChange('INITIAL_SESSION', session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = globalSupabase.auth.onAuthStateChange((event, session) => {
       handleAuthChange(event, session);
     });
 
@@ -267,6 +366,9 @@ export default function App() {
       }
     };
     
+    // Restore sandbox data from localStorage backup (if any)
+    restoreSandboxBackup();
+
     // Force onboarding configuration to true for offline sandbox
     setUserId('offline-user-id');
     setStep('complete');
@@ -376,7 +478,7 @@ export default function App() {
 
   if (loading || schemaBootstrapLoading) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#050505] text-white select-none relative overflow-hidden font-sans">
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-deep text-white select-none relative overflow-hidden font-sans">
         {/* Style block for advanced custom CSS animations (shimmer, dash offset, orb rotation) */}
         <style dangerouslySetInnerHTML={{__html: `
           @keyframes border-shimmer {
@@ -450,7 +552,7 @@ export default function App() {
             </div>
 
             {/* Central Gimay glowing terminal brand-mark */}
-            <div className="relative w-14 h-14 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-[0_0_25px_rgba(62,207,142,0.15)] overflow-hidden">
+            <div className="relative w-14 h-14 rounded-xl bg-black border border-white/10 flex items-center justify-center shadow-[0_0_25px_rgba(var(--brand-rgb),0.15)] overflow-hidden">
               {/* Internal abstract pattern */}
               <div className="absolute inset-0 bg-gradient-to-tr from-[var(--brand)]/5 via-transparent to-blue-500/5" />
               <svg 
@@ -462,7 +564,7 @@ export default function App() {
                 strokeWidth="2.5" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
-                className="drop-shadow-[0_0_8px_rgba(62,207,142,0.6)]"
+                className="drop-shadow-[0_0_8px_rgba(var(--brand-rgb),0.6)]"
               >
                 <polyline points="4 17 10 11 4 5" />
                 <line x1="12" y1="19" x2="20" y2="19" className="animate-pulse" />
@@ -488,26 +590,26 @@ export default function App() {
             </div>
 
             {/* Interactive tactical diagnostics hud */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pt-4 border-t border-white/[0.05] w-full text-[7px] font-bold font-mono text-[#555555]">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 pt-4 border-t border-white/[0.05] w-full text-[7px] font-bold font-mono text-dim">
               <div className="flex items-center justify-between">
                 <span>SYS.CORE</span>
-                <span className="text-[#3ECF8E]/80 animate-pulse">● READY</span>
+                <span className="text-[var(--brand)]/80 animate-pulse">● READY</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>NET.CONN</span>
-                <span className={typeof navigator !== 'undefined' && !navigator.onLine ? "text-amber-500" : "text-[#3ECF8E]/80 animate-pulse"}>
+                <span className={typeof navigator !== 'undefined' && !navigator.onLine ? "text-amber-500" : "text-[var(--brand)]/80 animate-pulse"}>
                   {typeof navigator !== 'undefined' && !navigator.onLine ? "▲ OFFLINE" : "● ONLINE"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span>DB.SCHEMA</span>
-                <span className={schemaBootstrapLoading ? "text-blue-400 animate-pulse" : "text-[#3ECF8E]/80"}>
+                <span className={schemaBootstrapLoading ? "text-blue-400 animate-pulse" : "text-[var(--brand)]/80"}>
                   {schemaBootstrapLoading ? "◌ SYNCING" : "● VERIFIED"}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span>ENV.SECURE</span>
-                <span className="text-[#3ECF8E]/80">● ACTIVE</span>
+                <span className="text-[var(--brand)]/80">● ACTIVE</span>
               </div>
             </div>
           </div>
@@ -547,7 +649,13 @@ export default function App() {
   return (
     <>
       <ToastContainer />
-      {!session && <AuthUI onOfflineMode={handleOfflineMode} />}
+      {!session && !dbChoice && isElectron() && (
+        <DatabaseChoiceScreen
+          onUseGimayCloud={() => setDbChoice('gimay-cloud')}
+          onUseOwnDatabase={() => setDbChoice('self-hosted')}
+        />
+      )}
+      {!session && (dbChoice || !isElectron()) && <AuthUI onOfflineMode={handleOfflineMode} />}
       {session && !isConfigured && <OnboardingModal />}
       {session && isConfigured && <RootLayout />}
     </>

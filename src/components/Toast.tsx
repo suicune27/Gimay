@@ -25,14 +25,14 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
   }, [onRemove]);
 
   const icons = {
-    success: <CheckCircle2 size={16} className="text-[#3ECF8E]" />,
+    success: <CheckCircle2 size={16} className="text-[var(--brand)]" />,
     error: <AlertCircle size={16} className="text-red-500" />,
     info: <Info size={16} className="text-blue-400" />,
     warning: <AlertTriangle size={16} className="text-yellow-500" />,
   };
 
   const borders = {
-    success: 'border-[#3ECF8E]/20',
+    success: 'border-[var(--brand)]/20',
     error: 'border-red-500/20',
     info: 'border-blue-400/20',
     warning: 'border-yellow-500/20',
@@ -45,7 +45,7 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
       exit={{ opacity: 0, x: 20, scale: 0.9 }}
       layout
       className={cn(
-        "pointer-events-auto flex items-center gap-4 px-4 pb-4 pt-3 bg-[#0C0C0E]/95 backdrop-blur-xl border rounded-xl shadow-2xl min-w-[300px] max-w-sm relative overflow-hidden select-none",
+        "pointer-events-auto flex items-center gap-4 px-4 pb-4 pt-3 bg-[var(--bg-surface)]/95 backdrop-blur-xl border rounded-xl shadow-2xl min-w-[300px] max-w-sm relative overflow-hidden select-none",
         borders[toast.type as keyof typeof borders]
       )}
     >
@@ -57,7 +57,7 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
       </div>
       <button 
         onClick={onRemove}
-        className="text-[#444444] hover:text-white transition-colors shrink-0"
+        className="text-dim hover:text-white transition-colors shrink-0"
       >
         <X size={14} />
       </button>
@@ -70,7 +70,7 @@ const ToastItem: React.FC<{ toast: any; onRemove: () => void }> = ({ toast, onRe
           transition={{ duration: 5, ease: "linear" }}
           className={cn(
             "h-full",
-            toast.type === 'success' && "bg-[#3ECF8E]",
+            toast.type === 'success' && "bg-[var(--brand)]",
             toast.type === 'error' && "bg-red-500",
             toast.type === 'info' && "bg-blue-400",
             toast.type === 'warning' && "bg-yellow-500"

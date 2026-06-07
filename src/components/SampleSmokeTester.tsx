@@ -169,23 +169,23 @@ export function SampleSmokeTester() {
   const maxSampleLatency = Math.max(...latencies, 150); // Use 150 as default scale ceiling
 
   return (
-    <div className="w-full max-w-4xl mx-auto rounded-xl border border-white/[0.04] bg-[#0A0A0B] p-5 md:p-7 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+    <div className="w-full max-w-4xl mx-auto rounded-xl border border-white/[0.04] bg-deep p-5 md:p-7 relative overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)]">
       {/* Decorative scanner/laser sweep */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-40" />
-      <div className="absolute top-0 left-0 w-24 h-px bg-gradient-to-r from-transparent via-[#3ECF8E]/30 to-transparent animate-[shimmer_2s_infinite]" />
+      <div className="absolute top-0 left-0 w-24 h-px bg-gradient-to-r from-transparent via-[var(--brand)]/30 to-transparent animate-[shimmer_2s_infinite]" />
 
       <div className="relative z-10 flex flex-col gap-6">
         
         {/* Header Title Grid */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.03] pb-5">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isRunning ? 'bg-[#3ECF8E]/10 animate-pulse' : 'bg-white/[0.02]'} border border-white/[0.04]`}>
-              <Activity size={18} className={isRunning ? 'text-[#3ECF8E]' : 'text-zinc-400'} />
+            <div className={`p-2 rounded-lg ${isRunning ? 'bg-[var(--brand)]/10 animate-pulse' : 'bg-white/[0.02]'} border border-white/[0.04]`}>
+              <Activity size={18} className={isRunning ? 'text-[var(--brand)]' : 'text-zinc-400'} />
             </div>
             <div>
               <h2 className="text-sm font-black text-white uppercase tracking-widest font-display flex items-center gap-2">
                 Interactive Smoke Suite Sandbox
-                <span className="text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded bg-[#3ECF8E]/10 text-[#3ECF8E] uppercase">
+                <span className="text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded bg-[var(--brand)]/10 text-[var(--brand)] uppercase">
                   v1.0.0 Live
                 </span>
               </h2>
@@ -196,7 +196,7 @@ export function SampleSmokeTester() {
           </div>
 
           <div className="flex items-center gap-3 text-[9px] font-mono text-zinc-500 bg-white/[0.01] border border-white/[0.03] px-3 py-1.5 rounded-lg select-none">
-            <Globe size={11} className="text-[#3ECF8E]" />
+            <Globe size={11} className="text-[var(--brand)]" />
             <span className="uppercase font-bold">Proxy Ingress:</span>
             <span className="text-white">Active Node Engine</span>
           </div>
@@ -213,12 +213,12 @@ export function SampleSmokeTester() {
                 <HelpCircle size={10} className="text-zinc-600 cursor-help" />
               </span>
             </span>
-            <div className="flex bg-black border border-white/5 rounded-lg overflow-hidden group focus-within:border-[#3ECF8E]/30 focus-within:ring-2 focus-within:ring-[#3ECF8E]/5 transition-all">
+            <div className="flex bg-black border border-white/5 rounded-lg overflow-hidden group focus-within:border-[var(--brand)]/30 focus-within:ring-2 focus-within:ring-[#2563EB]/5 transition-all">
               <select
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
                 disabled={isRunning}
-                className="bg-[#0F0F10] px-3 py-2 text-[10px] font-mono font-black border-r border-white/5 text-[#3ECF8E] hover:bg-[#151517] transition-colors cursor-pointer outline-none uppercase"
+                className="bg-[#0F0F10] px-3 py-2 text-[10px] font-mono font-black border-r border-white/5 text-[var(--brand)] hover:bg-[#151517] transition-colors cursor-pointer outline-none uppercase"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -298,14 +298,14 @@ export function SampleSmokeTester() {
           <div className="flex items-center gap-3">
             {isRunning ? (
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#3ECF8E] animate-ping" />
+                <div className="w-2 h-2 rounded-full bg-[var(--brand)] animate-ping" />
                 <span className="text-[9px] font-semibold text-zinc-300 font-mono">
                   Transmitting active test load: <strong className="text-white font-black">{samples.length}</strong> / {threads * loops} finished...
                 </span>
               </div>
             ) : isCompleted ? (
               <div className="flex items-center gap-2">
-                <CheckCircle2 size={13} className="text-[#3ECF8E]" />
+                <CheckCircle2 size={13} className="text-[var(--brand)]" />
                 <span className="text-[9px] font-semibold text-zinc-300 font-mono">
                   Transmission finished. Processed <strong className="text-white">{samples.length}</strong> metrics successfully.
                 </span>
@@ -332,7 +332,7 @@ export function SampleSmokeTester() {
             ) : (
               <button
                 onClick={startTest}
-                className="px-6 py-2 rounded-md bg-[#3ECF8E] hover:bg-[#34B37A] text-black font-black text-[9px] tracking-wider uppercase font-mono flex items-center gap-1.5 cursor-pointer shadow-[0_0_20px_rgba(62,207,142,0.15)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="px-6 py-2 rounded-md bg-[var(--brand)] hover:bg-[var(--brand-hover)] text-black font-black text-[9px] tracking-wider uppercase font-mono flex items-center gap-1.5 cursor-pointer shadow-[0_0_20px_rgba(var(--brand-rgb),0.15)] hover:scale-[1.02] active:scale-[0.98] transition-all"
               >
                 <Play size={10} fill="currentColor" />
                 Deploy Suite
@@ -353,7 +353,7 @@ export function SampleSmokeTester() {
               </div>
               <div className="w-full h-[3px] bg-white/[0.02] border border-white/[0.01] rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-[#3ECF8E] to-blue-400 transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-[var(--brand)] to-blue-400 transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -364,11 +364,11 @@ export function SampleSmokeTester() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             
             {/* HUD 1: Success Rate */}
-            <div className="bg-[#050506]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
-              <div className="absolute top-0 right-0 w-12 h-12 bg-[#3ECF8E]/2 rounded-full blur-md -mr-4 -mt-4 opacity-50" />
+            <div className="bg-[var(--bg-deep)]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
+              <div className="absolute top-0 right-0 w-12 h-12 bg-[var(--brand)]/2 rounded-full blur-md -mr-4 -mt-4 opacity-50" />
               <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider font-mono">Success Rate</span>
               <div className="mt-2 flex items-baseline gap-1">
-                <span className={`text-xl font-mono leading-none font-bold ${totalCount === 0 ? 'text-zinc-600' : successRate >= 90 ? 'text-[#3ECF8E]' : successRate >= 70 ? 'text-amber-500' : 'text-red-400'}`}>
+                <span className={`text-xl font-mono leading-none font-bold ${totalCount === 0 ? 'text-zinc-600' : successRate >= 90 ? 'text-[var(--brand)]' : successRate >= 70 ? 'text-amber-500' : 'text-red-400'}`}>
                   {totalCount === 0 ? '---' : `${successRate}%`}
                 </span>
               </div>
@@ -378,7 +378,7 @@ export function SampleSmokeTester() {
             </div>
 
             {/* HUD 2: Avg Latency */}
-            <div className="bg-[#050506]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
+            <div className="bg-[var(--bg-deep)]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
               <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500/2 rounded-full blur-md -mr-4 -mt-4 opacity-50" />
               <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider font-mono">Avg Latency</span>
               <div className="mt-2 flex items-baseline gap-0.5">
@@ -393,7 +393,7 @@ export function SampleSmokeTester() {
             </div>
 
             {/* HUD 3: Performance Ceiling (Min/Max) */}
-            <div className="bg-[#050506]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
+            <div className="bg-[var(--bg-deep)]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
               <div className="absolute top-0 right-0 w-12 h-12 bg-purple-500/2 rounded-full blur-md -mr-4 -mt-4 opacity-50" />
               <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider font-mono">Variance Ceiling</span>
               <div className="mt-2 text-white font-mono flex flex-col">
@@ -410,11 +410,11 @@ export function SampleSmokeTester() {
             </div>
 
             {/* HUD 4: Throttling & Queue status */}
-            <div className="bg-[#050506]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
+            <div className="bg-[var(--bg-deep)]/85 border border-white/[0.02] rounded-lg p-3 flex flex-col justify-between select-none relative group overflow-hidden">
               <div className="absolute top-0 right-0 w-12 h-12 bg-pink-500/2 rounded-full blur-md -mr-4 -mt-4 opacity-50" />
               <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-wider font-mono">Load Capacity</span>
               <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-xl font-mono leading-none font-bold text-[#3ECF8E] drop-shadow-[0_0_8px_rgba(62,207,142,0.1)]">
+                <span className="text-xl font-mono leading-none font-bold text-[var(--brand)] drop-shadow-[0_0_8px_rgba(var(--brand-rgb),0.1)]">
                   {totalCount === 0 ? '---' : `${Math.round((totalCount / (threads * loops)) * 100)}%`}
                 </span>
               </div>
@@ -456,7 +456,7 @@ export function SampleSmokeTester() {
                         <div 
                           className={`w-full rounded-t-[1.5px] transition-all duration-300 ${
                             sample.success 
-                              ? 'bg-[#3ECF8E]/55 hover:bg-[#3ECF8E]' 
+                              ? 'bg-[var(--brand)]/55 hover:bg-[var(--brand)]' 
                               : 'bg-red-500/50 hover:bg-red-500'
                           }`}
                           style={{ height: `${Math.max(4, heightPct)}%` }}
@@ -474,14 +474,14 @@ export function SampleSmokeTester() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 5, scale: 0.95 }}
                       transition={{ duration: 0.12 }}
-                      className="absolute left-1/2 bottom-26 -translate-x-1/2 z-30 bg-[#0E0E10] border border-white/[0.06] shadow-2xl rounded-lg px-3.5 py-2.5 w-60 text-left select-none pointer-events-none flex flex-col gap-1.5 backdrop-blur-md"
+                      className="absolute left-1/2 bottom-26 -translate-x-1/2 z-30 bg-surface border border-white/[0.06] shadow-2xl rounded-lg px-3.5 py-2.5 w-60 text-left select-none pointer-events-none flex flex-col gap-1.5 backdrop-blur-md"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[7.5px] font-black text-zinc-500 uppercase tracking-widest font-mono">
                           Worker Thread #{hoveredSample.threadId}
                         </span>
                         <span className={`text-[7px] font-black tracking-widest px-1.5 py-0.5 rounded uppercase font-mono ${
-                          hoveredSample.success ? 'bg-[#3ECF8E]/10 text-[#3ECF8E]' : 'bg-red-500/10 text-red-400'
+                          hoveredSample.success ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'bg-red-500/10 text-red-400'
                         }`}>
                           HTTP {hoveredSample.status || 'ERR'}
                         </span>
@@ -491,7 +491,7 @@ export function SampleSmokeTester() {
                         <span className="text-zinc-500">Latency:</span>
                         <span className="text-white text-right font-bold">{hoveredSample.latency} ms</span>
                         <span className="text-zinc-500">Result:</span>
-                        <span className={`text-right font-black ${hoveredSample.success ? 'text-[#3ECF8E]' : 'text-red-400'}`}>
+                        <span className={`text-right font-black ${hoveredSample.success ? 'text-[var(--brand)]' : 'text-red-400'}`}>
                           {hoveredSample.success ? 'SUCCESS' : 'FAILED'}
                         </span>
                         <span className="text-zinc-500">Message:</span>

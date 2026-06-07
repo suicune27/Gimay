@@ -10,6 +10,7 @@ import { RequestService } from '../services/RequestService';
 import { ScriptService } from '../services/ScriptService';
 import { SandboxRunner } from '../services/sandboxRunner';
 import { SmokeLogService } from '../services/SmokeLogService';
+import { SmokeRunnerService } from '../services/SmokeRunnerService';
 
 const ModernRadarLoader = () => {
   return (
@@ -121,20 +122,7 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
   const currentRunIdRef = useRef(0);
   const activeAbortControllersRef = useRef<Set<AbortController>>(new Set());
 
-  const buildResponsePreview = (body: any): string => {
-    if (body === null || body === undefined) return '';
-    if (typeof body === 'string') return body.slice(0, 2000);
-    try {
-      return JSON.stringify(body).slice(0, 2000);
-    } catch {
-      return '';
-    }
-  };
-
-  const pushBounded = (arr: any[], item: any, max = 50) => {
-    arr.push(item);
-    if (arr.length > max) arr.shift();
-  };
+  const { buildResponsePreview, pushBounded } = SmokeRunnerService;
 
   // Hover states for dynamic responsive tooltip
   const [hoveredSample, setHoveredSample] = useState<TestSample | null>(null);
@@ -1046,23 +1034,15 @@ export const SmokeTestPanel: React.FC<SmokeTestPanelProps> = ({ activeRequest, c
         const totalElapsed = (performance.now() - startTimeRef.current) / 1000;
   await persistTemporaryRunLog('mot', totalElapsed * 1000);
 
-        // Form recommendations
-        const recs: string[] = [];
+                // Form recommendations
         const finalPassRate = Math.round((successCountRef.current / (completedCountRef.current || 1)) * 100);
-        if (finalPassRate < 75) {
-          recs.push(`Unstable Target Endpoint Detected: '${activeRequest.method} ${activeRequest.name}' exhibited a ${100 - finalPassRate}% fail rate. Investigate endpoint exception logging for connection resets.`);
-        }
-        if (maxLatencyValue > 4000) {
-          recs.push(`High Latency Ceiling Spike: Latency spiked to ${maxLatencyValue}ms during loading. Implement a robust response caching layer to bypass database row scans.`);
-        }
-        if (crashPreventionTriggersCountRef.current > 0) {
-          recs.push(`Preemptive resilience stabilizer interceded ${crashPreventionTriggersCountRef.current} times to curb stack buffer drop offs, lowering execution speeds safely to prevent browser heap exhaustion.`);
-        }
-        if (recs.length === 0) {
-          recs.push("Pristine Systems Stability: Continuous endurance testing achieved excellent results. The local cluster sustained the concurrent loads perfectly with no memory exhaustion signs.");
-        }
-
-        setMotReportData({
+        const recs = SmokeRunnerService.generateMoTRecommendations(
+          finalPassRate,
+          maxLatencyValue === -Infinity ? 0 : maxLatencyValue,
+          crashPreventionTriggersCountRef.current,
+          [{ method: activeRequest.method, name: activeRequest.name }]
+        );
+setMotReportData({
           durationSeconds: Math.round(totalElapsed),
           totalRequests: completedCountRef.current,
           successCount: successCountRef.current,

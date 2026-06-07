@@ -66,10 +66,8 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
   // Normalize items to ensure all items have a unique id
   const normalizedItems = useMemo(() => {
-    let changed = false;
-    const safeItems = (items || []).filter(Boolean).map(item => {
+    return (items || []).filter(Boolean).map(item => {
       if (!item.id) {
-        changed = true;
         return {
           ...item,
           id: Math.random().toString(36).substr(2, 9)
@@ -77,12 +75,15 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
       }
       return item;
     });
+  }, [items]);
 
-    if (changed) {
-      setTimeout(() => onChange(safeItems), 0);
+  // Propagate generated IDs to parent after render (avoid stale closure from setTimeout(0))
+  useEffect(() => {
+    const needsIds = (items || []).some(item => item && !item.id);
+    if (needsIds) {
+      onChange(normalizedItems);
     }
-    return safeItems;
-  }, [items, onChange]);
+  }, [items, normalizedItems, onChange]);
 
   // Bulk edit management
   const startBulkEdit = () => {
@@ -209,9 +210,9 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
   return (
     <div ref={containerRef} className="space-y-4 w-full relative">
       {/* Sleek Tool Bar */}
-      <div className="flex items-center justify-between pb-2 border-b border-[#222222]">
+      <div className="flex items-center justify-between pb-2 border-b border-subtle">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-black text-[#666666] uppercase tracking-widest">
+          <span className="text-[10px] font-black text-muted uppercase tracking-widest">
             Headers ({items.length})
           </span>
           {!isBulkEdit && items.length > 5 && (
@@ -220,16 +221,16 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
               placeholder="Search headers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-[#111111] border border-[#222222] text-[10px] text-white px-2 py-0.5 rounded outline-none focus:border-[#3ECF8E]/30 transition-all font-medium placeholder:text-[#444444]"
+              className="bg-input border border-subtle text-[10px] text-white px-2 py-0.5 rounded outline-none focus:border-[var(--brand)]/30 transition-all font-medium placeholder:text-dim"
             />
           )}
         </div>
         <button
           onClick={isBulkEdit ? saveBulkEdit : startBulkEdit}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black text-[#888888] hover:text-[#3ECF8E] transition-all uppercase tracking-widest bg-[#141414] border border-[#222222] rounded-lg shadow-lg hover:border-[#3ECF8E]/20"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black text-muted hover:text-[var(--brand)] transition-all uppercase tracking-widest bg-elevated border border-subtle rounded-lg shadow-lg hover:border-[var(--brand)]/20"
         >
           {isBulkEdit ? (
-            <><CheckCircle2 size={11} className="text-[#3ECF8E]" /> Save Bulk</>
+            <><CheckCircle2 size={11} className="text-[var(--brand)]" /> Save Bulk</>
           ) : (
             <><Edit3 size={11} /> Bulk Compiler</>
           )}
@@ -243,9 +244,9 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             placeholder="Host: api.gimay.com&#10;Authorization: Bearer {{token}}"
-            className="w-full h-56 bg-[#090909] text-[11px] font-mono p-4 outline-none border border-[#222222] rounded-xl text-white placeholder:text-[#333333] resize-none focus:border-[#3ECF8E]/30 focus:bg-[#0C0C0C] transition-all"
+            className="w-full h-56 bg-deep text-[11px] font-mono p-4 outline-none border border-subtle rounded-xl text-white placeholder:text-dim resize-none focus:border-[var(--brand)]/30 focus:bg-surface transition-all"
           />
-          <div className="text-[9px] text-[#555555] font-medium italic">
+          <div className="text-[9px] text-dim font-medium italic">
             Enter one Header Key: Value pair per line. Standard Postman variable mapping is fully supported.
           </div>
         </div>
@@ -253,7 +254,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
         <div className="space-y-2.5">
           {/* Header Row */}
           {filteredItems.length > 0 && (
-            <div className="flex items-center gap-3 px-2 py-1 text-[9px] font-black text-[#444444] uppercase tracking-wider select-none border-b border-[#181818]">
+            <div className="flex items-center gap-3 px-2 py-1 text-[9px] font-black text-dim uppercase tracking-wider select-none border-b border-[var(--bg-elevated)]">
               <div className="w-6 shrink-0" />
               <div className="flex-[0.4] px-1">Header Name</div>
               <div className="flex-[0.6] px-1">Value Configuration</div>
@@ -279,8 +280,8 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                 className={cn(
                   "flex items-center gap-3 px-2 py-1 rounded-xl transition-all border relative",
                   item.active 
-                    ? "bg-[#0E0E0E]/60 border-[#1B1B1B] hover:border-[#2C2C2C] hover:bg-[#121212]/80"
-                    : "bg-[#0A0A0A]/40 border-transparent opacity-40 hover:opacity-75"
+                    ? "bg-[var(--bg-surface)]/60 border-[#1B1B1B] hover:border-[#2C2C2C] hover:bg-elevated/80"
+                    : "bg-[var(--bg-deep)]/40 border-transparent opacity-40 hover:opacity-75"
                 )}
               >
                 {/* Active Checkbox */}
@@ -289,8 +290,8 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                   className={cn(
                     "w-6 h-6 flex items-center justify-center rounded-lg transition-colors border",
                     item.active 
-                      ? "text-[#3ECF8E] bg-[#3ECF8E]/5 border-[#3ECF8E]/20" 
-                      : "text-[#333333] border-[#222222] hover:border-[#444444]"
+                      ? "text-[var(--brand)] bg-[var(--brand)]/5 border-[var(--brand)]/20" 
+                      : "text-dim border-subtle hover:border-strong"
                   )}
                 >
                   {item.active ? <CheckCircle2 size={12} /> : <Circle size={12} />}
@@ -303,7 +304,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                     value={item.key}
                     onChange={(e) => handleItemChange(item.id, { key: e.target.value })}
                     placeholder={placeholderKey}
-                    className="w-full bg-transparent text-[11px] font-semibold text-white px-2.5 py-1.5 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[#3ECF8E]/30 focus:bg-[#070707] transition-all font-mono"
+                    className="w-full bg-transparent text-[11px] font-semibold text-white px-2.5 py-1.5 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[var(--brand)]/30 focus:bg-deep transition-all font-mono"
                   />
                 </div>
 
@@ -318,9 +319,9 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                       onBlur={() => setFocusedRowId(null)}
                       placeholder={placeholderValue}
                       spellCheck={false}
-                      style={(hasVariables && focusedRowId !== item.id) ? { color: 'transparent', caretColor: '#3ECF8E' } : {}}
+                      style={(hasVariables && focusedRowId !== item.id) ? { color: 'transparent', caretColor: 'var(--brand)' } : {}}
                       className={cn(
-                        "w-full bg-transparent text-[11px] text-[#A0A0A0] px-2.5 py-1.5 pr-8 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[#3ECF8E]/30 focus:bg-[#070707] transition-all font-mono focus:text-white"
+                        "w-full bg-transparent text-[11px] text-muted px-2.5 py-1.5 pr-8 outline-none rounded-lg border border-transparent hover:border-[#1F1F1F] focus:border-[var(--brand)]/30 focus:bg-deep transition-all font-mono focus:text-white"
                       )}
                     />
 
@@ -368,7 +369,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                               </span>
                             );
                           }
-                          return <span key={partKey} className="text-[#A0A0A0]">{part}</span>;
+                          return <span key={partKey} className="text-muted">{part}</span>;
                         })}
                       </div>
                     )}
@@ -390,12 +391,12 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                             setHoveredVar(null);
                           }, 200) as any;
                         }}
-                        className="absolute z-50 left-2 top-full mt-2 w-[320px] bg-[#0A0A0C]/95 backdrop-blur-2xl border border-[#222222] rounded-xl shadow-2xl p-3.5 space-y-3.5"
+                        className="absolute z-50 left-2 top-full mt-2 w-[320px] bg-glass-bg backdrop-blur-2xl border border-subtle rounded-xl shadow-2xl p-3.5 space-y-3.5"
                       >
                         {/* Header Details */}
-                        <div className="flex items-center justify-between pb-1.5 border-b border-[#181818]">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--bg-elevated)]">
                           <div className="flex items-center gap-1.5">
-                            <Variable size={11} className="text-[#3ECF8E]" />
+                            <Variable size={11} className="text-[var(--brand)]" />
                             <span className="font-mono text-[10px] font-black text-white">
                               {hoveredVar.varName}
                             </span>
@@ -422,26 +423,26 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                         ) : (
                           <div className="space-y-3">
                             <div className="space-y-1">
-                              <label className="text-[8px] font-black text-[#555] uppercase tracking-widest block">Resolved Value</label>
-                              <div className="bg-[#050505] border border-[#161616] rounded-lg p-2 font-mono text-[10px] text-[#3ECF8E] break-all">
-                                {hoveredVar.value || <span className="text-[#2B3A30] italic">Empty String</span>}
+                              <label className="text-[8px] font-black text-dim uppercase tracking-widest block">Resolved Value</label>
+                              <div className="bg-deep border border-[#161616] rounded-lg p-2 font-mono text-[10px] text-[var(--brand)] break-all">
+                                {hoveredVar.value || <span className="text-dim italic">Empty String</span>}
                               </div>
                             </div>
 
                             {/* Direct Modifier Form */}
-                            <div className="space-y-1.5 pt-2 border-t border-[#181818]">
-                              <label className="text-[8px] font-black text-[#555] uppercase tracking-widest block">Quick Modify Value</label>
+                            <div className="space-y-1.5 pt-2 border-t border-[var(--bg-elevated)]">
+                              <label className="text-[8px] font-black text-dim uppercase tracking-widest block">Quick Modify Value</label>
                               <div className="flex items-center gap-1.5">
                                 <input
                                   type="text"
                                   value={editingVarValue}
                                   onChange={(e) => setEditingVarValue(e.target.value)}
-                                  className="flex-1 bg-[#050505] border border-[#1C1C1C] rounded-lg px-2 py-1.5 text-[10.5px] font-mono text-white outline-none focus:border-[#3ECF8E]/40 transition-colors"
+                                  className="flex-1 bg-deep border border-[#1C1C1C] rounded-lg px-2 py-1.5 text-[10.5px] font-mono text-white outline-none focus:border-[var(--brand)]/40 transition-colors"
                                   placeholder="Enter new value"
                                 />
                                 <button
                                   onClick={() => handlePersistQuickVar(hoveredVar.varName, editingVarValue, hoveredVar.scope, hoveredVar.sourceId)}
-                                  className="p-1.5 rounded-lg bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[#3ECF8E] hover:bg-[#3ECF8E]/20 transition-all shadow-md"
+                                  className="p-1.5 rounded-lg bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-[var(--brand)] hover:bg-[var(--brand)]/20 transition-all shadow-md"
                                   title="Save resolved value"
                                 >
                                   <Check size={11} />
@@ -455,7 +456,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                         {hoveredVar.scope !== 'unresolved' && (
                           <button
                             onClick={() => navigateToVariableSource(hoveredVar.scope, hoveredVar.sourceId)}
-                            className="w-full px-2 py-1.5 rounded-lg border border-[#202020] text-[8px] font-black uppercase tracking-widest text-[#888888] hover:text-[#3ECF8E] hover:border-[#3ECF8E]/20 transition-all flex items-center justify-center gap-1.5 bg-[#121214]/50"
+                            className="w-full px-2 py-1.5 rounded-lg border border-[#202020] text-[8px] font-black uppercase tracking-widest text-muted hover:text-[var(--brand)] hover:border-[var(--brand)]/20 transition-all flex items-center justify-center gap-1.5 bg-[#121214]/50"
                           >
                             <ExternalLink size={10} />
                             Open Variable Source
@@ -469,7 +470,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
                 {/* Remove button */}
                 <button
                   onClick={() => removeItem(item.id)}
-                  className="w-8 h-8 flex items-center justify-center text-[#444444] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0 hover:bg-red-500/5 hover:border hover:border-red-500/10 border border-transparent"
+                  className="w-8 h-8 flex items-center justify-center text-dim hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all rounded-lg shrink-0 hover:bg-red-500/5 hover:border hover:border-red-500/10 border border-transparent"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -479,7 +480,7 @@ export const HeaderEditor: React.FC<HeaderEditorProps> = ({
 
           <button
             onClick={addItem}
-            className="mt-3 flex items-center gap-2 px-3 py-1.5 text-[9px] font-black text-[#777777] hover:text-[#3ECF8E] hover:bg-[#3ECF8E]/5 border border-dashed border-[#222222] hover:border-[#3ECF8E]/20 rounded-xl transition-all uppercase tracking-widest"
+            className="mt-3 flex items-center gap-2 px-3 py-1.5 text-[9px] font-black text-muted hover:text-[var(--brand)] hover:bg-[var(--brand)]/5 border border-dashed border-subtle hover:border-[var(--brand)]/20 rounded-xl transition-all uppercase tracking-widest"
           >
             <Plus size={11} /> Add Header Field
           </button>

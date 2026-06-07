@@ -539,59 +539,59 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="absolute inset-0 bg-[#000000]/85 backdrop-blur-md"
+        className="absolute inset-0 bg-deep/85 backdrop-blur-md"
       />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 30 }}
-        className="relative w-full max-w-5xl bg-[#0B0B0B] border border-[#222222] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-5xl bg-surface border border-subtle rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Top Header */}
-        <div className="p-6 border-b border-[#222222] bg-[#070707] flex items-center justify-between">
+        <div className="p-6 border-b border-subtle bg-deep flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 flex items-center justify-center text-[#3ECF8E]">
+            <div className="w-10 h-10 rounded-xl bg-[var(--brand)]/10 border border-[var(--brand)]/30 flex items-center justify-center text-[var(--brand)]">
               <Settings size={20} className="animate-spin duration-1000" />
             </div>
             <div>
               <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                Variable Bulk Hub <span className="text-[9px] bg-[#3ECF8E]/10 text-[#3ECF8E] px-2 py-0.5 rounded border border-[#3ECF8E]/20">Apidog-v2 Ready</span>
+                Variable Bulk Hub <span className="text-[9px] bg-[var(--brand)]/10 text-[var(--brand)] px-2 py-0.5 rounded border border-[var(--brand)]/20">Apidog-v2 Ready</span>
               </h2>
-              <p className="text-[10px] text-[#555555] font-black uppercase tracking-tight mt-0.5">
+              <p className="text-[10px] text-dim font-black uppercase tracking-tight mt-0.5">
                 Multi-Mode Importer & Live Bulk Parameter Editor
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="text-[#444444] hover:text-white transition-colors">
+          <button onClick={onClose} className="text-dim hover:text-white transition-colors">
             <X size={20} />
           </button>
         </div>
 
         {/* Global Navigation Section Select */}
         {!showPreview && (
-          <div className="flex px-6 border-b border-[#222222] bg-[#0E0E0E]">
+          <div className="flex px-6 border-b border-subtle bg-surface">
             <button
               onClick={() => setActiveMode('edit')}
               className={cn(
                 "flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest relative transition-all",
-                activeMode === 'edit' ? "text-[#3ECF8E]" : "text-[#444444] hover:text-[#777777]"
+                activeMode === 'edit' ? "text-[var(--brand)]" : "text-dim hover:text-muted"
               )}
             >
               <FileText size={13} />
               Bulk Edit Variable Table
-              {activeMode === 'edit' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3ECF8E]" />}
+              {activeMode === 'edit' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--brand)]" />}
             </button>
             <button
               onClick={() => setActiveMode('import')}
               className={cn(
                 "flex items-center gap-2 px-6 py-4 text-[10px] font-black uppercase tracking-widest relative transition-all",
-                activeMode === 'import' ? "text-[#3ECF8E]" : "text-[#444444] hover:text-[#777777]"
+                activeMode === 'import' ? "text-[var(--brand)]" : "text-dim hover:text-muted"
               )}
             >
               <UploadCloud size={13} />
               Smart Format Bulk Importer
-              {activeMode === 'import' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#3ECF8E]" />}
+              {activeMode === 'import' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--brand)]" />}
             </button>
           </div>
         )}
@@ -607,22 +607,22 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-6"
               >
-                <div className="p-4 bg-[#3ECF8E]/5 border border-[#3ECF8E]/10 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-[var(--brand)]/5 border border-[var(--brand)]/10 rounded-xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="text-[#3ECF8E]" size={20} />
+                    <Sparkles className="text-[var(--brand)]" size={20} />
                     <div>
                       <h4 className="text-xs font-black text-white uppercase tracking-wider">Configure Import Commit Parameters</h4>
-                      <p className="text-[10px] text-[#888888] mt-0.5">
+                      <p className="text-[10px] text-muted mt-0.5">
                         Verify parsed parameters. Sensitive credentials have been auto-masked for safety.
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <label className="text-[9px] font-black text-[#555555] uppercase tracking-wider">Duplicate Key Action</label>
+                    <label className="text-[9px] font-black text-dim uppercase tracking-wider">Duplicate Key Action</label>
                     <select
                       value={duplicateBehavior}
                       onChange={(e) => setDuplicateBehavior(e.target.value as 'overwrite' | 'skip')}
-                      className="bg-[#141414] border border-[#222222] text-[10px] font-black uppercase tracking-widest text-[#AAAAAA] rounded-md px-3 py-1.5 outline-none focus:border-[#3ECF8E]/30"
+                      className="bg-elevated border border-subtle text-[10px] font-black uppercase tracking-widest text-muted rounded-md px-3 py-1.5 outline-none focus:border-[var(--brand)]/30"
                     >
                       <option value="overwrite">Overwrite Duplicates</option>
                       <option value="skip">Skip & Preserve Stored</option>
@@ -630,10 +630,10 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                   </div>
                 </div>
 
-                <div className="border border-[#222222] bg-[#0A0A0A] rounded-xl overflow-hidden">
+                <div className="border border-subtle bg-deep rounded-xl overflow-hidden">
                   <table className="w-full text-left font-mono text-[11px]">
                     <thead>
-                      <tr className="bg-[#0D0D0D] border-b border-[#222222] text-[9px] font-black text-[#555555] uppercase tracking-widest">
+                      <tr className="bg-surface border-b border-subtle text-[9px] font-black text-dim uppercase tracking-widest">
                         <th className="p-4 w-12 text-center">Status</th>
                         <th className="p-4 w-1/4">Variable Name</th>
                         <th className="p-4 w-1/3">Target Value</th>
@@ -641,7 +641,7 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                         <th className="p-4 w-20 text-center">Active</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#222222]">
+                    <tbody className="divide-y divide-[var(--border-subtle)]">
                       {previewVariables.map((pv, idx) => {
                         const isDuplicate = variables.some(v => v.key === pv.key);
                         const isKeyEmpty = !pv.key.trim();
@@ -649,7 +649,7 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                         
                         return (
                           <tr key={idx} className={cn(
-                            "hover:bg-[#111111]/30 transition-all",
+                            "hover:bg-[var(--bg-input)]/30 transition-all",
                             isKeyEmpty ? "bg-red-500/5" : (isDuplicate ? "bg-amber-500/5" : "")
                           )}>
                             <td className="p-4 text-center">
@@ -658,33 +658,33 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                               ) : isDuplicate ? (
                                 <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded text-[9px] font-bold uppercase tracking-tight">Duplicate</span>
                               ) : (
-                                <span className="px-2 py-0.5 bg-[#3ECF8E]/10 border border-[#3ECF8E]/20 text-[#3ECF8E] rounded text-[9px] font-bold uppercase tracking-tight">New</span>
+                                <span className="px-2 py-0.5 bg-[var(--brand)]/10 border border-[var(--brand)]/20 text-[var(--brand)] rounded text-[9px] font-bold uppercase tracking-tight">New</span>
                               )}
                             </td>
                             <td className="p-4 font-bold text-white flex items-center gap-2">
                               {pv.key}
                               {pv.masked && (
                                 <span title="Automated security credential detected">
-                                  <ShieldAlert size={12} className="text-[#3ECF8E]" />
+                                  <ShieldAlert size={12} className="text-[var(--brand)]" />
                                 </span>
                               )}
                             </td>
                             <td className="p-4">
-                              <div className="flex items-center justify-between gap-2 max-w-sm bg-[#111111] border border-[#222222] rounded px-3 py-1">
+                              <div className="flex items-center justify-between gap-2 max-w-sm bg-input border border-subtle rounded px-3 py-1">
                                 <span className="truncate text-white">
                                   {showMasked ? '••••••••••••••••' : pv.value}
                                 </span>
                                 {pv.masked && (
                                   <button 
                                     onClick={() => setMaskedKeys(prev => ({ ...prev, [pv.key]: !prev[pv.key] }))}
-                                    className="text-[#444444] hover:text-[#888888] transition-colors"
+                                    className="text-dim hover:text-muted transition-colors"
                                   >
                                     {showMasked ? <Eye size={12} /> : <EyeOff size={12} />}
                                   </button>
                                 )}
                               </div>
                             </td>
-                            <td className="p-4 text-[#888888] truncate max-w-xs">{pv.description || <span className="text-[#333333] italic">No description</span>}</td>
+                            <td className="p-4 text-muted truncate max-w-xs">{pv.description || <span className="text-dim italic">No description</span>}</td>
                             <td className="p-4 text-center text-white">
                               {pv.active ? 'Yes' : 'No'}
                             </td>
@@ -695,16 +695,16 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                   </table>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#222222]">
+                <div className="flex justify-end gap-3 pt-4 border-t border-subtle">
                   <button
                     onClick={() => setShowPreview(false)}
-                    className="px-6 py-2.5 border border-[#222222] hover:bg-[#141414] text-[#888888] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                    className="px-6 py-2.5 border border-subtle hover:bg-elevated text-muted text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                   >
                     Back to Config
                   </button>
                   <button
                     onClick={handleCommitImport}
-                    className="px-8 py-2.5 bg-[#3ECF8E] hover:shadow-[0_0_20px_rgba(62,207,142,0.3)] text-[#0A0A0A] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                    className="px-8 py-2.5 bg-[var(--brand)] hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)] text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                   >
                     Commit {previewVariables.length} Parameters
                   </button>
@@ -720,7 +720,7 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                 className="space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex p-1 bg-[#121212] rounded-lg border border-[#222222]">
+                  <div className="flex p-1 bg-elevated rounded-lg border border-subtle">
                     {[
                       { id: 'csv', label: 'CSV Editor', icon: Columns },
                       { id: 'env', label: '.env Workflows', icon: FileFileType },
@@ -734,8 +734,8 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                           className={cn(
                             "flex items-center gap-1.5 px-4 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wider transition-all",
                             editTab === tab.id 
-                              ? "bg-[#3ECF8E] text-[#0A0A0A] shadow" 
-                              : "text-[#666666] hover:text-[#AAAAAA]"
+                              ? "bg-[var(--brand)] text-[var(--bg-deep)] shadow" 
+                              : "text-muted hover:text-muted"
                           )}
                         >
                           <Icon size={12} />
@@ -744,8 +744,8 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                       );
                     })}
                   </div>
-                  <div className="text-[9px] text-[#555555] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <Info size={12} className="text-[#3ECF8E]" />
+                  <div className="text-[9px] text-dim font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <Info size={12} className="text-[var(--brand)]" />
                     Automatic syntax check performed on save
                   </div>
                 </div>
@@ -761,7 +761,7 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                         ? "# Environment file\nAPI_URL=https://api.github.com"
                         : "[\n  {\n    \"key\": \"api_url\",\n    \"value\": \"https://api.github.com\",\n    \"active\": true\n  }\n]"
                     }
-                    className="w-full h-80 bg-[#090909] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 resize-none leading-relaxed custom-scrollbar"
+                    className="w-full h-80 bg-deep border border-subtle rounded-xl p-4 text-[11px] font-mono text-white outline-none focus:border-[var(--brand)]/30 resize-none leading-relaxed custom-scrollbar"
                   />
                   {editError && (
                     <div className="absolute left-4 bottom-4 right-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-[10px] font-mono flex items-center gap-2">
@@ -771,16 +771,16 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                   )}
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#222222]">
+                <div className="flex justify-end gap-3 pt-4 border-t border-subtle">
                   <button
                     onClick={onClose}
-                    className="px-6 py-2.5 border border-[#222222] hover:bg-[#141414] text-[#888888] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                    className="px-6 py-2.5 border border-subtle hover:bg-elevated text-muted text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                   >
                     Abort
                   </button>
                   <button
                     onClick={handleApplyEdit}
-                    className="px-8 py-2.5 bg-[#3ECF8E] hover:shadow-[0_0_20px_rgba(62,207,142,0.3)] text-[#0A0A0A] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                    className="px-8 py-2.5 bg-[var(--brand)] hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)] text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                   >
                     Apply Bulk Changes
                   </button>
@@ -805,8 +805,8 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                   className={cn(
                     "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer",
                     isDragOver 
-                      ? "border-[#3ECF8E] bg-[#3ECF8E]/5 scale-[0.99]" 
-                      : "border-[#222222] hover:border-[#3ECF8E]/40 bg-[#090909]"
+                      ? "border-[var(--brand)] bg-[var(--brand)]/5 scale-[0.99]" 
+                      : "border-subtle hover:border-[var(--brand)]/40 bg-deep"
                   )}
                 >
                   <input 
@@ -817,9 +817,9 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                     onChange={handleFileChange}
                   />
                   <label htmlFor="bulk-file-upload" className="cursor-pointer flex flex-col items-center justify-center">
-                    <UploadCloud size={32} className={cn("mb-3 transition-colors", isDragOver ? "text-[#3ECF8E]" : "text-[#444444]")} />
+                    <UploadCloud size={32} className={cn("mb-3 transition-colors", isDragOver ? "text-[var(--brand)]" : "text-dim")} />
                     <span className="text-xs font-black text-white uppercase tracking-wider">Drag & Drop Import Files Here</span>
-                    <span className="text-[10px] text-[#555555] uppercase tracking-tighter mt-1">
+                    <span className="text-[10px] text-dim uppercase tracking-tighter mt-1">
                       Supports Apidog CSV, Postman JSON, Insomnia, .env, or raw text config
                     </span>
                   </label>
@@ -827,12 +827,12 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-[#555555] uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-dim uppercase tracking-widest">
                       Paste Raw Environment Parameters
                     </label>
                     
                     {importText.trim() && (
-                      <div className="flex items-center gap-1 text-[9px] font-black text-[#3ECF8E] uppercase tracking-widest animate-pulse">
+                      <div className="flex items-center gap-1 text-[9px] font-black text-[var(--brand)] uppercase tracking-widest animate-pulse">
                         <Sparkles size={12} />
                         Auto-detected: {detectedFormat.toUpperCase()} Format
                       </div>
@@ -843,14 +843,14 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
                     placeholder={`Paste CSV data here. Example Apidog row:\nhashing_key,default,Str2XS3CBEdxjgqG,true,Str2XS3CBEdxjgqG,`}
-                    className="w-full h-48 bg-[#090909] border border-[#222222] rounded-xl p-4 text-[11px] font-mono text-white outline-none focus:border-[#3ECF8E]/30 resize-none leading-relaxed custom-scrollbar"
+                    className="w-full h-48 bg-deep border border-subtle rounded-xl p-4 text-[11px] font-mono text-white outline-none focus:border-[var(--brand)]/30 resize-none leading-relaxed custom-scrollbar"
                   />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#222222]">
+                <div className="flex justify-end gap-3 pt-4 border-t border-subtle">
                   <button
                     onClick={onClose}
-                    className="px-6 py-2.5 border border-[#222222] hover:bg-[#141414] text-[#888888] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                    className="px-6 py-2.5 border border-subtle hover:bg-elevated text-muted text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
                   >
                     Abort
                   </button>
@@ -858,10 +858,10 @@ export const EnvironmentBulkModal: React.FC<EnvironmentBulkModalProps> = ({
                     onClick={handleParseImport}
                     disabled={!importText.trim()}
                     className={cn(
-                      "px-8 py-2.5 text-[#0A0A0A] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center gap-2",
+                      "px-8 py-2.5 text-[var(--bg-deep)] text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center gap-2",
                       importText.trim() 
-                        ? "bg-[#3ECF8E] hover:shadow-[0_0_20px_rgba(62,207,142,0.3)]" 
-                        : "bg-[#222222] text-[#555555] cursor-not-allowed"
+                        ? "bg-[var(--brand)] hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)]" 
+                        : "bg-elevated text-dim cursor-not-allowed"
                     )}
                   >
                     <RefreshCw size={12} className={cn(!importText.trim() ? "" : "animate-spin")} />

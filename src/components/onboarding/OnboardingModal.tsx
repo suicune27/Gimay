@@ -28,14 +28,14 @@ export const OnboardingModal: React.FC = () => {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--bg-surface)] border border-[#222222] rounded-2xl shadow-2xl relative"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-[var(--bg-surface)] border border-subtle rounded-2xl shadow-2xl relative"
       >
         {/* Universal Escape Rail */}
         <div className="absolute top-6 right-6 z-10 flex items-center gap-4">
           {step === 'welcome' && (
             <button
               onClick={() => setLandingSkipped(false)}
-              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#555555] hover:text-[#3ECF8E] transition-colors"
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-dim hover:text-[var(--brand)] transition-colors"
             >
               <ArrowLeft size={14} /> Back to Landing
             </button>
@@ -43,15 +43,15 @@ export const OnboardingModal: React.FC = () => {
           {step !== 'welcome' && step !== 'team-select' && (
              <button
               onClick={() => useOnboardingStore.getState().setStep(hasTeams ? 'team-select' : 'welcome')}
-              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#555555] hover:text-[#3ECF8E] transition-colors"
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-dim hover:text-[var(--brand)] transition-colors"
             >
               <ArrowLeft size={14} /> {hasTeams ? 'Back to Selection' : 'Reset Flow'}
             </button>
           )}
-          <div className="h-3 w-px bg-[#222222]" />
+          <div className="h-3 w-px bg-elevated" />
           <button
             onClick={() => logout()}
-            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#555555] hover:text-red-500 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-dim hover:text-red-500 transition-colors"
           >
             <LogOut size={14} /> Logout
           </button>

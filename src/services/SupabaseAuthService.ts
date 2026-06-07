@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, globalSupabase } from '../lib/supabase';
 import { AuthErrorHandler, AuthErrorResponse } from '../utils/AuthErrorHandler';
 
 export interface AuthResponse {
@@ -40,8 +40,8 @@ export class SupabaseAuthService {
         };
       }
 
-      // 2. Proceed with Supabase Auth SignUp
-      const { data, error } = await supabase.auth.signUp({
+      // 2. Proceed with Supabase Auth SignUp via globalSupabase (auth always uses global project)
+      const { data, error } = await globalSupabase.auth.signUp({
         email,
         password,
         options: {
@@ -78,7 +78,7 @@ export class SupabaseAuthService {
 
   static async signIn(email: string, password: string): Promise<AuthResponse> {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await globalSupabase.auth.signInWithPassword({
         email,
         password
       });
@@ -97,13 +97,13 @@ export class SupabaseAuthService {
   }
 
   static async signOut(): Promise<AuthResponse> {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await globalSupabase.auth.signOut();
     if (error) return { success: false, error: AuthErrorHandler.handle(error) };
     return { success: true };
   }
 
   static async getCurrentUser() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await globalSupabase.auth.getUser();
     return user;
   }
 }

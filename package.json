@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "clean": "rimraf dist dist_electron release",
     "lint": "tsc --noEmit",
+    "lint:colors": "node scripts/lint-hex-colors.mjs",
     "desktop:dev": "concurrently -k \"npm run dev\" \"wait-on tcp:5173 && electron .\"",
     "desktop:build": "vite build && electron-builder",
     "desktop:win": "vite build && electron-builder --win",

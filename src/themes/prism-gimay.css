@@ -31,7 +31,7 @@ pre[class*="language-"] {
 .token.constant,
 .token.symbol,
 .token.deleted {
-	color: #3ECF8E;
+	color: var(--brand);
 }
 
 .token.selector,

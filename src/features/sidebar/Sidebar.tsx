@@ -528,7 +528,7 @@ export const Sidebar: React.FC = () => {
       ref={sidebarRef}
       onMouseLeave={handleMouseLeaveSidebar}
       className={cn(
-        "h-full flex relative z-40 shrink-0 bg-[#070708] border-r border-[#151518]",
+        "h-full flex relative z-40 shrink-0 bg-deep border-r border-sidebar",
         !isSidebarPinned && "overflow-visible"
       )}
       style={{
@@ -539,7 +539,7 @@ export const Sidebar: React.FC = () => {
       {/* 1. Left Slim Navigation Icon Bar (VS Code style) */}
       <div 
         onMouseEnter={handleMouseEnterNav}
-        className="w-[50px] h-full bg-[#09090B] border-r border-[#151518] flex flex-col items-center py-4 justify-between select-none shrink-0"
+        className="w-[50px] h-full bg-deep border-r border-sidebar flex flex-col items-center py-4 justify-between select-none shrink-0"
       >
         <div className="flex flex-col items-center gap-3 w-full">
           {/* Logo Brand Icon */}
@@ -556,14 +556,15 @@ export const Sidebar: React.FC = () => {
             return (
               <div key={item.id} className="relative group/nav-btn w-full flex justify-center">
                 <button
-                  onClick={() => {
-                    if (item.id === 'smoke') {
+                  onClick={() => {                      if (item.id === 'smoke') {
                       addTab({
                         id: 'tab-smoke-testing',
                         type: 'smoke-testing',
                         name: 'Smoke Testing Suite',
                         workspace_id: activeWorkspaceId || undefined
                       } as any);
+                      setActiveNav(item.id);
+                      setIsHoverExpanded(true);
                       return;
                     }
                     setActiveNav(item.id);
@@ -572,8 +573,8 @@ export const Sidebar: React.FC = () => {
                   className={cn(
                     "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 relative group/btn",
                     isActive 
-                      ? "bg-[#3ECF8E]/10 text-[#3ECF8E] border border-[#3ECF8E]/20 shadow-[0_0_12px_rgba(62,207,142,0.1)]" 
-                      : "text-[#55555C] hover:text-[#E0E0E6] hover:bg-white/[0.02]"
+                      ? "bg-[var(--brand)]/10 text-[var(--brand)] border border-[var(--brand)]/20 shadow-[0_0_12px_rgba(var(--brand-rgb),0.1)]" 
+                      : "text-dim hover:text-main hover:bg-white/[0.02]"
                   )}
                 >
                   <Icon size={16} className="group-hover/btn:scale-105 transition-transform duration-200" />
@@ -581,16 +582,16 @@ export const Sidebar: React.FC = () => {
                   {isActive && (
                     <motion.div 
                       layoutId="active-nav-bullet"
-                      className="absolute left-0 w-[3px] h-5 bg-[#3ECF8E] rounded-r-md top-1/2 -translate-y-1/2 shadow-[0_0_8px_#3ECF8E]"
+                      className="absolute left-0 w-[3px] h-5 bg-[var(--brand)] rounded-r-md top-1/2 -translate-y-1/2 shadow-[0_0_8px_var(--brand)]"
                     />
                   )}
                 </button>
 
                 {/* Collapsed mode custom hover tooltips */}
                 {!isExpanded && (
-                  <div className="absolute left-[54px] top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-[#0F0F12] border border-[#1D1D22] text-[9px] font-black uppercase tracking-widest text-[#E0E0E6] rounded-md opacity-0 group-hover/nav-btn:opacity-100 translate-x-2 group-hover/nav-btn:translate-x-0 transition-all duration-200 pointer-events-none z-[100] whitespace-nowrap shadow-[8px_0_24px_rgba(0,0,0,0.8)] border-l-2 border-l-[#3ECF8E]">
+                  <div className="absolute left-[54px] top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-surface border border-subtle text-[9px] font-black uppercase tracking-widest text-main rounded-md opacity-0 group-hover/nav-btn:opacity-100 translate-x-2 group-hover/nav-btn:translate-x-0 transition-all duration-200 pointer-events-none z-[100] whitespace-nowrap shadow-[8px_0_24px_rgba(0,0,0,0.8)] border-l-2 border-l-[var(--brand)]">
                     <div className="font-bold">{item.label}</div>
-                    <div className="text-[7px] text-[#55555C] font-mono mt-0.5">{item.desc}</div>
+                    <div className="text-[7px] text-dim font-mono mt-0.5">{item.desc}</div>
                   </div>
                 )}
               </div>
@@ -603,25 +604,25 @@ export const Sidebar: React.FC = () => {
           {/* Settings Icon */}
           <button 
             onClick={() => setIsSettingsModalOpen(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-[#55555C] hover:text-[#E0E0E6] hover:bg-white/[0.02] transition-all duration-200"
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-dim hover:text-main hover:bg-white/[0.02] transition-all duration-200"
             title="System Configuration"
           >
             <Settings size={15} />
           </button>
 
           {/* User profile initials block */}
-          <div className="w-8 h-8 rounded-full bg-[#1A1A1E] border border-[#26262B] flex items-center justify-center text-[10px] font-black text-[#88888F] uppercase cursor-pointer hover:border-[#3ECF8E]/40 hover:text-white transition-all duration-300 relative group/avatar">
+          <div className="w-8 h-8 rounded-full bg-elevated border border-subtle flex items-center justify-center text-[10px] font-black text-muted uppercase cursor-pointer hover:border-[var(--brand)]/40 hover:text-white transition-all duration-300 relative group/avatar">
             {profile?.full_name?.substring(0, 2) || 'U'}
             
             {/* Quick avatar status dot */}
-            <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-[#3ECF8E] border-2 border-[#09090B] shadow-[0_0_5px_#3ECF8E]" />
+            <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-[var(--brand)] border-2 border-[#09090B] shadow-[0_0_5px_var(--brand)]" />
 
             {/* Micro logout popover */}
             <div className="absolute left-full pl-2 bottom-0 hidden group-hover/avatar:flex flex-col w-48 z-[100] animate-in fade-in duration-200">
-              <div className="bg-[#0F0F12] border border-[#1D1D22] rounded-xl shadow-2xl p-3 flex flex-col w-full backdrop-blur-xl">
+              <div className="bg-surface border border-subtle rounded-xl shadow-2xl p-3 flex flex-col w-full backdrop-blur-xl">
                 <div className="text-[9px] font-bold text-white uppercase tracking-wider truncate">{profile?.full_name || 'Protocol User'}</div>
-                <div className="text-[8px] text-[#55555C] font-mono truncate mt-0.5">{profile?.email}</div>
-                <div className="h-px bg-[#1D1D22] my-2" />
+                <div className="text-[8px] text-dim font-mono truncate mt-0.5">{profile?.email}</div>
+                <div className="h-px bg-[var(--border-subtle)] my-2" />
                 <button 
                   onClick={() => logout()}
                   className="w-full py-1 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-[8px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
@@ -643,21 +644,21 @@ export const Sidebar: React.FC = () => {
             exit={{ opacity: 0, width: 0 }}
             transition={{ type: 'spring', stiffness: 380, damping: 38 }}
             className={cn(
-              "h-full flex flex-col relative select-none bg-[#0B0B0C] shrink-0 border-r border-[#151518]",
-              !isSidebarPinned && "z-50 absolute left-[50px] top-0 bottom-0 backdrop-blur-xl bg-[#0B0B0C]/95"
+              "h-full flex flex-col relative select-none bg-sidebar shrink-0 border-r border-sidebar",
+              !isSidebarPinned && "z-50 absolute left-[50px] top-0 bottom-0 backdrop-blur-xl bg-[var(--bg-sidebar)]/95"
             )}
             style={{ width: `${sidebarWidth}px` }}
           >
             {/* Header Unit context */}
-            <div className="h-14 border-b border-[#1A1A1E] flex items-center justify-between px-5 bg-[#09090B]/60 shrink-0">
+            <div className="h-14 border-b border-subtle flex items-center justify-between px-5 bg-[var(--bg-deep)]/60 shrink-0">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] shadow-[0_0_8px_#3ECF8E]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_8px_var(--brand)]" />
                   <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] truncate">
                     {activeWorkspace?.name || 'Workspace'}
                   </h2>
                 </div>
-                <p className="text-[7px] text-[#55555C] font-mono tracking-tighter uppercase font-bold mt-0.5">
+                <p className="text-[7px] text-dim font-mono tracking-tighter uppercase font-bold mt-0.5">
                   Node Engine // {activeWorkspace?.visibility || 'Private'}
                 </p>
               </div>
@@ -665,7 +666,7 @@ export const Sidebar: React.FC = () => {
               {/* Pin/Collapse trigger */}
               <button 
                 onClick={() => setIsSidebarPinned(!isSidebarPinned)}
-                className="p-1.5 text-[#55555C] hover:text-[var(--brand)] rounded hover:bg-white/[0.02] transition-colors"
+                className="p-1.5 text-dim hover:text-[var(--brand)] rounded hover:bg-white/[0.02] transition-colors"
                 title={isSidebarPinned ? "Unlock Sidebar" : "Lock Sidebar"}
               >
                 <Pin size={14} className={cn("transition-transform duration-200", !isSidebarPinned && "rotate-45")} />
@@ -673,21 +674,21 @@ export const Sidebar: React.FC = () => {
             </div>
 
             {/* Global Search and Filter Header */}
-            {activeNav !== 'scripts' && (
-              <div className="px-5 py-3 border-b border-[#1A1A1E] bg-[#070708]/30 flex flex-col gap-2 shrink-0">
+            {activeNav !== 'scripts' && activeNav !== 'smoke' && (
+              <div className="px-5 py-3 border-b border-subtle bg-[var(--bg-deep)]/30 flex flex-col gap-2 shrink-0">
                 <div className="relative group">
-                  <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#44444F] group-focus-within:text-[#3ECF8E] transition-colors" />
+                  <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-placeholder group-focus-within:text-[var(--brand)] transition-colors" />
                   <input 
                     type="text" 
                     placeholder="Scan directory components..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#070708] border border-[#1A1A1E] rounded-lg py-1.5 pl-8 pr-6 text-[10px] font-mono text-[#E0E0E6] placeholder-[#44444F] focus:border-[#3ECF8E]/30 outline-none transition-all focus:shadow-[0_0_10px_rgba(62,207,142,0.02)]"
+                    className="w-full bg-deep border border-subtle rounded-lg py-1.5 pl-8 pr-6 text-[10px] font-mono text-main placeholder-text-dim focus:border-[var(--brand)]/30 outline-none transition-all focus:shadow-[0_0_10px_rgba(var(--brand-rgb),0.02)]"
                   />
                   {searchQuery && (
                     <button 
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold uppercase text-[#55555C] hover:text-white"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-bold uppercase text-dim hover:text-white"
                     >
                       Clear
                     </button>
@@ -701,8 +702,8 @@ export const Sidebar: React.FC = () => {
                     className={cn(
                       "text-[8px] font-black uppercase px-2 py-0.5 rounded border transition-all shrink-0 font-mono",
                       methodFilter === 'GET' 
-                        ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/35 text-[#3ECF8E] shadow-[0_0_8px_rgba(62,207,142,0.05)]" 
-                        : "bg-[#09090B] border-[#1A1A1E] text-[#55555C] hover:text-[#AAAAAF]"
+                        ? "bg-[var(--brand)]/10 border-[var(--brand)]/35 text-[var(--brand)] shadow-[0_0_8px_rgba(var(--brand-rgb),0.05)]" 
+                        : "bg-deep border-subtle text-dim hover:text-muted"
                     )}
                   >
                     GET
@@ -713,7 +714,7 @@ export const Sidebar: React.FC = () => {
                       "text-[8px] font-black uppercase px-2 py-0.5 rounded border transition-all shrink-0 font-mono",
                       methodFilter === 'POST' 
                         ? "bg-amber-500/10 border-amber-500/35 text-amber-500" 
-                        : "bg-[#09090B] border-[#1A1A1E] text-[#55555C] hover:text-[#AAAAAF]"
+                        : "bg-deep border-subtle text-dim hover:text-muted"
                     )}
                   >
                     POST
@@ -726,7 +727,7 @@ export const Sidebar: React.FC = () => {
                           "text-[8px] font-black uppercase px-2 py-0.5 rounded border transition-all shrink-0",
                           logFilter === 'success' 
                             ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-500" 
-                            : "bg-[#09090B] border-[#1A1A1E] text-[#55555C] hover:text-[#AAAAAF]"
+                            : "bg-deep border-subtle text-dim hover:text-muted"
                         )}
                       >
                         Success
@@ -737,7 +738,7 @@ export const Sidebar: React.FC = () => {
                           "text-[8px] font-black uppercase px-2 py-0.5 rounded border transition-all shrink-0",
                           logFilter === 'error' 
                             ? "bg-red-500/10 border-red-500/35 text-red-500" 
-                            : "bg-[#09090B] border-[#1A1A1E] text-[#55555C] hover:text-[#AAAAAF]"
+                            : "bg-deep border-subtle text-dim hover:text-muted"
                         )}
                       >
                         Failures
@@ -763,49 +764,49 @@ export const Sidebar: React.FC = () => {
               {activeNav === 'collections' && (
                 <div className="px-1 flex flex-col h-full">
                   {/* Explorer Sub-Toolbar */}
-                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-[#1A1A1E]/30 bg-[#070708]/10 mb-2 shrink-0">
-                    <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Collections</span>
+                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-subtle/30 bg-[var(--bg-deep)]/10 mb-2 shrink-0">
+                    <span className="text-[8px] font-black text-dim uppercase tracking-[0.2em] font-mono">Collections</span>
                     <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => setIsCollectionModalOpen(true)}
-                        className="p-1 hover:text-[#3ECF8E] text-[#55555C] transition-colors"
+                        className="p-1 hover:text-[var(--brand)] text-dim transition-colors"
                         title="New Collection"
                       >
                         <Plus size={13} />
                       </button>
                       <button 
                         onClick={() => setIsImportModalOpen(true)}
-                        className="p-1 hover:text-[#3ECF8E] text-[#55555C] transition-colors"
+                        className="p-1 hover:text-[var(--brand)] text-dim transition-colors"
                         title="Import Collection Schema"
                       >
                         <FileUp size={13} />
                       </button>
                       <button 
                         onClick={collapseAll}
-                        className="p-1 hover:text-red-400 text-[#55555C] transition-colors"
+                        className="p-1 hover:text-red-400 text-dim transition-colors"
                         title="Collapse All Tree Nodes"
                       >
                         <ChevronsLeft size={13} />
                       </button>
                       <button 
                         onClick={handleManualRefresh}
-                        className="p-1 hover:text-[#3ECF8E] text-[#55555C] transition-colors"
+                        className="p-1 hover:text-[var(--brand)] text-dim transition-colors"
                         title="Synchronize Local Cache"
                       >
-                        <RefreshCw size={12} className={cn(isRefreshing && "animate-spin text-[#3ECF8E]")} />
+                        <RefreshCw size={12} className={cn(isRefreshing && "animate-spin text-[var(--brand)]")} />
                       </button>
                     </div>
                   </div>
 
                   {/* Move Request Mode Alert Banner */}
                   {movingRequest && (
-                    <div className="mx-3 mb-3 p-2 bg-[#3ECF8E]/5 border border-[#3ECF8E]/20 rounded-xl text-[9px] uppercase tracking-wide flex flex-col gap-1.5 shrink-0 animate-in fade-in duration-200">
-                      <div className="font-black text-[#3ECF8E] flex items-center justify-between">
+                    <div className="mx-3 mb-3 p-2 bg-[var(--brand)]/5 border border-[var(--brand)]/20 rounded-xl text-[9px] uppercase tracking-wide flex flex-col gap-1.5 shrink-0 animate-in fade-in duration-200">
+                      <div className="font-black text-[var(--brand)] flex items-center justify-between">
                         <span>Select Relocation Target</span>
                         <button onClick={() => setMovingRequest(null)} className="text-red-500 font-bold">X</button>
                       </div>
-                      <div className="text-[#88888F] font-mono">Moving: {movingRequest.name}</div>
-                      <div className="text-[7px] text-[#55555C]">Click on any collection or folder to deploy here.</div>
+                      <div className="text-muted font-mono">Moving: {movingRequest.name}</div>
+                      <div className="text-[7px] text-dim">Click on any collection or folder to deploy here.</div>
                     </div>
                   )}
 
@@ -835,11 +836,11 @@ export const Sidebar: React.FC = () => {
                           {provided.placeholder}
                           {filteredCollections.length === 0 && (
                             <div className="text-center py-16 px-4">
-                              <Database size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                              <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest leading-relaxed">No collections found</p>
+                              <Database size={24} className="mx-auto text-[var(--border-subtle)] mb-3" />
+                              <p className="text-[9px] font-black text-placeholder uppercase tracking-widest leading-relaxed">No collections found</p>
                               <button 
                                 onClick={() => setIsCollectionModalOpen(true)}
-                                className="mt-3 px-3 py-1.5 bg-[#3ECF8E]/10 border border-[#3ECF8E]/30 text-[9px] text-[#3ECF8E] font-black uppercase tracking-widest rounded hover:bg-[#3ECF8E]/20 transition-all"
+                                className="mt-3 px-3 py-1.5 bg-[var(--brand)]/10 border border-[var(--brand)]/30 text-[9px] text-[var(--brand)] font-black uppercase tracking-widest rounded hover:bg-[var(--brand)]/20 transition-all"
                               >
                                 New Collection
                               </button>
@@ -855,8 +856,8 @@ export const Sidebar: React.FC = () => {
               {/* SECTION B: Environments */}
               {activeNav === 'environments' && (
                 <div className="px-5 space-y-4 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between border-b border-[#1A1A1E]/30 pb-2">
-                    <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest font-mono">Environments</span>
+                  <div className="flex items-center justify-between border-b border-subtle/30 pb-2">
+                    <span className="text-[9px] font-black text-dim uppercase tracking-widest font-mono">Environments</span>
                     <div className="flex gap-2">
                       <button 
                         onClick={() => setIsGlobalModalOpen(true)}
@@ -866,7 +867,7 @@ export const Sidebar: React.FC = () => {
                       </button>
                       <button 
                         onClick={() => { setSelectedEnv(null); setIsEnvModalOpen(true); }}
-                        className="text-[#3ECF8E] text-[8px] font-black uppercase tracking-wider border border-[#3ECF8E]/30 px-2 py-0.5 rounded-full hover:bg-[#3ECF8E]/10 transition-all"
+                        className="text-[var(--brand)] text-[8px] font-black uppercase tracking-wider border border-[var(--brand)]/30 px-2 py-0.5 rounded-full hover:bg-[var(--brand)]/10 transition-all"
                       >
                         + Environment
                       </button>
@@ -882,24 +883,24 @@ export const Sidebar: React.FC = () => {
                           key={env.id} 
                           onClick={() => setActiveEnvId(isActive ? null : env.id)}
                           className={cn(
-                            "p-3.5 bg-[#0F0F12] border rounded-xl hover:bg-[#121216] transition-all cursor-pointer group/env relative overflow-hidden",
+                            "p-3.5 bg-surface border rounded-xl hover:bg-elevated transition-all cursor-pointer group/env relative overflow-hidden",
                             isActive 
-                              ? "border-[#3ECF8E] shadow-[0_0_15px_rgba(62,207,142,0.06)]" 
-                              : "border-[#1A1A22] hover:border-[#22222E]"
+                              ? "border-[var(--brand)] shadow-[0_0_15px_rgba(var(--brand-rgb),0.06)]" 
+                              : "border-subtle hover:border-subtle"
                           )}
                         >
                           {isActive && (
-                            <div className="absolute top-0 right-0 w-8 h-8 bg-[#3ECF8E]/10 rounded-bl-full flex items-center justify-end pr-2 pt-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] shadow-[0_0_6px_#3ECF8E]" />
+                            <div className="absolute top-0 right-0 w-8 h-8 bg-[var(--brand)]/10 rounded-bl-full flex items-center justify-end pr-2 pt-1.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]" />
                             </div>
                           )}
 
                           <div className="flex items-center justify-between mb-2 pr-4">
-                            <div className="text-[10px] font-black text-[#E0E0E6] uppercase tracking-wider font-mono">{env.name}</div>
+                            <div className="text-[10px] font-black text-main uppercase tracking-wider font-mono">{env.name}</div>
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <div className="text-[8px] text-[#55555C] font-black uppercase tracking-widest font-mono">
+                            <div className="text-[8px] text-dim font-black uppercase tracking-widest font-mono">
                               {env.variables?.length || 0} active variables
                             </div>
                             
@@ -911,7 +912,7 @@ export const Sidebar: React.FC = () => {
                                   setSelectedEnv(env);
                                   setIsEnvModalOpen(true);
                                 }}
-                                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/[0.03] rounded transition-all"
+                                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/[0.03] rounded transition-all"
                                 title="Edit Environment"
                               >
                                 <Edit3 size={11} />
@@ -929,7 +930,7 @@ export const Sidebar: React.FC = () => {
                                     addToast({ type: 'error', message: 'Duplication failed.' });
                                   }
                                 }}
-                                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/[0.03] rounded transition-all"
+                                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/[0.03] rounded transition-all"
                                 title="Duplicate Environment"
                               >
                                 <Copy size={11} />
@@ -946,7 +947,7 @@ export const Sidebar: React.FC = () => {
                                     addToast({ type: 'error', message: 'Purge failed.' });
                                   }
                                 }}
-                                className="p-1 hover:text-red-500 text-[#55555C] hover:bg-white/[0.03] rounded transition-all"
+                                className="p-1 hover:text-red-500 text-dim hover:bg-white/[0.03] rounded transition-all"
                                 title="Delete Environment"
                               >
                                 <Trash2 size={11} />
@@ -958,9 +959,9 @@ export const Sidebar: React.FC = () => {
                     })}
 
                     {(!environments || environments.length === 0) && (
-                      <div className="text-center py-16 border border-dashed border-[#1A1A22] rounded-2xl bg-[#09090B]/30">
-                        <Globe size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                        <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest">No environments</p>
+                      <div className="text-center py-16 border border-dashed border-subtle rounded-2xl bg-[var(--bg-deep)]/30">
+                        <Globe size={24} className="mx-auto text-[var(--border-subtle)] mb-3" />
+                        <p className="text-[9px] font-black text-placeholder uppercase tracking-widest">No environments</p>
                       </div>
                     )}
                   </div>
@@ -970,19 +971,19 @@ export const Sidebar: React.FC = () => {
               {/* SECTION C: Scripts (Logic Catalog snippets) */}
               {activeNav === 'scripts' && (
                 <div className="px-5 space-y-4 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between border-b border-[#1A1A1E]/30 pb-2 shrink-0">
-                    <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest font-mono">Logic Library</span>
+                  <div className="flex items-center justify-between border-b border-subtle/30 pb-2 shrink-0">
+                    <span className="text-[9px] font-black text-dim uppercase tracking-widest font-mono">Logic Library</span>
                     <div className="flex gap-1.5">
                       <button 
                         onClick={() => useStore.getState().setIsScriptLabOpen(true)}
-                        className="text-[#3ECF8E] text-[8px] font-black uppercase border border-[#3ECF8E]/30 px-2 py-0.5 rounded-full hover:bg-[#3ECF8E]/10 transition-all tracking-wider"
+                        className="text-[var(--brand)] text-[8px] font-black uppercase border border-[var(--brand)]/30 px-2 py-0.5 rounded-full hover:bg-[var(--brand)]/10 transition-all tracking-wider"
                       >
                         OPEN LAB
                       </button>
                     </div>
                   </div>
 
-                  <p className="text-[9px] text-[#55555C] font-semibold leading-relaxed uppercase tracking-tight font-mono">
+                  <p className="text-[9px] text-dim font-semibold leading-relaxed uppercase tracking-tight font-mono">
                     Copy and deploy pre-engineered automation scripts to execute transactions seamlessly.
                   </p>
 
@@ -994,24 +995,24 @@ export const Sidebar: React.FC = () => {
                           {category.items.map((snippet, idx) => (
                             <div 
                               key={idx}
-                              className="group/snip p-2 bg-[#0F0F12] border border-[#1A1A22] rounded-lg hover:border-[#3ECF8E]/30 hover:bg-[#121216] transition-all flex items-center justify-between relative overflow-hidden"
+                              className="group/snip p-2 bg-surface border border-subtle rounded-lg hover:border-[var(--brand)]/30 hover:bg-elevated transition-all flex items-center justify-between relative overflow-hidden"
                             >
                               <div className="min-w-0 pr-6">
-                                <div className="text-[9px] font-bold text-[#E0E0E6] truncate font-mono uppercase tracking-wider">{snippet.name}</div>
-                                <div className="text-[7px] text-[#55555C] font-mono truncate mt-0.5">{snippet.code}</div>
+                                <div className="text-[9px] font-bold text-main truncate font-mono uppercase tracking-wider">{snippet.name}</div>
+                                <div className="text-[7px] text-dim font-mono truncate mt-0.5">{snippet.code}</div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 opacity-0 group-hover/snip:opacity-100 transition-opacity absolute right-2 bg-gradient-to-l from-[#121216] via-[#121216] to-transparent pl-4 py-1">
+                              <div className="flex items-center gap-1.5 opacity-0 group-hover/snip:opacity-100 transition-opacity absolute right-2 bg-gradient-to-l from-[var(--bg-elevated)] via-[var(--bg-elevated)] to-transparent pl-4 py-1">
                                 <button 
                                   onClick={() => handleCopySnippet(snippet.code)}
-                                  className="p-1 hover:text-[#3ECF8E] text-[#55555C] rounded hover:bg-white/5 transition-all text-[8px] font-black uppercase tracking-wider border border-[#1A1A22]"
+                                  className="p-1 hover:text-[var(--brand)] text-dim rounded hover:bg-white/5 transition-all text-[8px] font-black uppercase tracking-wider border border-subtle"
                                   title="Copy code"
                                 >
                                   Copy
                                 </button>
                                 <button 
                                   onClick={() => handleAppendSnippet(snippet.code)}
-                                  className="p-1 hover:text-[#3ECF8E] text-[#55555C] rounded hover:bg-white/5 transition-all text-[8px] font-black uppercase tracking-wider border border-[#1A1A22]"
+                                  className="p-1 hover:text-[var(--brand)] text-dim rounded hover:bg-white/5 transition-all text-[8px] font-black uppercase tracking-wider border border-subtle"
                                   title="Append directly to test code pane"
                                 >
                                   Append
@@ -1029,8 +1030,8 @@ export const Sidebar: React.FC = () => {
               {/* SECTION D: Logs (Realtime logs streaming) */}
               {activeNav === 'history' && (
                 <div className="px-1 flex flex-col h-full animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-[#1A1A1E]/30 bg-[#070708]/10 mb-2 shrink-0">
-                    <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Stream transaction logs</span>
+                  <div className="flex items-center justify-between px-4 py-1.5 border-b border-subtle/30 bg-[var(--bg-deep)]/10 mb-2 shrink-0">
+                    <span className="text-[8px] font-black text-dim uppercase tracking-[0.2em] font-mono">Stream transaction logs</span>
                     <button 
                       onClick={async () => {
                         if (!activeWorkspaceId || !profile?.id) return;
@@ -1058,9 +1059,9 @@ export const Sidebar: React.FC = () => {
                           key={idx} 
                           onClick={() => setSelectedLog(selectedLog?.id === item.id ? null : item)}
                           className={cn(
-                            "px-4 py-2 hover:bg-white/[0.02] cursor-pointer group border-l-2 relative transition-all border-y border-[#1A1A1E]/20 bg-[#09090B]/30",
+                            "px-4 py-2 hover:bg-white/[0.02] cursor-pointer group border-l-2 relative transition-all border-y border-subtle/20 bg-[var(--bg-deep)]/30",
                             selectedLog?.id === item.id 
-                              ? "bg-[#3ECF8E]/[0.02] border-[#3ECF8E] shadow-[inset_4px_0_12px_rgba(62,207,142,0.02)]" 
+                              ? "bg-[var(--brand)]/[0.02] border-[var(--brand)] shadow-[inset_4px_0_12px_rgba(var(--brand-rgb),0.02)]" 
                               : (isErr ? "border-red-500/30" : "border-transparent")
                           )}
                         >
@@ -1068,12 +1069,12 @@ export const Sidebar: React.FC = () => {
                             <div className="flex items-center gap-2 min-w-0 pr-6">
                               <span className={cn(
                                 "text-[8px] font-black px-1.5 py-0.5 rounded font-mono uppercase tracking-tighter shrink-0",
-                                item.method === 'GET' ? 'bg-[#3ECF8E]/10 text-[#3ECF8E]' : 
-                                item.method === 'POST' ? 'bg-amber-500/10 text-amber-500' : 'bg-[#1A1A1E] text-[#AAAAAF]'
+                                item.method === 'GET' ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 
+                                item.method === 'POST' ? 'bg-amber-500/10 text-amber-500' : 'bg-elevated text-muted'
                               )}>
                                 {item.method}
                               </span>
-                              <span className="truncate text-[10px] text-[#88888F] font-mono group-hover:text-white transition-colors">
+                              <span className="truncate text-[10px] text-muted font-mono group-hover:text-white transition-colors">
                                 {item.request_name || item.url}
                               </span>
                             </div>
@@ -1081,20 +1082,20 @@ export const Sidebar: React.FC = () => {
                             {/* Status and status color dot */}
                             <div className="flex items-center gap-1.5 font-mono text-[9px] shrink-0">
                               {item.status ? (
-                                <span className={isErr ? "text-red-500 font-bold" : "text-[#3ECF8E] font-bold"}>
+                                <span className={isErr ? "text-red-500 font-bold" : "text-[var(--brand)] font-bold"}>
                                   {item.status}
                                 </span>
                               ) : (
-                                <span className="text-[#55555C]">No Status</span>
+                                <span className="text-dim">No Status</span>
                               )}
                               <div className={cn(
                                 "w-1.5 h-1.5 rounded-full shrink-0",
-                                isErr ? "bg-red-500 shadow-[0_0_6px_#ef4444]" : "bg-[#3ECF8E] shadow-[0_0_6px_#3ecf8e]"
+                                isErr ? "bg-red-500 shadow-[0_0_6px_#ef4444]" : "bg-[var(--brand)] shadow-[0_0_6px_var(--brand)]"
                               )} />
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between text-[7px] text-[#55555C] font-mono pl-10 uppercase tracking-widest">
+                          <div className="flex items-center justify-between text-[7px] text-dim font-mono pl-10 uppercase tracking-widest">
                             <span className="flex items-center gap-1">
                               <Clock size={8} /> {new Date(item.created_at || '').toLocaleTimeString()}
                             </span>
@@ -1109,17 +1110,17 @@ export const Sidebar: React.FC = () => {
                                 initial={{ height: 0, opacity: 0, marginTop: 0 }}
                                 animate={{ height: 'auto', opacity: 1, marginTop: 8 }}
                                 exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                className="overflow-hidden border-t border-[#1A1A22] pt-2 mt-2 space-y-2 text-[9px] uppercase tracking-wide text-[#88888F] animate-in slide-in-from-top-2 duration-200"
+                                className="overflow-hidden border-t border-subtle pt-2 mt-2 space-y-2 text-[9px] uppercase tracking-wide text-muted animate-in slide-in-from-top-2 duration-200"
                               >
-                                <div className="p-2.5 bg-[#070708] rounded-lg border border-[#1A1A22] font-mono space-y-2 select-text">
+                                <div className="p-2.5 bg-deep rounded-lg border border-subtle font-mono space-y-2 select-text">
                                   <div>
-                                    <span className="text-[#55555C] font-black">Endpoint URL:</span>
+                                    <span className="text-dim font-black">Endpoint URL:</span>
                                     <div className="text-white break-all mt-0.5 text-[8px] lowercase font-normal">{item.url}</div>
                                   </div>
                                   {item.request_data && (
                                     <div>
-                                      <span className="text-[#55555C] font-black">Transmission Payload:</span>
-                                      <pre className="text-[#3ECF8E] text-[7px] overflow-x-auto p-1 bg-black/40 rounded mt-1 max-h-24 no-scrollbar lowercase font-mono">
+                                      <span className="text-dim font-black">Transmission Payload:</span>
+                                      <pre className="text-[var(--brand)] text-[7px] overflow-x-auto p-1 bg-black/40 rounded mt-1 max-h-24 no-scrollbar lowercase font-mono">
                                         {typeof item.request_data === 'object'
                                           ? JSON.stringify(item.request_data, null, 2).slice(0, 4096)
                                           : String(item.request_data).slice(0, 4096)}
@@ -1138,7 +1139,7 @@ export const Sidebar: React.FC = () => {
                                           addToast({ type: 'success', message: 'Replaying request node in editor.' });
                                         }
                                       }}
-                                      className="flex-1 py-1 rounded bg-[#3ECF8E]/10 border border-[#3ECF8E]/25 text-[#3ECF8E] hover:bg-[#3ECF8E]/20 text-[8px] font-black text-center"
+                                      className="flex-1 py-1 rounded bg-[var(--brand)]/10 border border-[var(--brand)]/25 text-[var(--brand)] hover:bg-[var(--brand)]/20 text-[8px] font-black text-center"
                                     >
                                       Load in Workspace
                                     </button>
@@ -1153,8 +1154,8 @@ export const Sidebar: React.FC = () => {
 
                     {filteredLogs.length === 0 && (
                       <div className="text-center py-16 px-4">
-                        <Terminal size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                        <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest">Logs catalog empty</p>
+                        <Terminal size={24} className="mx-auto text-[var(--border-subtle)] mb-3" />
+                        <p className="text-[9px] font-black text-placeholder uppercase tracking-widest">Logs catalog empty</p>
                       </div>
                     )}
                   </div>
@@ -1164,11 +1165,11 @@ export const Sidebar: React.FC = () => {
               {/* SECTION E: Teams (Workspace/Team switche) */}
               {activeNav === 'teams' && (
                 <div className="px-5 space-y-4 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between border-b border-[#1A1A1E]/30 pb-2">
-                    <span className="text-[9px] font-black text-[#55555C] uppercase tracking-widest font-mono">Active Units</span>
+                  <div className="flex items-center justify-between border-b border-subtle/30 pb-2">
+                    <span className="text-[9px] font-black text-dim uppercase tracking-widest font-mono">Active Units</span>
                     <button 
                       onClick={() => setIsTeamModalOpen(true)} 
-                      className="text-[#3ECF8E] text-[18px] hover:scale-110 transition-transform leading-none font-bold"
+                      className="text-[var(--brand)] text-[18px] hover:scale-110 transition-transform leading-none font-bold"
                     >
                       +
                     </button>
@@ -1181,13 +1182,13 @@ export const Sidebar: React.FC = () => {
                         key={team.id} 
                         onClick={() => setSelectedTeam(selectedTeam?.id === team.id ? null : team)}
                         className={cn(
-                          "p-3 border rounded-xl bg-[#0F0F12] text-[10px] font-black uppercase tracking-wider bg-[#0F0F12] hover:bg-[#121216] transition-all cursor-pointer relative",
-                          selectedTeam?.id === team.id ? "border-[#3ECF8E] shadow-[0_0_12px_rgba(62,207,142,0.05)]" : "border-[#1A1A22]"
+                          "p-3 border rounded-xl bg-surface text-[10px] font-black uppercase tracking-wider bg-surface hover:bg-elevated transition-all cursor-pointer relative",
+                          selectedTeam?.id === team.id ? "border-[var(--brand)] shadow-[0_0_12px_rgba(var(--brand-rgb),0.05)]" : "border-subtle"
                         )}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-[#E0E0E6] font-mono">{team.name}</span>
-                          <Users size={12} className={selectedTeam?.id === team.id ? "text-[#3ECF8E]" : "text-[#55555C]"} />
+                          <span className="text-main font-mono">{team.name}</span>
+                          <Users size={12} className={selectedTeam?.id === team.id ? "text-[var(--brand)]" : "text-dim"} />
                         </div>
 
                         {/* Collapsed slide member lists */}
@@ -1197,14 +1198,14 @@ export const Sidebar: React.FC = () => {
                               initial={{ height: 0, opacity: 0, marginTop: 0 }}
                               animate={{ height: 'auto', opacity: 1, marginTop: 8 }}
                               exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                              className="overflow-hidden border-t border-[#1A1A22] pt-2 space-y-2 text-[8px] font-bold text-[#88888F]"
+                              className="overflow-hidden border-t border-subtle pt-2 space-y-2 text-[8px] font-bold text-muted"
                             >
-                              <div className="text-[7px] text-[#55555C] uppercase font-black tracking-widest">Channel Node Members:</div>
+                              <div className="text-[7px] text-dim uppercase font-black tracking-widest">Channel Node Members:</div>
                               <div className="space-y-1">
                                 {(team.team_members || []).map((m: any, mIdx: number) => (
                                   <div key={mIdx} className="flex items-center justify-between bg-black/25 p-1 rounded px-2">
                                     <span className="truncate pr-4 text-white">{m.profiles?.full_name || m.profiles?.email || 'Active Collaborator'}</span>
-                                    <span className="text-[7px] text-[#3ECF8E] border border-[#3ECF8E]/20 px-1 rounded uppercase tracking-tighter shrink-0">{m.role || 'Member'}</span>
+                                    <span className="text-[7px] text-[var(--brand)] border border-[var(--brand)]/20 px-1 rounded uppercase tracking-tighter shrink-0">{m.role || 'Member'}</span>
                                   </div>
                                 ))}
                               </div>
@@ -1215,11 +1216,58 @@ export const Sidebar: React.FC = () => {
                     ))}
 
                     {(!teams || teams.length === 0) && (
-                      <div className="text-center py-12 border border-dashed border-[#1A1A22] rounded-2xl bg-[#09090B]/30">
-                        <Users size={24} className="mx-auto text-[#1D1D22] mb-3" />
-                        <p className="text-[9px] font-black text-[#44444F] uppercase tracking-widest">No active team segments</p>
+                      <div className="text-center py-12 border border-dashed border-subtle rounded-2xl bg-[var(--bg-deep)]/30">
+                        <Users size={24} className="mx-auto text-[var(--border-subtle)] mb-3" />
+                        <p className="text-[9px] font-black text-placeholder uppercase tracking-widest">No active team segments</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION F: Smoke Testing */}
+              {activeNav === 'smoke' && (
+                <div className="px-5 space-y-4 animate-in fade-in duration-300">
+                  <div className="flex items-center justify-between border-b border-subtle/30 pb-2">
+                    <span className="text-[9px] font-black text-dim uppercase tracking-widest font-mono">Smoke Suite Controls</span>
+                  </div>
+
+                  <div className="bg-[var(--bg-deep)]/40 border border-subtle/40 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--brand)]/10 border border-[var(--brand)]/20 flex items-center justify-center">
+                        <Activity size={14} className="text-[var(--brand)]" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-white uppercase tracking-wider">Bulk Testing Console</p>
+                        <p className="text-[8px] text-dim font-mono uppercase tracking-tight">Scenario runner & load tester</p>
+                      </div>
+                    </div>
+
+                    <div className="text-[8px] text-dim font-mono leading-relaxed uppercase tracking-tight bg-black/20 p-2.5 rounded-lg border border-subtle/20">
+                      Configure concurrent request simulations with pre/post script evaluation, real-time metrics, and CSV/PDF reporting.
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        addTab({
+                          id: 'tab-smoke-testing',
+                          type: 'smoke-testing',
+                          name: 'Smoke Testing Suite',
+                          workspace_id: activeWorkspaceId || undefined
+                        } as any);
+                      }}
+                      className="w-full py-2 rounded-lg bg-[var(--brand)]/10 border border-[var(--brand)]/30 text-[var(--brand)] hover:bg-[var(--brand)]/20 text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                    >
+                      <Play size={12} fill="currentColor" />
+                      Open Smoke Suite
+                    </button>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[7px] font-black text-dim uppercase tracking-widest font-mono flex items-center gap-1">
+                        <Sparkles size={10} className="text-amber-500" />
+                        Supports: Loops, MoT, Multi-thread, Assertions
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1228,7 +1276,7 @@ export const Sidebar: React.FC = () => {
             {/* Sub-panel bottom resize border and trigger */}
             <div 
               onMouseDown={startResizing}
-              className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[#3ECF8E]/40 z-[100] transition-colors"
+              className="absolute top-0 right-0 w-1 h-full cursor-ew-resize hover:bg-[var(--brand)]/40 z-[100] transition-colors"
             />
           </motion.div>
         )}
@@ -1242,14 +1290,14 @@ export const Sidebar: React.FC = () => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -5 }}
             transition={{ duration: 0.12 }}
-            className="fixed w-52 bg-[#0F0F12]/95 border border-[#1D1D22] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] py-2 z-[9999] backdrop-blur-2xl overflow-hidden"
+            className="fixed w-52 bg-surface/95 border border-subtle rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] py-2 z-[9999] backdrop-blur-2xl overflow-hidden"
             style={{
               top: Math.min(contextMenu.y, window.innerHeight - 260),
               left: Math.min(contextMenu.x, window.innerWidth - 220)
             }}
           >
             <div className="px-4 py-1.5 mb-1 border-b border-white/[0.03]">
-              <span className="text-[8px] font-black text-[#55555C] uppercase tracking-[0.2em] font-mono">Node actions // Gimay</span>
+              <span className="text-[8px] font-black text-dim uppercase tracking-[0.2em] font-mono">Node actions // Gimay</span>
             </div>
 
             {/* Collection specific options */}
@@ -1259,12 +1307,12 @@ export const Sidebar: React.FC = () => {
                   onClick={() => {
                     setModalContext({ type: 'collection', action: 'rename', id: contextMenu.id, initialValue: contextMenu.name });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Edit3 size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Rename Collection
+                    <Edit3 size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Rename Collection
                   </div>
-                  <span className="text-[7px] text-[#33333C] font-mono">F2</span>
+                  <span className="text-[7px] text-dim font-mono">F2</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -1278,25 +1326,25 @@ export const Sidebar: React.FC = () => {
                       addToast({ type: 'error', message: 'Duplication failed.' });
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <Copy size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Duplicate Collection
+                  <Copy size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Duplicate Collection
                 </button>
                 <button
                   onClick={() => {
                     setModalContext({ type: 'collection', action: 'create_folder', id: '', collectionId: contextMenu.id });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <FolderPlus size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Add Sub-Folder
+                  <FolderPlus size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Add Sub-Folder
                 </button>
                 <button
                   onClick={() => {
                     setModalContext({ type: 'collection', action: 'create_request', id: '', collectionId: contextMenu.id });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <FilePlus size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Add Request
+                  <FilePlus size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Add Request
                 </button>
                 <div className="h-px bg-white/[0.03] my-1" />
                 <button
@@ -1307,9 +1355,9 @@ export const Sidebar: React.FC = () => {
                       setIsShareModalOpen(true);
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <Users size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Protocol Share
+                  <Users size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Protocol Share
                 </button>
                 <button
                   onClick={() => {
@@ -1319,9 +1367,9 @@ export const Sidebar: React.FC = () => {
                       addToast({ type: 'success', message: 'Exporting collection binary...' });
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <FileDown size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Export Schema
+                  <FileDown size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Export Schema
                 </button>
                 <div className="h-px bg-white/[0.03] my-1" />
                 <button
@@ -1342,12 +1390,12 @@ export const Sidebar: React.FC = () => {
                   onClick={() => {
                     setModalContext({ type: 'folder', action: 'rename', id: contextMenu.id, initialValue: contextMenu.name });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Edit3 size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Rename Folder
+                    <Edit3 size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Rename Folder
                   </div>
-                  <span className="text-[7px] text-[#33333C] font-mono">F2</span>
+                  <span className="text-[7px] text-dim font-mono">F2</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -1367,25 +1415,25 @@ export const Sidebar: React.FC = () => {
                       addToast({ type: 'error', message: 'Duplication failed.' });
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <Copy size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Duplicate Folder
+                  <Copy size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Duplicate Folder
                 </button>
                 <button
                   onClick={() => {
                     setModalContext({ type: 'folder', action: 'create_folder', id: '', collectionId: contextMenu.collectionId, parentId: contextMenu.id });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <FolderPlus size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Add Nested Folder
+                  <FolderPlus size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Add Nested Folder
                 </button>
                 <button
                   onClick={() => {
                     setModalContext({ type: 'folder', action: 'create_request', id: '', collectionId: contextMenu.collectionId, parentId: contextMenu.id });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <FilePlus size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Add Request
+                  <FilePlus size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Add Request
                 </button>
                 <div className="h-px bg-white/[0.03] my-1" />
                 <button
@@ -1406,12 +1454,12 @@ export const Sidebar: React.FC = () => {
                   onClick={() => {
                     setModalContext({ type: 'request', action: 'rename', id: contextMenu.id, initialValue: contextMenu.name });
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center justify-between group/opt transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
-                    <Edit3 size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Rename Request
+                    <Edit3 size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Rename Request
                   </div>
-                  <span className="text-[7px] text-[#33333C] font-mono">F2</span>
+                  <span className="text-[7px] text-dim font-mono">F2</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -1438,9 +1486,9 @@ export const Sidebar: React.FC = () => {
                       addToast({ type: 'error', message: 'Duplication failed.' });
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <Copy size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Duplicate Request
+                  <Copy size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Duplicate Request
                 </button>
                 <button
                   onClick={() => {
@@ -1452,9 +1500,9 @@ export const Sidebar: React.FC = () => {
                       addToast({ type: 'info', message: 'Choose destination collection or folder.' });
                     }
                   }}
-                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-[#88888F] hover:bg-[#3ECF8E]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
+                  className="w-full text-left px-4 py-1.5 text-[9px] font-black uppercase text-muted hover:bg-[var(--brand)]/10 hover:text-white flex items-center gap-2.5 group/opt transition-colors"
                 >
-                  <ArrowRightLeft size={11} className="text-[#55555C] group-hover/opt:text-[#3ECF8E]" /> Relocate Request
+                  <ArrowRightLeft size={11} className="text-dim group-hover/opt:text-[var(--brand)]" /> Relocate Request
                 </button>
                 <div className="h-px bg-white/[0.03] my-1" />
                 <button
@@ -1645,13 +1693,13 @@ const CollectionNode: React.FC<{
             className={cn(
               "group flex items-center px-3.5 py-2 hover:bg-white/[0.02] cursor-pointer transition-all border-l-[3px] relative overflow-hidden h-9",
               isActive 
-                ? "bg-[#3ECF8E]/5 border-[#3ECF8E] text-white" 
-                : "border-transparent text-[#88888F] hover:text-white"
+                ? "bg-[var(--brand)]/5 border-[var(--brand)] text-white" 
+                : "border-transparent text-muted hover:text-white"
             )}
           >
             {/* active row hover/select glow */}
             {isActive && (
-              <div className="absolute inset-0 bg-[#3ECF8E]/[0.01] shadow-[inset_4px_0_15px_rgba(62,207,142,0.02)] pointer-events-none" />
+              <div className="absolute inset-0 bg-[var(--brand)]/[0.01] shadow-[inset_4px_0_15px_rgba(var(--brand-rgb),0.02)] pointer-events-none" />
             )}
 
             {/* Drag Handle */}
@@ -1660,7 +1708,7 @@ const CollectionNode: React.FC<{
               className="mr-1 opacity-0 group-hover/col:opacity-100 transition-opacity flex items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <GripVertical size={11} className="text-[#33333F]" />
+              <GripVertical size={11} className="text-dim" />
             </div>
 
             {/* Expand Arrow Chevron */}
@@ -1676,16 +1724,16 @@ const CollectionNode: React.FC<{
                 transition={{ duration: 0.15 }}
                 className="flex items-center justify-center"
               >
-                <ChevronRight size={12} className={isOpen ? "text-[#3ECF8E]" : "text-[#44444F]"} />
+                <ChevronRight size={12} className={isOpen ? "text-[var(--brand)]" : "text-placeholder"} />
               </motion.div>
             </div>
 
             {/* Folder Open/Close icons */}
             <div className="relative ml-1.5 mr-2 z-10">
               {isOpen ? (
-                <FolderOpen size={13} className="text-[#3ECF8E]" />
+                <FolderOpen size={13} className="text-[var(--brand)]" />
               ) : (
-                <Folder size={13} className="text-[#55555C]" />
+                <Folder size={13} className="text-dim" />
               )}
             </div>
 
@@ -1703,7 +1751,7 @@ const CollectionNode: React.FC<{
                   e.stopPropagation();
                   setModalContext({ type: 'collection', action: 'create_folder', id: '', collectionId: collection.id });
                 }}
-                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/5 rounded"
                 title="Add Folder"
               >
                 <FolderPlus size={12} />
@@ -1713,7 +1761,7 @@ const CollectionNode: React.FC<{
                   e.stopPropagation();
                   setModalContext({ type: 'collection', action: 'create_request', id: '', collectionId: collection.id });
                 }}
-                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/5 rounded"
                 title="Add Request"
               >
                 <Plus size={13} />
@@ -1729,7 +1777,7 @@ const CollectionNode: React.FC<{
                     name: collection.name
                   });
                 }}
-                className="p-1 hover:text-white text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-white text-dim hover:bg-white/5 rounded"
               >
                 <MoreVertical size={12} />
               </button>
@@ -1743,7 +1791,7 @@ const CollectionNode: React.FC<{
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden border-l border-[#1A1A22] ml-[23px] pl-1 py-0.5 space-y-0.5"
+                className="overflow-hidden border-l border-subtle ml-[23px] pl-1 py-0.5 space-y-0.5"
               >
                 {/* Folders droppable zone */}
                 <Droppable droppableId={`${collection.id}:folders`} type="folder">
@@ -1791,7 +1839,7 @@ const CollectionNode: React.FC<{
 
                 {/* Void State placeholder */}
                 {(!collection.requests?.length && !collection.folders?.length) && (
-                  <div className="px-5 py-2.5 text-[8px] font-black text-[#44444F] uppercase tracking-widest italic font-mono">
+                  <div className="px-5 py-2.5 text-[8px] font-black text-placeholder uppercase tracking-widest italic font-mono">
                     Empty Collection
                   </div>
                 )}
@@ -1872,7 +1920,7 @@ const FolderNode: React.FC<{
           <div 
             onClick={handleRowClick}
             onContextMenu={handleContextMenuTrigger}
-            className="flex items-center px-2 py-1.5 hover:bg-white/[0.02] cursor-pointer transition-all border-l border-transparent hover:border-white/[0.03] text-[#77777F] hover:text-[#E0E0E6] h-8"
+            className="flex items-center px-2 py-1.5 hover:bg-white/[0.02] cursor-pointer transition-all border-l border-transparent hover:border-white/[0.03] text-muted hover:text-main h-8"
           >
             {/* Drag Handle */}
             <div 
@@ -1880,7 +1928,7 @@ const FolderNode: React.FC<{
               className="mr-1 opacity-0 group-hover/folder:opacity-100 transition-opacity flex items-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <GripVertical size={10} className="text-[#33333F]" />
+              <GripVertical size={10} className="text-dim" />
             </div>
 
             {/* Expand arrows chevron */}
@@ -1896,15 +1944,15 @@ const FolderNode: React.FC<{
                 transition={{ duration: 0.15 }}
                 className="flex items-center justify-center"
               >
-                <ChevronRight size={11} className={isOpen ? "text-[#3ECF8E]" : "text-[#44444F]"} />
+                <ChevronRight size={11} className={isOpen ? "text-[var(--brand)]" : "text-placeholder"} />
               </motion.div>
             </div>
 
             {/* Folder icon */}
             {isOpen ? (
-              <FolderOpen size={12} className="ml-1.5 mr-2 text-[#3ECF8E]" />
+              <FolderOpen size={12} className="ml-1.5 mr-2 text-[var(--brand)]" />
             ) : (
-              <Folder size={12} className="ml-1.5 mr-2 text-[#55555C]" />
+              <Folder size={12} className="ml-1.5 mr-2 text-dim" />
             )}
 
             {/* Title */}
@@ -1921,7 +1969,7 @@ const FolderNode: React.FC<{
                   e.stopPropagation();
                   setModalContext({ type: 'folder', action: 'create_folder', id: '', collectionId, parentId: folder.id });
                 }}
-                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/5 rounded"
                 title="Add Sub-folder"
               >
                 <FolderPlus size={11} />
@@ -1931,7 +1979,7 @@ const FolderNode: React.FC<{
                   e.stopPropagation();
                   setModalContext({ type: 'folder', action: 'create_request', id: '', collectionId, parentId: folder.id });
                 }}
-                className="p-1 hover:text-[#3ECF8E] text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-[var(--brand)] text-dim hover:bg-white/5 rounded"
                 title="Add Request Inside"
               >
                 <Plus size={12} />
@@ -1949,7 +1997,7 @@ const FolderNode: React.FC<{
                     parentId: folder.parent_id
                   });
                 }}
-                className="p-1 hover:text-white text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-white text-dim hover:bg-white/5 rounded"
               >
                 <MoreVertical size={11} />
               </button>
@@ -1963,7 +2011,7 @@ const FolderNode: React.FC<{
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden border-l border-[#1A1A22] ml-[14px] pl-1.5 py-0.5 space-y-0.5"
+                className="overflow-hidden border-l border-subtle ml-[14px] pl-1.5 py-0.5 space-y-0.5"
               >
                 {/* Nested sub-folders */}
                 {folder.folders?.map((sub, subIdx) => (
@@ -2047,12 +2095,12 @@ const RequestNode: React.FC<{
 
   const getMethodColor = (method: string) => {
     switch (method) {
-      case 'GET': return 'text-[#3ECF8E]';
+      case 'GET': return 'text-[var(--brand)]';
       case 'POST': return 'text-amber-500';
       case 'PUT': return 'text-blue-500';
       case 'DELETE': return 'text-red-500';
       case 'PATCH': return 'text-purple-500';
-      default: return 'text-[#AAAAAF]';
+      default: return 'text-muted';
     }
   };
 
@@ -2074,13 +2122,13 @@ const RequestNode: React.FC<{
             className={cn(
               "flex items-center px-3 py-1.5 hover:bg-white/[0.02] cursor-pointer transition-all border-l-[3px] h-7.5 relative items-stretch",
               isActive 
-                ? "bg-[#3ECF8E]/5 border-[#3ECF8E] text-white font-bold" 
-                : "border-transparent text-[#77777F] hover:text-[#E0E0E6]"
+                ? "bg-[var(--brand)]/5 border-[var(--brand)] text-white font-bold" 
+                : "border-transparent text-muted hover:text-main"
             )}
           >
             {/* active indicator glow */}
             {isActive && (
-              <div className="absolute inset-0 bg-[#3ECF8E]/[0.01] shadow-[inset_4px_0_12px_rgba(62,207,142,0.02)] pointer-events-none" />
+              <div className="absolute inset-0 bg-[var(--brand)]/[0.01] shadow-[inset_4px_0_12px_rgba(var(--brand-rgb),0.02)] pointer-events-none" />
             )}
 
             {/* Drag Handle */}
@@ -2089,7 +2137,7 @@ const RequestNode: React.FC<{
               className="flex items-center mr-1.5 opacity-0 group-hover/req:opacity-100 transition-opacity"
               onClick={(e) => e.stopPropagation()}
             >
-              <GripVertical size={10} className="text-[#33333F]" />
+              <GripVertical size={10} className="text-dim" />
             </div>
 
             {/* Method Prefix and Name */}
@@ -2120,7 +2168,7 @@ const RequestNode: React.FC<{
                     parentId: folderId
                   });
                 }}
-                className="p-1 hover:text-white text-[#55555C] hover:bg-white/5 rounded"
+                className="p-1 hover:text-white text-dim hover:bg-white/5 rounded"
               >
                 <MoreVertical size={11} />
               </button>

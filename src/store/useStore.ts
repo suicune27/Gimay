@@ -126,6 +126,10 @@ interface AppState {
   // Tab Sync
   setUserTabs: (tabs: (RequestData | Collection | EnvironmentTab | SmokeTestingTab)[]) => void;
 
+  // Local save trigger (forces zustand persist to flush by updating a partialized field)
+  lastLocalSaveTimestamp: number;
+  triggerLocalSave: () => void;
+
   // Sync Status
   syncStatus: 'idle' | 'saving' | 'saved' | 'error' | 'pending' | 'offline';
   setSyncStatus: (status: 'idle' | 'saving' | 'saved' | 'error' | 'pending' | 'offline') => void;
@@ -183,7 +187,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   appearance: {
     theme: 'dark',
-    accentColor: '#3ECF8E',
     layoutMode: 'comfortable',
     fontFamily: 'Inter',
     fontSize: 13,
@@ -323,7 +326,12 @@ export const useStore = create<AppState>()(
         openTabs: []
       }),
       workspaces: [],
-      setWorkspaces: (workspaces) => set({ workspaces: workspaces || [] }),
+      setWorkspaces: (workspaces) => set((state) => {
+        const safeWs = workspaces || [];
+        // Preserve offline-created workspaces not yet synced to Supabase
+        const offlineWs = state.workspaces.filter(w => w.id.startsWith('offline-') && !safeWs.some((n: any) => n.id === w.id));
+        return { workspaces: [...safeWs, ...offlineWs] };
+      }),
       
       openTabs: [],
       activeTabId: null,
@@ -385,9 +393,14 @@ export const useStore = create<AppState>()(
         const updateInTree = (nodes: any[]): any[] => {
           return nodes.map(node => {
             if (node.id === id) return { ...node, ...data };
-            if (node.folders) return { ...node, folders: updateInTree(node.folders) };
-            if (node.requests) return { ...node, requests: node.requests.map((r: any) => r.id === id ? { ...r, ...data } : r) };
-            return node;
+            const result: any = { ...node };
+            if (node.folders) {
+              result.folders = updateInTree(node.folders);
+            }
+            if (node.requests) {
+              result.requests = node.requests.map((r: any) => r.id === id ? { ...r, ...data } : r);
+            }
+            return result;
           });
         };
         
@@ -429,7 +442,133 @@ export const useStore = create<AppState>()(
       setCollections: (collections) => set((state) => {
         const safeCollections = collections || [];
         const order = state.profile?.preferences?.sidebar_order;
-        if (!order) return { collections: safeCollections };
+
+        // Preserve offline-created items that haven't been synced to Supabase yet.
+        // When runResilientAction creates items locally (offline-* IDs), they don't
+        // exist in Supabase yet. Without this merge, fetchCollections would overwrite them.
+        // Also checks state.openTabs for offline requests that were persisted across restarts
+        // (collections is not persisted in zustand, so on restart state.collections is []).
+        const mergeOfflineItems = (newItems: any[], oldItems: any[]): any[] => {
+          // Keep offline-created root items from current collections state
+          const offlineItems = oldItems.filter((item: any) => item.id.startsWith('offline-'));
+
+          // Find offline request data from openTabs (persisted across restarts via zustand)
+          const offlineRequestsFromTabs = (state.openTabs || []).filter(
+            (t): t is RequestData =>
+              t && typeof t === 'object' && 'method' in t &&
+              'collection_id' in t && t.id.startsWith('offline-')
+          );
+
+          // Merge offline requests into collections/folders that DO exist in Supabase
+          const mergedItems = newItems.map((newItem: any) => {
+            const oldItem = oldItems.find((o: any) => o.id === newItem.id);
+
+            // Offline requests from old state
+            const oldOfflineReqs = (oldItem?.requests || []).filter((r: any) => r.id.startsWith('offline-'));
+            // Offline requests from openTabs
+            const tabOfflineReqs = offlineRequestsFromTabs.filter((r: RequestData) => r.collection_id === newItem.id && !r.folder_id);
+            // Merge and deduplicate by ID
+            const allOfflineReqs = [...oldOfflineReqs, ...tabOfflineReqs]
+              .filter((r, idx, arr) => arr.findIndex((a: any) => a.id === r.id) === idx);
+
+            const oldOfflineFolders = (oldItem?.folders || []).filter((f: any) => f.id.startsWith('offline-'));
+
+            // Handle folders with offline requests
+            const foldersWithOfflineReqs = (newItem.folders || []).map((f: any) => {
+              const oldFolder = oldItem?.folders?.find((of: any) => of.id === f.id);
+              const folderTabReqs = offlineRequestsFromTabs.filter((r: RequestData) => r.folder_id === f.id);
+              const folderOldReqs = (oldFolder?.requests || []).filter((r: any) => r.id.startsWith('offline-'));
+              const allFolderReqs = [...folderTabReqs, ...folderOldReqs]
+                .filter((r, idx, arr) => arr.findIndex((a: any) => a.id === r.id) === idx);
+              if (!allFolderReqs.length) return f;
+              return { ...f, requests: [...(f.requests || []), ...allFolderReqs] };
+            });
+
+            const needsFoldersUpdate = foldersWithOfflineReqs.some((f: any, i: number) => {
+              const orig = (newItem.folders || [])[i];
+              return f.requests?.length !== orig?.requests?.length;
+            });
+
+            if (!allOfflineReqs.length && !oldOfflineFolders.length && !needsFoldersUpdate) return newItem;
+
+            return {
+              ...newItem,
+              requests: [...(newItem.requests || []), ...allOfflineReqs],
+              folders: needsFoldersUpdate ? foldersWithOfflineReqs : newItem.folders,
+              ...(oldOfflineFolders.length ? {
+                folders: [...((needsFoldersUpdate ? foldersWithOfflineReqs : newItem.folders) || []), ...oldOfflineFolders.map((f: any) => ({
+                  ...f,
+                  requests: [...(f.requests || [])]
+                }))]
+              } : {})
+            };
+          });
+
+          // Create placeholder collections for orphaned offline requests
+          // whose parent collection doesn't exist in Supabase or old state
+          const existingColIds = new Set([...newItems.map((c: any) => c.id), ...oldItems.map((c: any) => c.id)]);
+          const orphanedReqs = offlineRequestsFromTabs.filter((r: RequestData) => r.collection_id && !existingColIds.has(r.collection_id));
+          const orphanedColIds = [...new Set(orphanedReqs.map((r: RequestData) => r.collection_id))];
+
+          const placeholderCollections = orphanedColIds.map((colId: string) => ({
+            id: colId,
+            name: 'Offline Collection',
+            workspace_id: orphanedReqs.find((r: RequestData) => r.collection_id === colId)?.workspace_id || '',
+            user_id: orphanedReqs.find((r: RequestData) => r.collection_id === colId)?.user_id || '',
+            requests: orphanedReqs.filter((r: RequestData) => r.collection_id === colId),
+            folders: [] as any[],
+            variables: [] as any[],
+            auth: { type: 'none' } as any,
+            visibility: 'private' as const,
+            permission: 'edit' as const,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+
+          return [...mergedItems, ...offlineItems, ...placeholderCollections];
+        };
+
+        const merged = mergeOfflineItems(safeCollections, state.collections);
+        
+        // Preserve local changes that would otherwise be overwritten
+        // by server data from fetchCollections. This handles requests whose
+        // edits were persisted locally (via zustand) but haven't synced to
+        // Supabase yet (e.g., after restart before sync completes).
+        // Without this, fetchCollections on app start would overwrite
+        // all locally-edited requests with stale server data.
+        let collectionsToSort = merged;
+        if (state.collections && state.collections.length > 0) {
+          const replaceInTree = (nodes: any[], localNodes: any[]): any[] => {
+            return nodes.map(node => {
+              const localNode = localNodes.find((n: any) => n.id === node.id);
+              if (!localNode) return node;
+              const result: any = { ...node };
+              // Prefer local request data where available, but respect
+              // server data when it's newer (collaborator edits via Realtime).
+              // This handles the restart case where the local persisted
+              // state may have edits that haven't synced to Supabase yet.
+              if (Array.isArray(localNode.requests) && Array.isArray(node.requests)) {
+                result.requests = node.requests.map((r: any) => {
+                  const localReq = localNode.requests.find((lr: any) => lr.id === r.id);
+                  if (!localReq) return r;
+                  // If server has a newer updated_at, prefer server (collaborator edit)
+                  if (localReq.updated_at && r.updated_at && localReq.updated_at < r.updated_at) {
+                    return r;
+                  }
+                  return localReq;
+                });
+              }
+              // Recurse into folders
+              if (localNode.folders && Array.isArray(node.folders)) {
+                result.folders = replaceInTree(node.folders, localNode.folders);
+              }
+              return result;
+            });
+          };
+          collectionsToSort = replaceInTree(merged, state.collections);
+        }
+
+        if (!order) return { collections: collectionsToSort };
 
         const sortRequests = (reqs: RequestData[], parentId: string): RequestData[] => {
           const safeReqs = reqs || [];
@@ -466,7 +605,7 @@ export const useStore = create<AppState>()(
           }));
         };
 
-        const sortedCollections = [...safeCollections].sort((a, b) => {
+        const sortedCollections = [...merged].sort((a, b) => {
           const colOrder = order.collections;
           if (!colOrder) return 0;
           const idxA = colOrder.indexOf(a.id);
@@ -484,17 +623,30 @@ export const useStore = create<AppState>()(
         return { collections: sortedCollections };
       }),
       environments: [],
-      setEnvironments: (environments) => set({ environments: environments || [] }),
+      setEnvironments: (environments) => set((state) => {
+        const safeEnvs = environments || [];
+        // Preserve offline-created environments not yet synced to Supabase
+        const offlineEnvs = state.environments.filter(e => e.id.startsWith('offline-') && !safeEnvs.some((n: any) => n.id === e.id));
+        return { environments: [...safeEnvs, ...offlineEnvs] };
+      }),
       history: [],
       setHistory: (history) => set({ history: history || [] }),
       teams: [],
-      setTeams: (teams) => set({ teams: teams || [] }),
+      setTeams: (teams) => set((state) => {
+        const safeTeams = teams || [];
+        // Preserve offline-created teams not yet synced to Supabase
+        const offlineTeams = state.teams.filter(t => t.id.startsWith('offline-') && !safeTeams.some((n: any) => n.id === t.id));
+        return { teams: [...safeTeams, ...offlineTeams] };
+      }),
       collectionPresence: {},
       setCollectionPresence: (collectionId, members) => set((state) => ({
         collectionPresence: { ...state.collectionPresence, [collectionId]: members }
       })),
       memberPresence: {},
       setMemberPresence: (memberPresence) => set({ memberPresence }),
+      lastLocalSaveTimestamp: 0,
+      triggerLocalSave: () => set({ lastLocalSaveTimestamp: Date.now() }),
+
       setUserTabs: (tabs) => set({ openTabs: tabs, activeTabId: tabs.length > 0 ? tabs[0].id : null }),
       theme: 'dark',
       setTheme: (theme) => set({ theme }),
@@ -571,9 +723,14 @@ export const useStore = create<AppState>()(
       deleteRequestState: (id) => set((state) => {
         const deleteInTree = (nodes: any[]): any[] => {
           return nodes.map(node => {
-            if (node.folders) return { ...node, folders: deleteInTree(node.folders) };
-            if (node.requests) return { ...node, requests: node.requests.filter((r: any) => r.id !== id) };
-            return node;
+            const result: any = { ...node };
+            if (node.folders) {
+              result.folders = deleteInTree(node.folders);
+            }
+            if (node.requests) {
+              result.requests = node.requests.filter((r: any) => r.id !== id);
+            }
+            return result;
           });
         };
         const newCollections = deleteInTree(state.collections);
@@ -866,29 +1023,80 @@ export const useStore = create<AppState>()(
           }
         }
       })),
-      partialize: (state) => ({ 
-        openTabs: (state.openTabs || []).map(tab => {
-          if (tab && 'response' in tab) {
-            return {
-              ...tab,
-              response: null
-            } as any;
+      partialize: (state) => {
+        // Strip response data & large transient blobs from nested request objects
+        const stripTransientData = (obj: any): any => {
+          if (!obj || typeof obj !== 'object') return obj;
+          if (Array.isArray(obj)) return obj.map(stripTransientData);
+          const cleaned = { ...obj };
+          // Remove response data stored on tab/request objects
+          if ('response' in cleaned) cleaned.response = null;
+          if ('lastResponse' in cleaned) (cleaned as any).lastResponse = null;
+          // Remove large runtime data
+          if ('consoleLogs' in cleaned) (cleaned as any).consoleLogs = undefined;
+          if ('testResults' in cleaned && Array.isArray(cleaned.testResults) && cleaned.testResults.length > 0) {
+            // Keep test results summary but strip full message bodies
+            (cleaned as any).testResults = cleaned.testResults.map((r: any) => ({
+              name: r.name,
+              status: r.status
+            }));
           }
-          return tab;
-        }), 
-        activeTabId: state.activeTabId,
-        activeWorkspaceId: state.activeWorkspaceId,
-        activeEnvId: state.activeEnvId,
-        theme: state.theme,
-        sidebarWidth: state.sidebarWidth,
-        sidebarCollapsed: state.sidebarCollapsed,
-        sidebarMode: state.sidebarMode,
-        isSidebarPinned: state.isSidebarPinned,
-        layoutOrientation: state.layoutOrientation,
-        consoleCollapsed: state.consoleCollapsed,
-        landingSkipped: state.landingSkipped,
-        settings: state.settings
-      }),
+          return cleaned;
+        };
+
+        // Strip response data from collections tree (nested requests may have response blobs)
+        const cleanFolders = (folders: any[]): any[] =>
+          (folders || []).map(f => ({
+            ...f,
+            requests: (f.requests || []).map(stripTransientData),
+            folders: f.folders ? cleanFolders(f.folders) : undefined
+          }));
+
+        const cleanCollections = (state.collections || []).map(col => ({
+          ...col,
+          requests: (col.requests || []).map(stripTransientData),
+          folders: cleanFolders(col.folders || [])
+        }));
+
+        return { 
+          openTabs: (state.openTabs || []).map(tab => {
+            if (tab && 'response' in tab) {
+              return {
+                ...tab,
+                response: null
+              } as any;
+            }
+            return tab;
+          }), 
+          activeTabId: state.activeTabId,
+          activeWorkspaceId: state.activeWorkspaceId,
+          activeEnvId: state.activeEnvId,
+          theme: state.theme,
+          sidebarWidth: state.sidebarWidth,
+          sidebarCollapsed: state.sidebarCollapsed,
+          sidebarMode: state.sidebarMode,
+          isSidebarPinned: state.isSidebarPinned,
+          layoutOrientation: state.layoutOrientation,
+          consoleCollapsed: state.consoleCollapsed,
+          landingSkipped: state.landingSkipped,
+          lastLocalSaveTimestamp: state.lastLocalSaveTimestamp,
+          settings: state.settings,
+          // --- Desktop local persistence (all data) ---
+          collections: cleanCollections,
+          environments: state.environments || [],
+          history: (state.history || []).slice(0, 50).map((entry: any) => ({
+            ...entry,
+            response_data: null,
+            request_data: null
+          })),
+          workspaces: state.workspaces || [],
+          profile: state.profile,
+          teams: state.teams || [],
+          globalVariables: state.globalVariables || [],
+          scriptCategories: state.scriptCategories || [],
+          scriptLibrary: state.scriptLibrary || []
+        };
+      },
     }
   )
 );

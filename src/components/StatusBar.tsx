@@ -11,7 +11,10 @@ import {
   Clock, 
   Save, 
   CheckCircle2, 
-  AlertCircle
+  AlertCircle,
+  HardDrive,
+  LogIn,
+  Database
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { cn } from '../lib/utils';
@@ -29,15 +32,32 @@ export const StatusBar: React.FC = () => {
     sidebarWidth,
     setSidebarMode,
     setLayoutOrientation,
-    updateSyncMetadata
+    updateSyncMetadata,
+    lastLocalSaveTimestamp,
+    triggerLocalSave,
+    addToast
   } = useStore();
   const [time, setTime] = useState(new Date());
+  const [hasSandboxBackup, setHasSandboxBackup] = useState(false);
 
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Check for sandbox backup in localStorage
+  useEffect(() => {
+    const check = () => {
+      try {
+        setHasSandboxBackup(!!localStorage.getItem('gimay-sandbox-backup'));
+      } catch {}
+    };
+    check();
+    // Re-check on focus (backup may have been created/cleared in another tab)
+    window.addEventListener('focus', check);
+    return () => window.removeEventListener('focus', check);
   }, []);
 
   if (!settings.appearance.showStatusBar) return null;
@@ -133,6 +153,50 @@ export const StatusBar: React.FC = () => {
           <span>{syncMetadata.isOffline ? 'Disconnected (Local)' : 'Authenticated (Cloud)'}</span>
         </button>
         
+        {syncMetadata.isOffline && (
+          <>
+            <button
+              onClick={() => {
+                // Force zustand persist to flush by updating the timestamp field (included in partialize)
+                triggerLocalSave();
+                addToast({ type: 'success', message: 'Data secured to local storage' });
+              }}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded transition-colors select-none cursor-pointer text-[9px] font-black uppercase tracking-[0.1em] text-amber-400 hover:bg-amber-500/10 border border-amber-500/20 animate-pulse"
+              title="Save all data to local storage now (Ctrl+S)"
+            >
+              <HardDrive size={10} className="text-amber-400" />
+              <span>Save Locally</span>
+            </button>
+
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('gimay:exit-sandbox'));
+              }}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded transition-colors select-none cursor-pointer text-[9px] font-black uppercase tracking-[0.1em] text-blue-400 hover:bg-blue-500/10 border border-blue-500/20"
+              title="Exit sandbox mode and sign in with a cloud account"
+            >
+              <LogIn size={10} className="text-blue-400" />
+              <span>Sign In</span>
+              {hasSandboxBackup && (
+                <span
+                  className="ml-1 text-[7px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 font-mono tracking-tight"
+                  title="Sandbox collections/requests backed up to localStorage"
+                >
+                  <Database size={7} className="inline-block -mt-0.5 mr-0.5" />
+                  BACKED UP
+                </span>
+              )}
+            </button>
+          </>
+        )}
+
+        {syncMetadata.isOffline && lastLocalSaveTimestamp > 0 && (
+          <div className="text-[8px] text-[var(--text-dim)] normal-case flex items-center gap-1 border-l border-[var(--border-subtle)] pl-3">
+            <Save size={9} />
+            <span>saved: {format(lastLocalSaveTimestamp, 'HH:mm:ss')}</span>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setSidebarMode(sidebarMode === 'hidden' ? 'expanded' : 'hidden')}

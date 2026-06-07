@@ -43,7 +43,8 @@ export class OnboardingService {
     const normalizedUrl = this.normalizeSupabaseUrl(url);
     const client: any = createClient(normalizedUrl, anonKey);
     const currentConfig = getSupabaseConfig();
-    const { data: { session } } = await supabase.auth.getSession();
+    // Auth always via globalSupabase so we get the session from the global project
+    const { data: { session } } = await globalSupabase.auth.getSession();
 
     console.group('[OnboardingService] createAuthenticatedClient');
     console.log('Configuration Parameters:', {

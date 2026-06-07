@@ -12,17 +12,13 @@ const Editor = React.lazy(() => import('@monaco-editor/react'));
 
 export const ScriptEditor: React.FC = () => {
   const { openTabs, activeTabId, closeTab, scripts, updateScript, setTabDirty } = useScriptStore();
-  const { addToast, settings } = useStore();
+  const { addToast } = useStore();
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const disposablesRef = useRef<any[]>([]);
 
   const activeTab = openTabs.find(t => t.id === activeTabId);
   const activeScript = scripts.find(s => s.id === activeTab?.scriptId);
-
-  const theme = settings.appearance.theme === 'system' 
-    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-    : settings.appearance.theme;
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -42,20 +38,20 @@ export const ScriptEditor: React.FC = () => {
     const monaco = monacoRef.current;
     
     monaco.editor.defineTheme('gimay-custom', {
-      base: theme === 'light' ? 'vs' : 'vs-dark',
+      base: 'vs-dark',
       inherit: true,
       rules: [
         { token: 'comment', foreground: '666666', fontStyle: 'italic' },
-        { token: 'keyword', foreground: theme === 'light' ? '008000' : '3ECF8E' },
-        { token: 'string', foreground: theme === 'light' ? '000000' : 'E0E0E0' },
-        { token: 'variable', foreground: theme === 'light' ? '000000' : 'AAAAAA' },
+        { token: 'keyword', foreground: '3ECF8E' },
+        { token: 'string', foreground: 'E0E0E0' },
+        { token: 'variable', foreground: 'AAAAAA' },
       ],
       colors: {
-        'editor.background': theme === 'light' ? '#FFFFFF' : '#0F0F0F',
-        'editor.lineHighlightBackground': theme === 'light' ? '#F3F4F6' : '#1A1A1A',
-        'editorLineNumber.foreground': theme === 'light' ? '#9CA3AF' : '#333333',
-        'editorLineNumber.activeForeground': theme === 'light' ? '#000000' : '#3ECF8E',
-        'editor.selectionBackground': theme === 'light' ? '#3ECF8E44' : '#3ECF8E33',
+        'editor.background': '#0F0F0F',
+        'editor.lineHighlightBackground': '#1A1A1A',
+        'editorLineNumber.foreground': '#333333',
+        'editorLineNumber.activeForeground': 'var(--brand)',
+        'editor.selectionBackground': '#3ECF8E33',
       }
     });
     
@@ -64,7 +60,7 @@ export const ScriptEditor: React.FC = () => {
 
   useEffect(() => {
     updateEditorTheme();
-  }, [theme]);
+  }, []);
 
   // Clean up completions on unmount
   useEffect(() => {

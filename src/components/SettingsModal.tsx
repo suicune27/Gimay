@@ -3,9 +3,6 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Settings as SettingsIcon, 
-  Moon, 
-  Sun, 
-  Monitor, 
   Shield, 
   Globe, 
   Zap, 
@@ -13,25 +10,18 @@ import {
   Info, 
   X, 
   ChevronRight, 
-  Lock, 
   Search,
-  Eye,
-  EyeOff,
   Terminal,
   Cpu,
   Clock,
   HardDrive,
   RefreshCw,
-  Layout,
-  Type,
   FlaskConical,
   Activity,
   Trash2,
   Download,
   Upload,
   RotateCcw,
-  Github,
-  CloudDownload,
   ShieldAlert
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -144,7 +134,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const sections: { id: SettingsSection; icon: any; label: string; description?: string }[] = [
     { id: 'General', icon: SettingsIcon, label: 'General' },
-    { id: 'Themes', icon: Layout, label: 'Appearance' },
+
     { id: 'Proxy', icon: Globe, label: 'Proxy' },
     { id: 'SSL/TLS', icon: Shield, label: 'SSL / TLS' },
     { id: 'Cookies', icon: Database, label: 'Cookies' },
@@ -234,7 +224,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 onClick={() => setShowClearConfirm(false)}
-                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-code border border-subtle text-[10px] font-black uppercase tracking-widest text-muted hover:text-white rounded-lg transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -262,7 +252,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 onClick={() => setShowResetConfirm(false)}
-                className="px-5 py-2.5 bg-[#1C1C24] border border-[#2D2D39] text-[10px] font-black uppercase tracking-widest text-[#88888F] hover:text-white rounded-lg transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-code border border-subtle text-[10px] font-black uppercase tracking-widest text-muted hover:text-white rounded-lg transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -458,80 +448,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </motion.div>
               )}
 
-              {activeSection === 'Themes' && (
-                <motion.div
-                  key="themes"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="space-y-8"
-                >
-                  <Section title="Interface Style">
-                    <div className="grid grid-cols-3 gap-4">
-                      {[
-                        { id: 'dark', icon: Moon, label: 'Obsidian' },
-                        { id: 'light', icon: Sun, label: 'Luminous' },
-                        { id: 'system', icon: Monitor, label: 'OS Sync' }
-                      ].map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => handleUpdate('appearance.theme', t.id)}
-                          className={cn(
-                            "flex flex-col items-center justify-center gap-3 p-6 rounded-xl border transition-all",
-                            settings.appearance.theme === t.id 
-                              ? "bg-[var(--brand)]/5 border-[var(--brand)] text-[var(--brand)]" 
-                              : "bg-[var(--bg-elevated)] border-[var(--border-subtle)] text-[var(--text-dim)] hover:border-[var(--border-strong)]"
-                          )}
-                        >
-                          <t.icon size={24} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </Section>
 
-                  <Section title="Layout Configuration">
-                    <div className="space-y-4">
-                       <SettingSelect 
-                        label="Density Mode"
-                        description="Control the information density of the interface."
-                        value={settings.appearance.layoutMode}
-                        options={[
-                          { value: 'compact', label: 'Compact (High Density)' },
-                          { value: 'comfortable', label: 'Comfortable (Standard)' }
-                        ]}
-                        onChange={(v) => handleUpdate('appearance.layoutMode', v)}
-                      />
-                      <SettingToggle 
-                        label="Show Status Bar"
-                        description="Display the universal operations rail at the bottom."
-                        enabled={settings.appearance.showStatusBar}
-                        onChange={(v) => handleUpdate('appearance.showStatusBar', v)}
-                      />
-                      <div className="grid grid-cols-2 gap-6">
-                        <SettingInput 
-                          label="Font Size" 
-                          value={settings.appearance.fontSize.toString()}
-                          type="number"
-                          onChange={(v) => handleUpdate('appearance.fontSize', parseInt(v) || 12)}
-                        />
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-[var(--text-dim)] uppercase tracking-widest">Accent Chroma</label>
-                          <div className="flex items-center gap-3">
-                            <input 
-                              type="color" 
-                              value={settings.appearance.accentColor}
-                              onChange={(e) => handleUpdate('appearance.accentColor', e.target.value)}
-                              className="w-10 h-10 bg-transparent border-none cursor-pointer"
-                            />
-                            <span className="text-[10px] font-mono text-[var(--text-muted)]">{settings.appearance.accentColor.toUpperCase()}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Section>
-                </motion.div>
-              )}
 
               {activeSection === 'Proxy' && (
                 <motion.div

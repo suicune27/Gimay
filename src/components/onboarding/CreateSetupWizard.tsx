@@ -606,7 +606,7 @@ export const CreateSetupWizard: React.FC = () => {
                 ? 'Initialize Your Database'
                 : 'Team Created'}
           </h2>
-          <p className="text-sm text-[#888888] mt-2 max-w-2xl">
+          <p className="text-sm text-muted mt-2 max-w-2xl">
             {currentStep === 'credentials'
               ? 'Enter your Supabase credentials and give your team a name to get started.'
               : currentStep === 'sql-setup'
@@ -622,7 +622,7 @@ export const CreateSetupWizard: React.FC = () => {
               ? setOnboardingStep('option-select')
               : setCurrentStep('credentials')
           }
-          className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl border border-[#222222] text-[#888888] hover:bg-[var(--bg-elevated)] transition-all"
+          className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl border border-subtle text-muted hover:bg-[var(--bg-elevated)] transition-all"
         >
           <ArrowLeft size={18} />
           Back
@@ -635,8 +635,8 @@ export const CreateSetupWizard: React.FC = () => {
             key={step}
             className={`h-2 flex-1 rounded-full transition-all ${
               ['credentials', 'sql-setup', 'complete'].indexOf(currentStep) >= index
-                ? 'bg-[#3ECF8E]'
-                : 'bg-[#222222]'
+                ? 'bg-[var(--brand)]'
+                : 'bg-elevated'
             }`}
           />
         ))}
@@ -646,18 +646,18 @@ export const CreateSetupWizard: React.FC = () => {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
           <div className="p-8 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] space-y-8">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#3ECF8E]/10 flex items-center justify-center">
-                <Key size={24} className="text-[#3ECF8E]" />
+              <div className="w-12 h-12 rounded-2xl bg-[var(--brand)]/10 flex items-center justify-center">
+                <Key size={24} className="text-[var(--brand)]" />
               </div>
               <div>
                 <h3 className="text-xl font-black text-white tracking-tight">Supabase Access Token</h3>
-                <p className="text-xs text-[#888888]">
+                <p className="text-xs text-muted">
                   Enter your management token to auto-discover your projects.
                   <a 
                     href="https://supabase.com/dashboard/account/tokens" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-[#3ECF8E] hover:underline ml-1 inline-flex items-center gap-1 group/link"
+                    className="text-[var(--brand)] hover:underline ml-1 inline-flex items-center gap-1 group/link"
                   >
                     How to get this <ExternalLink size={10} className="transition-transform group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5" />
                   </a>
@@ -671,12 +671,12 @@ export const CreateSetupWizard: React.FC = () => {
                 placeholder="sbp_XXXXXXXXXXXXXXXXXXXX"
                 value={managementToken}
                 onChange={(e) => setManagementToken(e.target.value)}
-                className="w-full pl-6 pr-12 py-4 bg-black/40 border border-[#222222] rounded-2xl text-white font-mono text-sm outline-none focus:border-[#3ECF8E] transition-all"
+                className="w-full pl-6 pr-12 py-4 bg-black/40 border border-subtle rounded-2xl text-white font-mono text-sm outline-none focus:border-[var(--brand)] transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowManagementToken(!showManagementToken)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#444444] hover:text-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-dim hover:text-white"
               >
                 {showManagementToken ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -685,17 +685,17 @@ export const CreateSetupWizard: React.FC = () => {
             <button
               onClick={handleFetchProjects}
               disabled={isFetchingProjects || !managementToken}
-              className="w-full py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-[#3ECF8E] transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
+              className="w-full py-4 bg-white text-black font-black uppercase tracking-widest text-xs rounded-2xl hover:bg-[var(--brand)] transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
             >
               {isFetchingProjects ? <Loader size={18} className="animate-spin" /> : <Search size={18} />}
               Fetch Projects
             </button>
 
             {projects.length > 0 && (
-              <div className="space-y-4 pt-4 border-t border-[#222222]">
+              <div className="space-y-4 pt-4 border-t border-subtle">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black uppercase text-[#888888] tracking-widest">Select Project</h4>
-                  <p className="text-[10px] text-[#444444] font-mono">{projects.length} discovered</p>
+                  <h4 className="text-xs font-black uppercase text-muted tracking-widest">Select Project</h4>
+                  <p className="text-[10px] text-dim font-mono">{projects.length} discovered</p>
                 </div>
                 <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto no-scrollbar">
                   {projects.map((project) => (
@@ -705,15 +705,15 @@ export const CreateSetupWizard: React.FC = () => {
                       className={cn(
                         "w-full px-5 py-4 rounded-2xl flex items-center justify-between text-left transition-all border",
                         selectedProjectRef === project.id
-                          ? "bg-[#3ECF8E]/10 border-[#3ECF8E]/50 text-white"
-                          : "bg-black/20 border-transparent text-[#888888] hover:bg-black/40"
+                          ? "bg-[var(--brand)]/10 border-[var(--brand)]/50 text-white"
+                          : "bg-black/20 border-transparent text-muted hover:bg-black/40"
                       )}
                     >
                       <div>
                         <p className="text-sm font-bold">{project.name}</p>
                         <p className="text-[10px] font-mono opacity-50">{project.id}</p>
                       </div>
-                      <ChevronRight size={16} className={cn("transition-transform", selectedProjectRef === project.id ? "rotate-90 text-[#3ECF8E]" : "")} />
+                      <ChevronRight size={16} className={cn("transition-transform", selectedProjectRef === project.id ? "rotate-90 text-[var(--brand)]" : "")} />
                     </button>
                   ))}
                 </div>
@@ -725,7 +725,7 @@ export const CreateSetupWizard: React.FC = () => {
           <div className="pt-4 border-t border-[#1a1a1a]">
             <button
               onClick={() => setShowManualSetup(!showManualSetup)}
-              className="flex items-center gap-2 text-[10px] font-black uppercase text-[#444444] hover:text-[#888888] tracking-widest transition-all"
+              className="flex items-center gap-2 text-[10px] font-black uppercase text-dim hover:text-muted tracking-widest transition-all"
             >
               {showManualSetup ? 'Hide Manual Configuration' : 'Advanced: Manual Configuration'}
               <motion.div animate={{ rotate: showManualSetup ? 180 : 0 }}>
@@ -742,45 +742,45 @@ export const CreateSetupWizard: React.FC = () => {
                 <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-[#888888] mb-2 tracking-widest">Supabase URL</label>
+                      <label className="block text-[10px] font-black uppercase text-muted mb-2 tracking-widest">Supabase URL</label>
                       <input
                         type="text"
                         placeholder="https://yourproject.supabase.co"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm focus:border-[#3ECF8E] outline-none"
+                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm focus:border-[var(--brand)] outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-[#888888] mb-2 tracking-widest">Team Name</label>
+                      <label className="block text-[10px] font-black uppercase text-muted mb-2 tracking-widest">Team Name</label>
                       <input
                         type="text"
                         placeholder="Acme API Ops"
                         value={teamName}
                         onChange={(e) => setTeamName(e.target.value)}
-                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm focus:border-[#3ECF8E] outline-none"
+                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm focus:border-[var(--brand)] outline-none"
                       />
                     </div>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[10px] font-black uppercase text-[#888888] mb-2 tracking-widest">Anon Public Key</label>
+                      <label className="block text-[10px] font-black uppercase text-muted mb-2 tracking-widest">Anon Public Key</label>
                       <input
                         type="password"
                         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                         value={anonKey}
                         onChange={(e) => setAnonKey(e.target.value)}
-                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm font-mono focus:border-[#3ECF8E] outline-none"
+                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm font-mono focus:border-[var(--brand)] outline-none"
                       />
                     </div>
                     <div>
                       <div className="flex justify-between items-center mb-2">
-                        <label className="block text-[10px] font-black uppercase text-[#888888] tracking-widest">Service Role Key</label>
+                        <label className="block text-[10px] font-black uppercase text-muted tracking-widest">Service Role Key</label>
                         <a 
                           href="https://supabase.com/dashboard/project/_/settings/api" 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="text-[9px] text-[#3ECF8E] hover:underline flex items-center gap-1"
+                          className="text-[9px] text-[var(--brand)] hover:underline flex items-center gap-1"
                         >
                           Find in Settings <ExternalLink size={8} />
                         </a>
@@ -790,7 +790,7 @@ export const CreateSetupWizard: React.FC = () => {
                         placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                         value={serviceKey}
                         onChange={(e) => setServiceKey(e.target.value)}
-                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm font-mono focus:border-[#3ECF8E] outline-none"
+                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded-xl text-white text-sm font-mono focus:border-[var(--brand)] outline-none"
                       />
                     </div>
                   </div>
@@ -807,7 +807,7 @@ export const CreateSetupWizard: React.FC = () => {
                   type="button"
                   onClick={handleTestConnection}
                   disabled={isTestingConnection || !url || !anonKey || !teamName || !serviceKey}
-                  className="w-full px-4 py-4 rounded-xl bg-[#3ECF8E] text-black font-black uppercase tracking-widest text-xs hover:shadow-[0_0_20px_rgba(62,207,142,0.3)] transition-all disabled:opacity-50"
+                  className="w-full px-4 py-4 rounded-xl bg-[var(--brand)] text-black font-black uppercase tracking-widest text-xs hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)] transition-all disabled:opacity-50"
                 >
                   {isTestingConnection ? 'Testing...' : 'Verify Manual Connection'}
                 </button>
@@ -822,12 +822,12 @@ export const CreateSetupWizard: React.FC = () => {
           <div className="p-8 rounded-3xl bg-[var(--bg-elevated)] border border-[var(--border-subtle)] space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-[#3ECF8E]/10 flex items-center justify-center">
-                  <Database size={24} className="text-[#3ECF8E]" />
+                <div className="w-12 h-12 rounded-2xl bg-[var(--brand)]/10 flex items-center justify-center">
+                  <Database size={24} className="text-[var(--brand)]" />
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-white tracking-tight">Database Schema</h3>
-                  <p className="text-xs text-[#888888]">Initialize your Supabase database with the required tables and functions.</p>
+                  <p className="text-xs text-muted">Initialize your Supabase database with the required tables and functions.</p>
                 </div>
               </div>
 
@@ -835,7 +835,7 @@ export const CreateSetupWizard: React.FC = () => {
                 type="button"
                 onClick={handleAutoExecuteSQL}
                 disabled={autoExecLoading}
-                className="w-full md:w-auto px-8 py-4 bg-[#3ECF8E] text-black text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_30px_rgba(62,207,142,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full md:w-auto px-8 py-4 bg-[var(--brand)] text-black text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_30px_rgba(var(--brand-rgb),0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {autoExecLoading ? <Loader size={18} className="animate-spin" /> : <Zap size={18} />}
                 {autoExecSuccess === true ? 'Re-run Setup' : 'Auto-Setup Database'}
@@ -844,19 +844,19 @@ export const CreateSetupWizard: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-[10px] font-black uppercase text-[#888888] tracking-widest">Execution Logs</h4>
+                <h4 className="text-[10px] font-black uppercase text-muted tracking-widest">Execution Logs</h4>
                 {autoExecLoading && (
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#3ECF8E] animate-pulse" />
-                    <span className="text-[10px] text-[#3ECF8E] font-bold">Processing...</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--brand)] animate-pulse" />
+                    <span className="text-[10px] text-[var(--brand)] font-bold">Processing...</span>
                   </div>
                 )}
               </div>
               
-              <div className="h-64 bg-black/40 rounded-2xl border border-[#222222] p-6 font-mono text-[11px] overflow-hidden flex flex-col">
+              <div className="h-64 bg-black/40 rounded-2xl border border-subtle p-6 font-mono text-[11px] overflow-hidden flex flex-col">
                 <div className="flex-1 overflow-y-auto no-scrollbar space-y-1">
                   {autoExecLog.length === 0 && (
-                    <div className="h-full flex items-center justify-center text-[#444444] uppercase tracking-widest text-[10px]">
+                    <div className="h-full flex items-center justify-center text-dim uppercase tracking-widest text-[10px]">
                       Waiting for initialization...
                     </div>
                   )}
@@ -865,9 +865,9 @@ export const CreateSetupWizard: React.FC = () => {
                       key={i} 
                       className={cn(
                         "leading-relaxed transition-all",
-                        log.includes('✅') || log.includes('[SUCCESS]') ? 'text-[#3ECF8E]' :
+                        log.includes('✅') || log.includes('[SUCCESS]') ? 'text-[var(--brand)]' :
                         log.includes('❌') || log.includes('[ERROR]') ? 'text-red-500' :
-                        log.includes('⚠️') || log.includes('[WAITING]') ? 'text-yellow-500' : 'text-[#888888]'
+                        log.includes('⚠️') || log.includes('[WAITING]') ? 'text-yellow-500' : 'text-muted'
                       )}
                     >
                       <span className="opacity-20 mr-2 text-[9px]">[{i.toString().padStart(2, '0')}]</span>
@@ -878,14 +878,14 @@ export const CreateSetupWizard: React.FC = () => {
                 </div>
 
                 {autoExecLoading && (
-                  <div className="mt-4 pt-4 border-t border-[#222222]">
+                  <div className="mt-4 pt-4 border-t border-subtle">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[9px] text-[#555555] font-black uppercase tracking-widest">Initialising Schema</span>
+                      <span className="text-[9px] text-dim font-black uppercase tracking-widest">Initialising Schema</span>
                       <span className="text-[10px] text-white font-mono">{autoExecProgress}%</span>
                     </div>
-                    <div className="w-full bg-[#1A1A1A] rounded-full h-1 overflow-hidden">
+                    <div className="w-full bg-elevated rounded-full h-1 overflow-hidden">
                       <motion.div 
-                        className="bg-[#3ECF8E] h-full"
+                        className="bg-[var(--brand)] h-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${autoExecProgress}%` }}
                       />
@@ -915,18 +915,18 @@ export const CreateSetupWizard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className={cn(
               "p-8 rounded-[32px] border transition-all flex items-center gap-6 group overflow-hidden relative",
-              schemaVerified ? "bg-[#3ECF8E]/5 border-[#3ECF8E]/30" : "bg-white/[0.02] border-white/5 h-24"
+              schemaVerified ? "bg-[var(--brand)]/5 border-[var(--brand)]/30" : "bg-white/[0.02] border-white/5 h-24"
             )}>
-              {schemaVerified && <div className="absolute top-0 right-0 p-4 opacity-5"><Layers size={64} className="text-[#3ECF8E]" /></div>}
+              {schemaVerified && <div className="absolute top-0 right-0 p-4 opacity-5"><Layers size={64} className="text-[var(--brand)]" /></div>}
               <div className={cn(
                 "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
-                schemaVerified ? "bg-[#3ECF8E] text-black shadow-[0_0_20px_rgba(62,207,142,0.3)]" : "bg-black border border-white/10 text-[#222222]"
+                schemaVerified ? "bg-[var(--brand)] text-black shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)]" : "bg-black border border-white/10 text-dim"
               )}>
                 <Check size={28} strokeWidth={3} />
               </div>
               <div className="relative z-10">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#555555]">Logical Integrity</p>
-                <p className={cn("text-lg font-black tracking-tight mt-1", schemaVerified ? "text-white" : "text-[#222222]")}>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-dim">Logical Integrity</p>
+                <p className={cn("text-lg font-black tracking-tight mt-1", schemaVerified ? "text-white" : "text-dim")}>
                   {schemaVerified ? 'Schema Synchronized' : 'Structural Check Required'}
                 </p>
               </div>
@@ -934,18 +934,18 @@ export const CreateSetupWizard: React.FC = () => {
 
             <div className={cn(
               "p-8 rounded-[32px] border transition-all flex items-center gap-6 group overflow-hidden relative",
-              autoExecSuccess === true ? "bg-[#3ECF8E]/5 border-[#3ECF8E]/30" : "bg-white/[0.02] border-white/5 h-24"
+              autoExecSuccess === true ? "bg-[var(--brand)]/5 border-[var(--brand)]/30" : "bg-white/[0.02] border-white/5 h-24"
             )}>
-               {autoExecSuccess === true && <div className="absolute top-0 right-0 p-4 opacity-5"><Zap size={64} className="text-[#3ECF8E]" /></div>}
+               {autoExecSuccess === true && <div className="absolute top-0 right-0 p-4 opacity-5"><Zap size={64} className="text-[var(--brand)]" /></div>}
               <div className={cn(
                 "w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500",
-                autoExecSuccess === true ? "bg-[#3ECF8E] text-black shadow-[0_0_20px_rgba(62,207,142,0.3)]" : "bg-black border border-white/10 text-[#222222]"
+                autoExecSuccess === true ? "bg-[var(--brand)] text-black shadow-[0_0_20px_rgba(var(--brand-rgb),0.3)]" : "bg-black border border-white/10 text-dim"
               )}>
                 <Check size={28} strokeWidth={3} />
               </div>
               <div className="relative z-10">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#555555]">Deployment Readiness</p>
-                <p className={cn("text-lg font-black tracking-tight mt-1", autoExecSuccess === true ? "text-white" : "text-[#222222]")}>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-dim">Deployment Readiness</p>
+                <p className={cn("text-lg font-black tracking-tight mt-1", autoExecSuccess === true ? "text-white" : "text-dim")}>
                   {autoExecSuccess === true ? 'Verified Target' : 'Pending Deployment'}
                 </p>
               </div>
@@ -955,9 +955,9 @@ export const CreateSetupWizard: React.FC = () => {
           <div className="pt-6">
             <button
               onClick={() => setShowManualSetup(!showManualSetup)}
-              className="flex items-center gap-3 text-[11px] font-black uppercase text-[#444444] hover:text-[#888888] tracking-[0.3em] transition-all"
+              className="flex items-center gap-3 text-[11px] font-black uppercase text-dim hover:text-muted tracking-[0.3em] transition-all"
             >
-              <div className={cn("w-1.5 h-1.5 rounded-full bg-[#444444] transition-colors", showManualSetup && "bg-[#3ECF8E]")} />
+              <div className={cn("w-1.5 h-1.5 rounded-full bg-[#444444] transition-colors", showManualSetup && "bg-[var(--brand)]")} />
               {showManualSetup ? 'Close Advanced Console' : 'Open Advanced Console'}
             </button>
 
@@ -970,11 +970,11 @@ export const CreateSetupWizard: React.FC = () => {
                 <div className="bg-black/60 border border-white/5 rounded-[32px] overflow-hidden shadow-2xl">
                   <div className="px-8 py-5 bg-white/5 flex items-center justify-between border-b border-white/5">
                     <div className="flex items-center gap-4">
-                      <span className="text-[11px] uppercase font-black tracking-[0.2em] text-[#888888]">DDL Script Preview</span>
+                      <span className="text-[11px] uppercase font-black tracking-[0.2em] text-muted">DDL Script Preview</span>
                       {!isUsingRecommended && (
                         <button 
                           onClick={handleResetToRecommended}
-                          className="px-3 py-1 rounded bg-[#3ECF8E]/10 text-[#3ECF8E] text-[9px] font-black uppercase tracking-widest border border-[#3ECF8E]/20 hover:bg-[#3ECF8E]/20 transition-all"
+                          className="px-3 py-1 rounded bg-[var(--brand)]/10 text-[var(--brand)] text-[9px] font-black uppercase tracking-widest border border-[var(--brand)]/20 hover:bg-[var(--brand)]/20 transition-all"
                         >
                           Reset to Recommended
                         </button>
@@ -982,15 +982,15 @@ export const CreateSetupWizard: React.FC = () => {
                     </div>
                     <div className="flex gap-3">
                        <button onClick={handleCopySQL} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 group">
-                        {sqlCopied ? <Check size={16} className="text-[#3ECF8E]" /> : <Copy size={16} className="text-[#888888] group-hover:text-white" />}
+                        {sqlCopied ? <Check size={16} className="text-[var(--brand)]" /> : <Copy size={16} className="text-muted group-hover:text-white" />}
                        </button>
                        <button onClick={handleDownloadPreviewSQL} className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 group">
-                        <Download size={16} className="text-[#888888] group-hover:text-white" />
+                        <Download size={16} className="text-muted group-hover:text-white" />
                        </button>
                     </div>
                   </div>
                   <div className="p-8 max-h-[400px] overflow-y-auto custom-scrollbar">
-                    <pre className="text-[11px] text-[#666666] font-mono leading-relaxed whitespace-pre-wrap">
+                    <pre className="text-[11px] text-muted font-mono leading-relaxed whitespace-pre-wrap">
                       {previewScript}
                     </pre>
                   </div>
@@ -1001,9 +1001,9 @@ export const CreateSetupWizard: React.FC = () => {
                    
                    <div className="relative z-10">
                     <h5 className="text-[11px] text-yellow-500 font-black mb-4 uppercase tracking-[0.3em]">Manual Installation Protocol</h5>
-                    <p className="text-sm text-[#888888] leading-relaxed mb-8 max-w-2xl font-medium">
-                      If the automated provisioner fails due to host security policies, you must ensure the <code className="text-[#3ECF8E] bg-[#3ECF8E]/5 px-2 py-0.5 rounded border border-[#3ECF8E]/10 font-mono">execute_sql</code> kernel is installed in the public schema.
-                      <button onClick={handleDownloadSQL} className="text-[#3ECF8E] hover:underline font-black uppercase text-[10px] tracking-widest ml-4 bg-[#3ECF8E]/10 px-4 py-2 rounded-xl border border-[#3ECF8E]/20">Fetch Kernel SQL</button>
+                    <p className="text-sm text-muted leading-relaxed mb-8 max-w-2xl font-medium">
+                      If the automated provisioner fails due to host security policies, you must ensure the <code className="text-[var(--brand)] bg-[var(--brand)]/5 px-2 py-0.5 rounded border border-[var(--brand)]/10 font-mono">execute_sql</code> kernel is installed in the public schema.
+                      <button onClick={handleDownloadSQL} className="text-[var(--brand)] hover:underline font-black uppercase text-[10px] tracking-widest ml-4 bg-[var(--brand)]/10 px-4 py-2 rounded-xl border border-[var(--brand)]/20">Fetch Kernel SQL</button>
                     </p>
 
                     <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center gap-8">
@@ -1017,12 +1017,12 @@ export const CreateSetupWizard: React.FC = () => {
                           />
                           <div className={cn(
                             "w-8 h-8 rounded-xl border transition-all flex items-center justify-center",
-                            scriptConfirmed ? "bg-[#3ECF8E] border-[#3ECF8E]" : "bg-black border-white/10"
+                            scriptConfirmed ? "bg-[var(--brand)] border-[var(--brand)]" : "bg-black border-white/10"
                           )}>
                             {scriptConfirmed && <Check size={16} strokeWidth={3} className="text-black" />}
                           </div>
                         </div>
-                        <span className="text-xs font-bold text-[#888888] group-hover:text-white transition-colors tracking-tight">
+                        <span className="text-xs font-bold text-muted group-hover:text-white transition-colors tracking-tight">
                           I have successfully verified the manual DDL execution.
                         </span>
                       </label>
@@ -1031,7 +1031,7 @@ export const CreateSetupWizard: React.FC = () => {
                         type="button"
                         onClick={handleVerifySchema}
                         disabled={!scriptConfirmed || isSaving}
-                        className="w-full sm:w-auto px-10 py-5 rounded-[22px] border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-[0.3em] text-[#888888] hover:text-white hover:bg-white/10 hover:border-white/10 transition-all disabled:opacity-50"
+                        className="w-full sm:w-auto px-10 py-5 rounded-[22px] border border-white/5 bg-white/5 text-[11px] font-black uppercase tracking-[0.3em] text-muted hover:text-white hover:bg-white/10 hover:border-white/10 transition-all disabled:opacity-50"
                       >
                         Run Topology Validation
                       </button>
@@ -1045,31 +1045,31 @@ export const CreateSetupWizard: React.FC = () => {
       )}
       {currentStep === 'complete' && teamSecret && (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-          <div className="p-8 rounded-3xl bg-[#3ECF8E]/5 border-2 border-[#3ECF8E]/20 text-center space-y-6">
-            <div className="w-20 h-20 rounded-full bg-[#3ECF8E] flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(62,207,142,0.3)]">
+          <div className="p-8 rounded-3xl bg-[var(--brand)]/5 border-2 border-[var(--brand)]/20 text-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-[var(--brand)] flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(var(--brand-rgb),0.3)]">
               <Check size={40} className="text-black" />
             </div>
 
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-white tracking-tight">Team Created Successfully!</h3>
-              <p className="text-sm text-[#888888] max-w-md mx-auto">
+              <p className="text-sm text-muted max-w-md mx-auto">
                 Your workspace is ready. Save these codes as you will need them to manage your team or invite members.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-              <div className="p-6 rounded-2xl bg-black/40 border border-[#222222] space-y-4">
+              <div className="p-6 rounded-2xl bg-black/40 border border-subtle space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase text-[#888888] tracking-widest">Team Code (Secret)</p>
-                  <Shield size={14} className="text-[#3ECF8E]" />
+                  <p className="text-[10px] font-black uppercase text-muted tracking-widest">Team Code (Secret)</p>
+                  <Shield size={14} className="text-[var(--brand)]" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <code className="flex-1 px-4 py-3 bg-black rounded-xl border border-[#222222] text-white font-mono text-xs break-all">
+                  <code className="flex-1 px-4 py-3 bg-black rounded-xl border border-subtle text-white font-mono text-xs break-all">
                     {teamSecret}
                   </code>
                   <button
                     onClick={handleCopyTeamCode}
-                    className="p-3 bg-[#1A1A1A] hover:bg-[#222222] rounded-xl text-[#888888] hover:text-white transition-all"
+                    className="p-3 bg-elevated hover:bg-elevated rounded-xl text-muted hover:text-white transition-all"
                   >
                     <Copy size={18} />
                   </button>
@@ -1078,23 +1078,23 @@ export const CreateSetupWizard: React.FC = () => {
               </div>
 
               {inviteCode && (
-                <div className="p-6 rounded-2xl bg-black/40 border border-[#222222] space-y-4">
+                <div className="p-6 rounded-2xl bg-black/40 border border-subtle space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-black uppercase text-[#888888] tracking-widest">Team Invite Code</p>
-                    <LinkIcon size={14} className="text-[#3ECF8E]" />
+                    <p className="text-[10px] font-black uppercase text-muted tracking-widest">Team Invite Code</p>
+                    <LinkIcon size={14} className="text-[var(--brand)]" />
                   </div>
                   <div className="flex items-center gap-3">
-                    <code className="flex-1 px-4 py-3 bg-black rounded-xl border border-[#222222] text-white font-mono text-xs break-all">
+                    <code className="flex-1 px-4 py-3 bg-black rounded-xl border border-subtle text-white font-mono text-xs break-all">
                       {inviteCode}
                     </code>
                     <button
                       onClick={handleCopyInviteCode}
-                      className="p-3 bg-[#1A1A1A] hover:bg-[#222222] rounded-xl text-[#888888] hover:text-white transition-all"
+                      className="p-3 bg-elevated hover:bg-elevated rounded-xl text-muted hover:text-white transition-all"
                     >
                       <Copy size={18} />
                     </button>
                   </div>
-                  <p className="text-[10px] text-[#444444]">Valid for 24 hours. Your team can use this to join.</p>
+                  <p className="text-[10px] text-dim">Valid for 24 hours. Your team can use this to join.</p>
                 </div>
               )}
             </div>
@@ -1102,7 +1102,7 @@ export const CreateSetupWizard: React.FC = () => {
         </motion.div>
       )}
 
-      <div className="flex gap-3 mt-8 pt-8 border-t border-[#222222]">
+      <div className="flex gap-3 mt-8 pt-8 border-t border-subtle">
         {currentStep === 'sql-setup' && (
           <button
             type="button"
@@ -1125,7 +1125,7 @@ export const CreateSetupWizard: React.FC = () => {
             (currentStep === 'credentials' && (!teamName || Boolean(connectionError))) ||
             (currentStep === 'sql-setup' && !scriptConfirmed && !schemaVerified)
           }
-          className="flex-1 px-4 py-3 rounded-2xl bg-[#3ECF8E] text-[var(--text-on-brand)] font-bold hover:shadow-[0_0_20px_rgba(62,207,142,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 px-4 py-3 rounded-2xl bg-[var(--brand)] text-[var(--text-on-brand)] font-bold hover:shadow-[0_0_20px_rgba(var(--brand-rgb),0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {(isTestingConnection || isSaving) && <Loader size={16} className="animate-spin" />}
           {currentStep === 'credentials'
